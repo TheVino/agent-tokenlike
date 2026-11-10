@@ -1,0 +1,37 @@
+{
+  "name": "Fantasma",
+  "unlock": "chefe1",
+  "stats": {
+    "hp": 16,
+    "atk": 3,
+    "def": 0,
+    "dodge": 0.2
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Fantasminha",
+      "frames": [
+        "estagio1.png"
+      ],
+      "blink": "estagio1_piscando.png",
+      "floor": 1
+    },
+    {
+      "title": "Fantasma",
+      "frames": [
+        "estagio2.png"
+      ],
+      "blink": "estagio2_piscando.png",
+      "floor": 4
+    },
+    {
+      "title": "Fantasma Mago",
+      "frames": [
+        "estagio3.png"
+      ],
+      "blink": "estagio3_piscando.png",
+      "floor": 10
+    }
+  ]
+}
