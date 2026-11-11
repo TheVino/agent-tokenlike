@@ -54,4 +54,16 @@ h = E.herois(recs + [linha("fantasma", 7, [])])
 assert h["slime"]["n"] == 3 and h["slime"]["mediana"] == 8 and h["fantasma"]["p90"] == 7
 r = E.resumo(v)
 assert r["n"] == 3 and r["max"] == 10 and r["mediana"] == 8 and r["passou_chefe1"] == 2 / 3 and r["itens_med"] == 1
+# p90 não passa do máximo em amostra pequena
+assert E.resumo(v)["p90"] == 10 and E.herois([linha("slime", 5, []), linha("slime", 7, [])])["slime"]["p90"] == 7
+# par com valores à mão: esp[1]=16/3, esp[2]=13/3, esp[5]=3
+pq = [linha("slime", 10, [("adaga", 2), ("tampa", 5)]), linha("slime", 6, [("tampa", 1)]),
+      linha("slime", 3, [("adaga", 1)])]
+pp = E.pares(pq, minimo=1)["melhores"][0]
+assert pp["n"] == 1 and abs(pp["vs_esperado"] - 2) < 1e-9     # conta do 2º item: 10 - 5 - 3
+assert abs(pp["ganho"] - (2 - 5 / 6)) < 1e-9                   # max(adaga 1/6, tampa 5/6)
+# linha JSON válida mas com floor ruim conta como ignorada
+(d / "runs.jsonl").write_text("".join(json.dumps(x) + "\n" for x in
+                              [recs[0], dict(recs[0], floor="3"), linha("slime", 5, [("adaga", "x")])]))
+assert E.carregar_reais(d)[1]["ignoradas"] == 2
 print("ok: estatisticas")

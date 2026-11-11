@@ -31,7 +31,7 @@ def carregar_reais(pasta: Path, todas_versoes: bool = False):
             rec = json.loads(txt)
         except ValueError:
             rec = None
-        if not isinstance(rec, dict) or "floor" not in rec:
+        if not _linha_ok(rec):
             info["ignoradas"] += 1
             continue
         if rec.get("version") != M.BALANCE_VERSION:
@@ -52,7 +52,20 @@ def validas(recs) -> list:
 
 
 def _p90(xs):
-    return statistics.quantiles(xs, n=10)[-1] if len(xs) >= 2 else xs[0]
+    # mesmo método do simular.py, mas sem passar do máximo em amostras pequenas
+    return min(statistics.quantiles(xs, n=10)[-1], max(xs)) if len(xs) >= 2 else xs[0]
+
+
+def _linha_ok(rec) -> bool:
+    """Linha com andar inteiro e itens com floor inteiro ou None."""
+    def inteiro(x):
+        return isinstance(x, int) and not isinstance(x, bool)
+    if not isinstance(rec, dict) or not inteiro(rec.get("floor")):
+        return False
+    for i in rec.get("items", []) + rec.get("consumed", []):
+        if not isinstance(i, dict) or "floor" not in i or not (i["floor"] is None or inteiro(i["floor"])):
+            return False
+    return True
 
 
 def resumo(recs) -> dict:
