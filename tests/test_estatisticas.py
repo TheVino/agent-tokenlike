@@ -86,4 +86,40 @@ d2 = Path(tempfile.mkdtemp())
 pg = E.gerar_html(E.coletar(n_sim=20, pasta_real=d2, todas_versoes=False))
 linha_tampa = pg[pg.index(M.ITEMS["tampa"]["name"]):].split("</tr>")[0]
 assert "auto 50%" in linha_tampa and "interativo 50%" in linha_tampa
+# linhas JSON válidas mas malformadas: todas ignoradas, nada quebra (também com todas_versoes)
+ruins = [dict(recs[0], items=None), {k: x for k, x in recs[0].items() if k != "items"},
+         {k: x for k, x in recs[0].items() if k != "char"}, dict(recs[0], char=3),
+         dict(recs[0], items=[{"rar": "comum", "floor": 2}]), dict(recs[0], items=[{"key": 5, "floor": 2}]),
+         linha("slime", 6, [("adaga", 0)]), linha("slime", 6, [("adaga", 9)]),
+         linha("slime", 6, [], consumed=[("tampa", 9)]), dict(recs[0], consumed=None), dict(recs[0], items=["adaga"]),
+         {k: x for k, x in dict(recs[0], version="velha").items() if k != "items"}, [1, 2]]
+d3 = Path(tempfile.mkdtemp())
+(d3 / "runs.jsonl").write_bytes(("".join(json.dumps(x) + "\n" for x in [recs[0]] + ruins)).encode() + b"\xff\xfe\n")
+for tv in (False, True):
+    rr, inf = E.carregar_reais(d3, todas_versoes=tv)
+    assert len(rr) == 1 and inf["ignoradas"] == len(ruins) + 1, inf
+    dd = E.coletar(n_sim=10, pasta_real=d3, todas_versoes=tv); E.gerar_html(dd); json.dumps(dd)
+# linha sem consumed (antiga) continua valendo
+assert E._linha_ok({k: x for k, x in recs[0].items() if k != "consumed"})
+# metas reais sem runs: None (página mostra —)
+assert E.checar_metas(E.resumo([])) == {k: None for k in E.METAS}
+# vs_media: vs_esperado menos a média ponderada por n, soma ponderada ~0
+mix = [linha("slime", 10, [("adaga", 2), ("tampa", 4)]), linha("slime", 4, [("adaga", 3)]),
+       linha("slime", 8, [("tampa", 1), ("vela", 5)]), linha("slime", 3, [])]
+pm = E.por_item(mix)
+assert abs(sum(x["n"] * x["vs_media"] for x in pm.values() if x["n"])) < 1e-9
+assert pm["adaga"]["vs_media"] != pm["adaga"]["vs_esperado"]
+assert all(x["vs_media"] is None for x in pm.values() if not x["n"])
+# piores não repetem os melhores
+pr = E.pares([linha("slime", 12, [("adaga", 2), ("tampa", 3)])] * 30 + [linha("slime", 9, [("adaga", 2), ("vela", 3)])] * 30, minimo=30)
+assert len(pr["melhores"]) == 2 and pr["piores"] == []
+# calibração: só slime, igual ao simular.py; metas julgadas nela
+assert set(dados["calibracao"]) == {"sem_conquistas", "com_conquistas"} and set(dados["metas"]) == {"sem_conquistas", "com_conquistas", "real"}
+assert dados["metas"]["real"] == {k: None for k in E.METAS}
+import simular as S
+cal = E.resumo(S.simular(60, achs=(), seed=1)[0])
+assert dados["calibracao"]["sem_conquistas"] == cal
+assert "calibração (slime) sem conquistas" in page and "calibração (slime) com conquistas" in page
+pg3 = E.gerar_html(E.coletar(n_sim=10, pasta_real=d3, todas_versoes=False))
+assert "auto: 1" in pg3 and "linhas ignoradas" in pg3
 print("ok: estatisticas")

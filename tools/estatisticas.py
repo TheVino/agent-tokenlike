@@ -9,7 +9,9 @@ METAS = {"passou_chefe1": (0.35, 0.45), "p90": (13, 16), "max": (None, 25)}
 
 
 def checar_metas(res: dict) -> dict:
-    """Para cada meta, True se o número de `res` está dentro da faixa."""
+    """Para cada meta, True se o número de `res` está dentro da faixa (None sem runs)."""
+    if res.get("n") == 0:
+        return {k: None for k in METAS}
     out = {}
     for k, (lo, hi) in METAS.items():
         v = res.get(k)
@@ -24,7 +26,7 @@ def carregar_reais(pasta: Path, todas_versoes: bool = False):
     if not arq.exists():
         return [], info
     recs = []
-    for txt in arq.read_text(encoding="utf-8").splitlines():
+    for txt in arq.read_text(encoding="utf-8", errors="replace").splitlines():
         if not txt.strip():
             continue
         try:
@@ -57,15 +59,17 @@ def _p90(xs):
 
 
 def _linha_ok(rec) -> bool:
-    """Linha com andar inteiro e itens com floor inteiro ou None."""
+    """Linha com andar inteiro, char texto e itens {key texto, floor None ou de 1 até o andar da run}."""
     def inteiro(x):
         return isinstance(x, int) and not isinstance(x, bool)
-    if not isinstance(rec, dict) or not inteiro(rec.get("floor")):
+    if not isinstance(rec, dict) or not inteiro(rec.get("floor")) or not isinstance(rec.get("char"), str):
         return False
-    for i in rec.get("items", []) + rec.get("consumed", []):
-        if not isinstance(i, dict) or "floor" not in i or not (i["floor"] is None or inteiro(i["floor"])):
-            return False
-    return True
+    its, cons = rec.get("items"), rec.get("consumed", [])  # consumed falta em linhas antigas
+    if not isinstance(its, list) or not isinstance(cons, list):
+        return False
+    return all(isinstance(i, dict) and isinstance(i.get("key"), str) and "floor" in i
+               and (i["floor"] is None or (inteiro(i["floor"]) and 1 <= i["floor"] <= rec["floor"]))
+               for i in its + cons)
 
 
 def resumo(recs) -> dict:
@@ -118,6 +122,11 @@ def por_item(recs) -> dict:
                      andar_final=statistics.mean(fin for fin, _ in rs),
                      mortes_rapidas=sum(fin - f <= 2 for fin, f in rs) / len(rs))
         out[key] = d
+    # vs_media: vs_esperado menos a média (ponderada por n) dos itens, porque pegar item já ajuda
+    com = [d for d in out.values() if d["n"]]
+    media = sum(d["n"] * d["vs_esperado"] for d in com) / sum(d["n"] for d in com) if com else 0
+    for d in out.values():
+        d["vs_media"] = None if d["vs_esperado"] is None else d["vs_esperado"] - media
     return out
 
 
@@ -138,7 +147,7 @@ def pares(recs, minimo: int = 30) -> dict:
             m = statistics.mean(xs)
             lista.append({"a": a, "b": b, "n": len(xs), "vs_esperado": m, "ganho": m - max(vs[a], vs[b])})
     lista.sort(key=lambda p: p["ganho"], reverse=True)
-    return {"melhores": lista[:10], "piores": lista[::-1][:5]}
+    return {"melhores": lista[:10], "piores": lista[10:][::-1][:5]}  # piores não repetem os melhores
 
 
 def mortes(recs) -> dict:
@@ -158,7 +167,7 @@ def herois(recs) -> dict:
 # ---------- coleta, página e linha de comando ----------
 
 def coletar(n_sim: int, pasta_real: Path, todas_versoes: bool, seed: int = 1) -> dict:
-    """Roda a simulação (com e sem conquistas), lê as runs reais e calcula tudo."""
+    """Roda a calibração (só slime, igual ao simular.py), a simulação com todos os heróis e lê as runs reais."""
     from datetime import datetime
     import simular as S
     heroes = S.todos_os_herois()
@@ -166,11 +175,14 @@ def coletar(n_sim: int, pasta_real: Path, todas_versoes: bool, seed: int = 1) ->
     sem_recs = S.simular(n_sim, achs=(), seed=seed, heroes=heroes)[0]
     real_recs, info = carregar_reais(pasta_real, todas_versoes)
     pi_s, pi_r = por_item(sim_recs), por_item(real_recs)
-    res = {"sim": resumo(sim_recs), "sim_sem_conquistas": resumo(sem_recs), "real": resumo(real_recs)}
+    cal = {"sem_conquistas": resumo(S.simular(n_sim, achs=(), seed=seed)[0]),
+           "com_conquistas": resumo(S.simular(n_sim, achs=list(M.ACHIEVEMENTS), seed=seed)[0])}
+    real = resumo(real_recs)
     return {
         "versao": M.BALANCE_VERSION, "gerado_em": datetime.now().isoformat(timespec="seconds"),
-        **res, "info_real": info,
-        "metas": {k: checar_metas(v) for k, v in res.items()},
+        "sim": resumo(sim_recs), "sim_sem_conquistas": resumo(sem_recs), "real": real, "calibracao": cal,
+        "info_real": info,
+        "metas": {**{k: checar_metas(v) for k, v in cal.items()}, "real": checar_metas(real)},
         "itens": {k: {"nome": M.ITEMS[k]["name"], "raridades": M.ITEMS[k].get("rarities"),
                       "sim": pi_s[k], "real": pi_r[k]} for k in M.ITEMS},
         "pares": {"sim": pares(sim_recs), "real": pares(real_recs)},
@@ -216,9 +228,11 @@ def _pct(x) -> str:
     return "—" if x is None else f"{x * 100:.0f}%"
 
 
-def _resumo_linha(nome, r, metas) -> str:
+def _resumo_linha(nome, r, metas=None) -> str:
+    """Linha da tabela Resumo; sem `metas` (ou meta None) não mostra ✓/✗."""
     def cel(k, txt):
-        sinal = "" if r["n"] == 0 else (' <span class="ok">✓</span>' if metas.get(k) else ' <span class="ruim">✗</span>')
+        m = (metas or {}).get(k)
+        sinal = "" if m is None else (' <span class="ok">✓</span>' if m else ' <span class="ruim">✗</span>')
         return f"<td>{txt}{sinal}</td>"
     aviso = ' <span class="aviso">(menos de 10 runs, pouco confiável)</span>' if 0 < r["n"] < 10 else ""
     return (f"<tr><td>{_e(nome)}{aviso}</td><td>{r['n']}</td><td>{_n(r['mediana'])}</td>"
@@ -226,21 +240,21 @@ def _resumo_linha(nome, r, metas) -> str:
             + f"<td>{_n(r['itens_med'])}</td></tr>")
 
 
-def _par_sr(sim, real, fmt, vs=False, fraco=False) -> str:
-    """Célula 'sim / real'. Cor pela regra vs_esperado; real esmaecido quando fraco."""
-    def un(v, dim):
-        txt = fmt(v)
+def _par_sr(sim, real, fmt, vs=False, fraco=False, fmt_real=None) -> str:
+    """Célula 'sim / real'. Cor pela regra vs_media; real esmaecido quando fraco."""
+    def un(v, f, dim):
+        txt = f(v)
         if vs and v is not None and abs(v) > 1:
             txt = f'<span class="{"ok" if v > 0 else "ruim"}">{txt}</span>'
         return f'<span class="fraco">{txt}</span>' if dim else txt
-    return f"{un(sim, False)} / {un(real, fraco)}"
+    return f"{un(sim, fmt, False)} / {un(real, fmt_real or fmt, fraco)}"
 
 
 def _tabela_itens(itens) -> str:
     cab = [("Item", None), ("Pego", "pego"), ("Andar em que é pego", "andar_pego"), ("Durou", "durou"),
-           ("vs esperado", "vs_esperado"), ("Andar final", "andar_final"),
+           ("vs média", "vs_media"), ("Andar final", "andar_final"),
            ("Em mortes rápidas", "mortes_rapidas"), ("Consumido", "consumido")]
-    fmts = {"pego": _pct, "andar_pego": _n, "durou": _n, "vs_esperado": lambda v: _n(v, 2),
+    fmts = {"pego": _pct, "andar_pego": _n, "durou": _n, "vs_media": lambda v: _n(v, 2),
             "andar_final": _n, "mortes_rapidas": _pct, "consumido": _pct}
     out = ['<div class="rolar"><table id="itens"><thead><tr>']
     out += [f'<th class="ord">{_e(t)}{"<br>sim / real" if k else ""}</th>' for t, k in cab]
@@ -254,11 +268,15 @@ def _tabela_itens(itens) -> str:
         out.append(f'<tr><td data-v="{_e(it["nome"])}">{_e(it["nome"])}<br><small class="mu">{raros}</small>{aviso}</td>')
         for _, k in cab[1:]:
             ordem = "" if s[k] is None else s[k]
-            modos = ""
+            modos, fr = "", None
+            if k == "pego":  # real: quantas runs e a fração
+                fr = lambda v, n=r["n"]: "—" if v is None else f"{n} ({_pct(v)})"
+            if k == "vs_media":  # valor bruto, sem centrar na média
+                modos = f'<br><small class="mu">bruto {_n(s["vs_esperado"], 2)} / {_n(r["vs_esperado"], 2)}</small>'
             if k == "consumido" and r["consumido_por_modo"]:  # real separado por modo de jogo
                 modos = "<br><small class=\"mu\">" + " · ".join(
                     f"{_e(m)} {_pct(v)}" for m, v in sorted(r["consumido_por_modo"].items())) + "</small>"
-            out.append(f'<td data-v="{ordem}">{_par_sr(s[k], r[k], fmts[k], vs=(k == "vs_esperado"), fraco=fraco)}{modos}</td>')
+            out.append(f'<td data-v="{ordem}">{_par_sr(s[k], r[k], fmts[k], vs=(k == "vs_media"), fraco=fraco, fmt_real=fr)}{modos}</td>')
         out.append("</tr>")
     out.append("</tbody></table></div>")
     return "".join(out)
@@ -310,25 +328,28 @@ def gerar_html(dados: dict) -> str:
          "<h2>Resumo</h2>"]
     if real_vazio:
         p.append('<p class="aviso">sem runs reais: a coluna real fica vazia até acabarem runs (runs.jsonl em ~/.tokenlike).</p>')
-    extra = [f"{info[k]} {t}" for k, t in (("outras_versoes", "linhas de outras versões"), ("ignoradas", "linhas ignoradas"),
-                                           ("desistencias", "desistências fora das contas")) if info[k]]
-    if extra:
-        p.append(f'<p class="mu">Runs reais: {_e(", ".join(extra))}.</p>')
+    modos = ", ".join(f"{m}: {c}" for m, c in sorted(info["modos"].items())) or "nenhuma"
+    p.append(f'<p class="mu">Runs reais por modo: {_e(modos)} · {info["desistencias"]} desistências fora das contas · '
+             f'{info["ignoradas"]} linhas ignoradas · {info["outras_versoes"]} linhas de outras versões.</p>')
     p.append('<div class="rolar"><table><thead><tr><th>Fonte</th><th>Runs</th><th>Mediana</th><th>p90 (13–16)</th>'
              '<th>Máx (até 25)</th><th>Passou do 1º chefe (35–45%)</th><th>Itens (mediana)</th></tr></thead><tbody>')
-    for chave, nome in (("sim", "sim"), ("sim_sem_conquistas", "sim sem conquistas"), ("real", "real")):
-        p.append(_resumo_linha(nome, dados[chave], dados["metas"][chave]))
+    cal, metas = dados["calibracao"], dados["metas"]
+    for chave, nome in (("sem_conquistas", "calibração (slime) sem conquistas"),
+                        ("com_conquistas", "calibração (slime) com conquistas")):
+        p.append(_resumo_linha(nome, cal[chave], metas[chave]))
+    # todos os heróis misturados: informativo, as metas são julgadas na calibração
+    p.append(_resumo_linha("sim (todos os heróis)", dados["sim"]))
+    p.append(_resumo_linha("sim sem conquistas (todos os heróis)", dados["sim_sem_conquistas"]))
+    p.append(_resumo_linha("real", dados["real"], metas["real"]))
     p.append("</tbody></table></div>")
     p.append('<h2>Itens</h2><p class="mu">Cada célula: sim / real. Clique no cabeçalho para ordenar. '
-             "Verde: vs esperado acima de +1; vermelho: abaixo de −1. Real esmaecido: menos de 10 runs reais com o item.</p>")
+             "vs média: vs esperado menos a média dos itens (pegar item já ajuda). Verde: acima de +1; vermelho: abaixo de −1. "
+             "Embaixo, o vs esperado bruto. Real esmaecido: menos de 10 runs reais com o item.</p>")
     p.append(_tabela_itens(itens))
     for rot, chave in (("Melhores pares", "melhores"), ("Piores pares", "piores")):
         p.append(f'<h2>{rot}</h2><div class="cols">')
         for fonte in ("sim", "real"):
             lista = dados["pares"][fonte][chave]
-            if chave == "piores":  # com poucos pares, os piores repetem os melhores
-                vistos = {(x["a"], x["b"]) for x in dados["pares"][fonte]["melhores"]}
-                lista = [x for x in lista if (x["a"], x["b"]) not in vistos]
             corpo = '<p class="mu">sem runs reais</p>' if fonte == "real" and real_vazio else _tabela_pares(lista, itens)
             p.append(f'<div><p class="mu">{fonte}</p>{corpo}</div>')
         p.append("</div>")

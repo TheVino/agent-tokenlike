@@ -98,7 +98,10 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - Registro de runs: toda run encerrada vira uma linha em `~/.tokenlike/runs.jsonl` (demo: `runs-demo.jsonl`) via
   `masmorra.run_record`, com `masmorra.BALANCE_VERSION` (hash de 8 caracteres só dos números de balanceamento).
   Mudou número, mudou a versão e o histórico real recomeça (`--todas-versoes` mostra tudo).
+  O hash não vê fórmulas nem números escritos no código: ao mudar regra/fórmula de combate, suba `masmorra.REGRAS_REV`.
 - Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 25).
+  São julgadas na **calibração** (só slime, igual ao `simular.py`, sem e com conquistas); o "sim" com todos os
+  heróis misturados é só informativo. Item verde/vermelho usa `vs_media` (vs esperado menos a média dos itens).
   Rode `python tools/estatisticas.py`, não decore números aqui.
 - Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 38-41% passam do
   1º chefe, p90 = andar 15, máx = 25. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0,
