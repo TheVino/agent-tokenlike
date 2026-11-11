@@ -78,4 +78,12 @@ json.dumps(dados)                                                  # serializáv
 out = Path(tempfile.mkdtemp())
 E.main(["--runs", "40", "--sem-abrir", "--real-dir", str(d), "--saida", str(out)])
 assert (out / "estatisticas.html").exists() and json.loads((out / "estatisticas.json").read_text(encoding="utf-8"))["versao"] == M.BALANCE_VERSION
+# consumido por modo aparece na linha do item (real)
+d2 = Path(tempfile.mkdtemp())
+(d2 / "runs.jsonl").write_text("".join(json.dumps(x) + "\n" for x in [
+    linha("slime", 6, [("tampa", 2)], consumed=[("tampa", 1)], mode="interativo"),
+    linha("slime", 6, [("tampa", 2)], consumed=[("tampa", 3)], mode="auto")]), encoding="utf-8")
+pg = E.gerar_html(E.coletar(n_sim=20, pasta_real=d2, todas_versoes=False))
+linha_tampa = pg[pg.index(M.ITEMS["tampa"]["name"]):].split("</tr>")[0]
+assert "auto 50%" in linha_tampa and "interativo 50%" in linha_tampa
 print("ok: estatisticas")

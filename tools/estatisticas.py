@@ -157,10 +157,6 @@ def herois(recs) -> dict:
 
 # ---------- coleta, página e linha de comando ----------
 
-def _tudo(recs) -> dict:
-    return resumo(recs)
-
-
 def coletar(n_sim: int, pasta_real: Path, todas_versoes: bool, seed: int = 1) -> dict:
     """Roda a simulação (com e sem conquistas), lê as runs reais e calcula tudo."""
     from datetime import datetime
@@ -170,7 +166,7 @@ def coletar(n_sim: int, pasta_real: Path, todas_versoes: bool, seed: int = 1) ->
     sem_recs = S.simular(n_sim, achs=(), seed=seed, heroes=heroes)[0]
     real_recs, info = carregar_reais(pasta_real, todas_versoes)
     pi_s, pi_r = por_item(sim_recs), por_item(real_recs)
-    res = {"sim": _tudo(sim_recs), "sim_sem_conquistas": _tudo(sem_recs), "real": _tudo(real_recs)}
+    res = {"sim": resumo(sim_recs), "sim_sem_conquistas": resumo(sem_recs), "real": resumo(real_recs)}
     return {
         "versao": M.BALANCE_VERSION, "gerado_em": datetime.now().isoformat(timespec="seconds"),
         **res, "info_real": info,
@@ -258,7 +254,11 @@ def _tabela_itens(itens) -> str:
         out.append(f'<tr><td data-v="{_e(it["nome"])}">{_e(it["nome"])}<br><small class="mu">{raros}</small>{aviso}</td>')
         for _, k in cab[1:]:
             ordem = "" if s[k] is None else s[k]
-            out.append(f'<td data-v="{ordem}">{_par_sr(s[k], r[k], fmts[k], vs=(k == "vs_esperado"), fraco=fraco)}</td>')
+            modos = ""
+            if k == "consumido" and r["consumido_por_modo"]:  # real separado por modo de jogo
+                modos = "<br><small class=\"mu\">" + " · ".join(
+                    f"{_e(m)} {_pct(v)}" for m, v in sorted(r["consumido_por_modo"].items())) + "</small>"
+            out.append(f'<td data-v="{ordem}">{_par_sr(s[k], r[k], fmts[k], vs=(k == "vs_esperado"), fraco=fraco)}{modos}</td>')
         out.append("</tr>")
     out.append("</tbody></table></div>")
     return "".join(out)
