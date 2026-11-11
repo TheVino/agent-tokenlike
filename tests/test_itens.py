@@ -51,6 +51,13 @@ assert r["pending"] is None and ev["item"] == {"key": "adaga", "rar": "comum"} a
 old = {"items": {"mao": "adaga", "escudo": None, "cabeca": "chapeu"}, "hp": 10}
 M.migrate_run(old); assert old["items"] == [{"key": "adaga", "rar": "comum"}, {"key": "chapeu", "rar": "comum"}]
 assert old["shield"] == 0 and old["pending"] is None
+novo = {"items": [{"key": "adaga", "rar": "raro"}, {"key": "sumiu", "rar": "comum"}, "lixo"],
+        "pending": {"key": "sumiu", "rar": "comum", "source": "chest"}}
+M.migrate_run(novo)
+assert novo["items"] == [{"key": "adaga", "rar": "raro"}] and novo["pending"] is None
+ok = {"items": [], "pending": {"key": "adaga", "rar": "comum", "source": "chest"}}
+assert M.migrate_run(ok)["pending"]["key"] == "adaga"                 # pendência válida fica
+sem = M.migrate_run({"hp": 3}); assert sem["items"] == [] and sem["pending"] is None
 # colecionador
 r = M.new_run("slime", {}, 6); r["items"] = [{"key": k, "rar": "comum"} for k in list(M.ITEMS)[:10]]
 ev = {"lines": []}; M._check_achievements(r, meta, ev); assert "colecionador" in meta["achievements"]

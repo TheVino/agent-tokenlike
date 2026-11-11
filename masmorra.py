@@ -182,13 +182,16 @@ def consume_fx(key: str, rar: str) -> dict:
 
 
 def migrate_run(run: dict) -> dict:
-    """Save antigo (3 espaços) -> lista de itens comuns; chaves que sumiram são puladas."""
+    """Save antigo (3 espaços) -> lista de itens comuns; itens e pendência com chaves que sumiram são descartados."""
     items = run.get("items")
     if isinstance(items, dict):
         run["items"] = [{"key": items[s], "rar": "comum"} for s in ("mao", "escudo", "cabeca")
                         if items.get(s) in ITEMS]
+    else:
+        run["items"] = [i for i in (items or []) if isinstance(i, dict) and i.get("key") in ITEMS]
     run.setdefault("shield", 0)
-    run.setdefault("pending", None)
+    if (run.get("pending") or {}).get("key") not in ITEMS:
+        run["pending"] = None
     return run
 
 

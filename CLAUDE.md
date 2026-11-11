@@ -15,7 +15,8 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   Itens, monstros, salas, coroa de chefe. `BOSS_PAL` recolore os monstros para os chefes.
 - `visual.py`: efeitos puros sobre mapas de pixels `{(x, y): "#rrggbb"}` (sem tkinter): `espinhos`, `gotas`,
   `contorno`, `tingir`, `adesivo`, `objeto` e `compose()`, que monta o pet com os `look` dos itens empilhados
-  (brilho na cor da raridade). `LOOK_BOX` limita a área; a GUI só recompõe quando a lista de itens muda (`refresh_look`).
+  (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
+  inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
 - `tests/`: `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
@@ -86,6 +87,7 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   `CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo: 1 / 1.2 / 1.4 / 1.6), e quem segura as runs são os chefes, com valor
   baixo no 1º chefe e inclinação alta (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.4), ou seja
   `valor + por_andar * (andar - BOSS_EVERY)`, com mínimo 1): fracos no andar 5, paredões nos 15–20.
+  Os monstros comuns também subiram: `MON_ATK` = (1, 0.6) -> (1.5, 1.2).
   Quase toda morte acontece na sala do chefe. Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`),
   só então `MON_*`/`BOSS_*`.
 
@@ -105,3 +107,5 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - Heróis desbloqueáveis: velinha viva, cogumelo de caverna, baú mímico (cada um com stats e uma mecânica própria).
 - Mais salas (evento raro, sala secreta), mais chefes com sprite próprio, sinergias entre itens.
 - Mais escolhas do jogador (hoje só pegar/consumir no modo interativo), sons, estatísticas de runs.
+- Escala dos itens para heróis maiores que 16 px (fator altura_do_herói/16) fica para a parte 3 (Petdex);
+  `visual.compose` ainda não tem parâmetro de escala.
