@@ -41,6 +41,12 @@ ad = V.adesivo(slime, {(0, 0): "#ff00ff"}, (0.5, 0.5)); assert "#ff00ff" in ad.v
 for anc in ("topo", "esq", "dir", "frente", "base", "flutua"):
     for o in (0, 5):
         assert V.objeto(slime, arte_obj, anc, o) != slime, anc
+# ordem 1 não esconde por completo o objeto de ordem 0
+for anc in ("topo", "esq", "dir", "frente", "base", "flutua"):
+    o0 = V.objeto(slime, arte_obj, anc, 0); o1 = V.objeto(o0, arte_obj, anc, 1)
+    assert o1 != o0 and V.objeto(slime, arte_obj, anc, 1) != o0, anc
+    n0 = {p for p in o0 if o0[p] != slime.get(p)}; n1 = {p for p in o1 if o1[p] != o0.get(p)}
+    assert n1 and n1 != n0, anc
 # compose + crop: caixa máxima respeitada com muitos objetos
 looks = [({"type": "obj", "anchor": "topo", "art": "chifres"}, None)] * 12
 pm2 = V.crop(V.compose(slime, looks, {"chifres": arte_obj}), V.LOOK_BOX)
@@ -51,4 +57,7 @@ assert V.compose(slime, [], {}) == slime
 mut = V.compose(slime, [({"type": "espinhos", "color": "#e2384d"}, None),
                         ({"type": "tingir", "color": "#9b6ad6", "amount": 0.3}, None)], {})
 assert V.bbox(mut)[1] < V.bbox(slime)[1]
+for tipo, fn in (("espinhos", V.espinhos), ("gotas", V.gotas)):
+    lk = ({"type": tipo, "color": "#e2384d"}, None)
+    assert V.compose(slime, [lk] * 2, {}) == fn(slime, "#e2384d", 2), tipo
 print("ok: visual")

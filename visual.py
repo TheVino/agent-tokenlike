@@ -112,8 +112,11 @@ def _colocar(pm, art, box, anchor, ordem, glow):
         k = ordem // 4 + 1   # ao acabar as 4 posições, repete mais longe
         tx, ty = [(x0 - aw * k, y0 - ah * k), (x1 + aw * (k - 1), y0 - ah * k),
                   (x0 - aw * k, cy), (x1 + aw * (k - 1), cy)][ordem % 4]
-    else:  # frente
-        tx, ty = cx, cy
+    else:  # frente: ordem alterna direita/esquerda do centro, afastando
+        lado = 1 if ordem % 2 else -1
+        if ordem == 0:
+            lado = 0
+        tx, ty = cx + lado * ((ordem + 1) // 2) * max(aw - 2, 1), cy
     dx, dy = tx - ax0, ty - ay0
     out = dict(pm)
     if glow:
@@ -132,10 +135,14 @@ def compose(base, looks, arts):
     tipos = [l["type"] for l, _ in looks]
     out = dict(base)
     cont = {}
+    feito = set()
     for l, glow in looks:
         t = l["type"]
         if t in ("espinhos", "gotas"):
-            out = (espinhos if t == "espinhos" else gotas)(out, l["color"], tipos.count(t))
+            # aplica uma vez só, no nível = nº de looks do tipo, com a cor do PRIMEIRO look do tipo
+            if t not in feito:
+                feito.add(t)
+                out = (espinhos if t == "espinhos" else gotas)(out, l["color"], tipos.count(t))
         elif t == "contorno":
             out = contorno(out, l["color"])
         elif t == "tingir":
