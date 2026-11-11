@@ -97,16 +97,23 @@ def _colar(pm, art, dx, dy):
     return out
 
 
-def adesivo(pm, art, at, glow=None):
+def _anel(art, glow, k=1):
+    """Arte + brilho de k pixels de espessura (k=1: o contorno de sempre)."""
+    for _ in range(k):
+        art = contorno(art, glow)
+    return art
+
+
+def adesivo(pm, art, at, glow=None, k=1):
     x0, y0, x1, y1 = bbox(pm)
     if glow:
-        art = contorno(art, glow)
+        art = _anel(art, glow, k)
     ax0, ay0, ax1, ay1 = bbox(art)
     cx = round(x0 + at[0] * (x1 - x0)); cy = round(y0 + at[1] * (y1 - y0))
     return _colar(pm, art, cx - (ax0 + ax1) // 2, cy - (ay0 + ay1) // 2)
 
 
-def _colocar(pm, art, box, anchor, ordem, glow):
+def _colocar(pm, art, box, anchor, ordem, glow, k=1):
     """Cola `art` junto à caixa `box` (do corpo) na âncora pedida; `ordem` afasta para fora."""
     x0, y0, x1, y1 = box
     ax0, ay0, ax1, ay1 = bbox(art)
@@ -132,7 +139,7 @@ def _colocar(pm, art, box, anchor, ordem, glow):
     dx, dy = tx - ax0, ty - ay0
     out = dict(pm)
     if glow:
-        for (x, y), c in contorno(art, glow).items():
+        for (x, y), c in _anel(art, glow, k).items():
             if (x, y) not in art and (x + dx, y + dy) not in out:
                 out[(x + dx, y + dy)] = c
     return _colar(out, art, dx, dy)
@@ -198,8 +205,8 @@ def compose(base, looks, arts, fase=0, k=1):
     """looks = [(look, glow_color), ...] na ordem em que os itens foram pegos.
 
     k = quantas vezes o herói é maior que 16 px. Objetos e adesivos (arte de item, desenhada em 16 px) são
-    ampliados por k, para terem o mesmo tamanho na tela do herói (que é desenhado com px/k). Efeitos sobre o corpo
-    (espinhos, gotas, contorno, brilho, chamas, faíscas, veneno, geada) ficam com 1 pixel de herói de espessura:
+    ampliados por k, para terem o mesmo tamanho na tela do herói (que é desenhado com px/k). O brilho de raridade
+    desses objetos tem k pixels de espessura. Efeitos sobre o corpo (espinhos, gotas, contorno, chamas, faíscas, veneno, geada) ficam com 1 pixel de herói de espessura:
     seguem a silhueta grande sem engrossar. Com k=1 o resultado é idêntico ao de sempre."""
     tipos = [l["type"] for l, _ in looks]
     out = dict(base)
@@ -218,7 +225,7 @@ def compose(base, looks, arts, fase=0, k=1):
         elif t == "tingir":
             out = tingir(out, l["color"], l["amount"])
         elif t == "adesivo":
-            out = adesivo(out, escalar(arts[l["art"]], k), l["at"], glow)
+            out = adesivo(out, escalar(arts[l["art"]], k), l["at"], glow, k)
     box = bbox(out)   # os objetos usam a caixa do corpo já mutado (sem os looks animados: igual em todas as fases)
     for l, _ in looks:
         t = l["type"]
@@ -237,7 +244,7 @@ def compose(base, looks, arts, fase=0, k=1):
         while n > 1 and not all(_cabe(art, box, a, o, k) for o, (art, _) in enumerate(objs[-n:])):
             n -= 1
         for o, (art, glow) in enumerate(objs[-n:]):
-            out = _colocar(out, art, box, a, o, glow)
+            out = _colocar(out, art, box, a, o, glow, k)
     return out
 
 
