@@ -25,6 +25,12 @@ M.ITEMS["adaga"]["fx"] = {"atk": 99}
 assert M._balance_version() != v0                              # número muda a versão
 M.ITEMS["adaga"] = adaga
 assert M._balance_version() == v0
+M.MONSTERS[0] = (M.MONSTERS[0][0], "Outro Nome") + M.MONSTERS[0][2:]
+assert M._balance_version() == v0                              # nome de monstro não muda a versão
+M.MONSTERS[0] = (M.MONSTERS[0][0], "Morcego") + M.MONSTERS[0][2:]
+rev = M.REGRAS_REV; M.REGRAS_REV += 1
+assert M._balance_version() != v0                              # regra/fórmula nova: sobe REGRAS_REV
+M.REGRAS_REV = rev; assert M._balance_version() == v0
 # simulador gera registros no formato real
 sys.path.insert(0, str(ROOT / "tools")); import simular as S
 recs, salas = S.simular(n=40, achs=list(M.ACHIEVEMENTS), seed=3, heroes=S.todos_os_herois())

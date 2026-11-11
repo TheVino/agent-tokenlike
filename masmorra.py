@@ -559,14 +559,19 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     return ev
 
 
+# Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
+REGRAS_REV = 1
+
+
 def _balance_version() -> str:
     """Hash dos números de balanceamento (não do visual): identifica a versão das regras nos registros."""
     its = {k: {f: v.get(f) for f in ("fx", "consume", "rarities", "req")} for k, v in sorted(ITEMS.items())}
-    blob = [its, MONSTERS, ROOM_COST, ROOMS_PER_FLOOR, MAX_STORED_ROOMS, BOSS_EVERY, MON_HP, MON_ATK,
+    mons = [(m[0],) + tuple(m[2:]) for m in MONSTERS]  # sem o nome de exibição
+    blob = [REGRAS_REV, its, mons, ROOM_COST, ROOMS_PER_FLOOR, MAX_STORED_ROOMS, BOSS_EVERY, MON_HP, MON_ATK,
             BOSS_HP, BOSS_ATK, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
             [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
             CHEST_ITEM_CHANCE, SHOP_PRICE]
-    return hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()[:8]
+    return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
 
 BALANCE_VERSION = _balance_version()
