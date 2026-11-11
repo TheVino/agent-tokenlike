@@ -106,6 +106,22 @@ LEVA_B = ["broquel", "casco_tartaruga", "manopla_rebite", "sino_guarda", "muralh
           "adaga_sangria", "coracao_costurado", "mascara_furia", "calice_rubro", "pacto_carmesim"]
 assert all(k in M.ITEMS for k in LEVA_B) and len(set(LEVA_B)) == 20
 assert sum(M.ITEMS[k]["rarities"] == ["lendario"] for k in LEVA_B) >= 2
+# leva C: golpes (duplo), área, ajudantes e crítico
+assert len(M.ITEMS) >= 80
+assert len({it["name"] for it in M.ITEMS.values()}) == len(M.ITEMS)
+assert all(k in arte.ITEM_ART for k in M.ITEMS)
+LEVA_C = ["luvinha_ligeira", "ferrao_gemeo", "rabicho", "pulseira_eco", "garras_gemeas",
+          "piao_laminas", "corrente_torta", "uivo_garrafa", "leque_penas", "redemoinho",
+          "besourinho", "morceguinho", "caveirinha", "fantoche", "corvo_cinza",
+          "monoculo", "pedra_amolar", "trevo_murcho", "presa_lobo", "olho_gato"]
+assert all(k in M.ITEMS for k in LEVA_C) and len(set(LEVA_C)) == 20
+assert len(fam("duplo")) >= 4 and len(fam("ajudante")) >= 4
+assert len([k for k, it in M.ITEMS.items() if it["fx"].get("area")]) >= 5     # incensario + 4 da leva C
+assert len(set(fam("crit")) | set(fam("critdmg"))) >= 4
+for k in fam("ajudante"):                           # ajudantes flutuam em volta do herói
+    assert M.ITEMS[k]["look"]["type"] == "obj" and M.ITEMS[k]["look"]["anchor"] == "flutua", k
+assert sum(M.ITEMS[k]["rarities"] == ["lendario"] for k in LEVA_C) >= 2
+assert all(M.fx_text(it["fx"]) for it in M.ITEMS.values())
 # crescer / sorte / desconto (tarefa 8)
 M.ITEMS["_t_cresce"] = {"name": "t", "rarities": ["comum"], "fx": {"crescer": 5}, "consume": {"heal": 1}, "look": {"type": "contorno", "color": "#fff"}}
 assert M.item_fx("_t_cresce", "comum")["crescer"] == 5

@@ -201,6 +201,55 @@ ITEMS = {
     "pacto_carmesim": {"name": "Pacto Carmesim",   "rarities": ["epico", "lendario"], "fx": {"custo_ataque": 2, "furia": 1, "atk": 2},
                      "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "pacto_carmesim"},
                      "req": "chefe1"},
+    # leva C: golpes (duplo), área, ajudantes (sempre obj flutua) e crítico
+    "luvinha_ligeira": {"name": "Luvinha Ligeira", "rarities": _C, "fx": {"duplo": 0.15, "crit": 0.05},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "luvinha_ligeira"}},
+    "ferrao_gemeo": {"name": "Ferrão Gêmeo",       "rarities": _C, "fx": {"duplo": 0.1, "envenenar": 0.1, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "ferrao_gemeo"}},
+    "rabicho":      {"name": "Rabicho Estalante",  "rarities": _C, "fx": {"duplo": 0.1, "dodge": 0.08},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "rabicho"}},
+    "pulseira_eco": {"name": "Pulseira do Eco",    "rarities": ["raro", "epico"], "fx": {"duplo": 0.12, "crit": 0.05, "maxhp": 3},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "frente", "art": "pulseira_eco"},
+                     "req": "andar5"},
+    "garras_gemeas": {"name": "Garras Gêmeas da Lua", "rarities": ["lendario"], "fx": {"duplo": 0.15, "crit": 0.1, "atk": 3},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "dir", "art": "garras_gemeas"},
+                     "req": "chefe1"},
+    "piao_laminas": {"name": "Pião de Lâminas",    "rarities": _C, "fx": {"area": True, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "frente", "art": "piao_laminas"}},
+    "corrente_torta": {"name": "Corrente de Elos Tortos", "rarities": _C, "fx": {"area": True, "def": 1, "maxhp": 3},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "corrente_torta"}},
+    "uivo_garrafa": {"name": "Uivo Engarrafado",   "rarities": _C, "fx": {"area": True, "maxhp": 5},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "topo", "art": "uivo_garrafa"}},
+    "leque_penas":  {"name": "Leque de Penas Negras", "rarities": _R, "fx": {"area": True, "dodge": 0.08},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "esq", "art": "leque_penas"},
+                     "req": "andar5"},
+    "redemoinho":   {"name": "Redemoinho de Bolso", "rarities": ["raro", "epico"], "fx": {"area": True, "dodge": 0.05, "def": 1},
+                     "consume": {"heal": 9}, "look": {"type": "tingir", "color": "#9fd8ff", "amount": 0.25},
+                     "req": "andar5"},
+    "besourinho":   {"name": "Besourinho de Guarda", "rarities": _C, "fx": {"ajudante": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "flutua", "art": "besourinho"}},
+    "morceguinho":  {"name": "Morceguinho de Pano", "rarities": _C, "fx": {"ajudante": 1, "maxhp": 5},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "flutua", "art": "morceguinho"}},
+    "caveirinha":   {"name": "Caveirinha Saltitante", "rarities": _C, "fx": {"ajudante": 3, "maxhp": -3},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "flutua", "art": "caveirinha"}},
+    "fantoche":     {"name": "Fantoche de Meia",   "rarities": ["raro", "epico"], "fx": {"ajudante": 2, "def": 1},
+                     "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "flutua", "art": "fantoche"},
+                     "req": "andar5"},
+    "corvo_cinza":  {"name": "Corvo de Cinza",     "rarities": ["lendario"], "fx": {"ajudante": 3, "maxhp": 4},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "flutua", "art": "corvo_cinza"},
+                     "req": "chefe1"},
+    "monoculo":     {"name": "Monóculo Trincado",  "rarities": _C, "fx": {"crit": 0.1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "adesivo", "art": "monoculo", "at": [0.3, 0.4]}},
+    "pedra_amolar": {"name": "Pedra de Amolar",    "rarities": _C, "fx": {"critdmg": 0.25, "atk": 1, "maxhp": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "pedra_amolar"}},
+    "trevo_murcho": {"name": "Trevo Murcho",       "rarities": _C, "fx": {"crit": 0.15, "atk": 1, "maxhp": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "topo", "art": "trevo_murcho"}},
+    "presa_lobo":   {"name": "Presa de Lobo-sombra", "rarities": _R, "fx": {"crit": 0.1, "critdmg": 0.15, "atk": 1},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "dir", "art": "presa_lobo"},
+                     "req": "andar5"},
+    "olho_gato":    {"name": "Olho de Gato Ônix",  "rarities": ["epico", "lendario"], "fx": {"crit": 0.12, "dodge": 0.08},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "topo", "art": "olho_gato"},
+                     "req": "chefe1"},
 }
 
 # sprite, nome, mult. de vida, mult. de ataque, andar mínimo, mult. de velocidade
@@ -219,11 +268,11 @@ MON_SPD = (6, 0.1)            # (base, por andar)
 BOSS_SPD_BONUS = 1.1
 MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.02, 0.03, 1.5
 PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
-MAX_CRIT = 0.6
+MAX_CRIT = 0.35             # 0.6 deixava as runs longas sem fim com a leva C (crítico x duplo)
 MAX_ELEM_CHANCE = 0.3
 MAX_BLOQUEIO, MAX_ESPINHOS = 2, 0.5   # bloqueio 3 deixava os chefes inofensivos (leva B)
 MAX_SORTE, MAX_DESCONTO = 1.0, 0.6   # tetos de sorte (raridade) e desconto da loja
-MAX_DUPLO = 0.5              # teto da chance de golpe duplo somada
+MAX_DUPLO = 0.25             # teto da chance de golpe duplo somada (0.5 alongava demais a cauda)
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
 BOSS_STATUS_CHANCE = 0.15

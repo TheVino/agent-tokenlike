@@ -59,7 +59,9 @@ assert steps[0]["who"] == 0 and all(set(x) == CHAVES for x in steps)
 r = pet(spd=9); won, steps, _, _ = M.combate(r, M.stats(r), [foe(spd=9)], random.Random(1), 1)
 assert steps[0]["who"] == "pet"
 # dobro da velocidade: crítico com dano x (critdmg*2); com crit base 0.5 + 0.5 = 1.0 sempre crita
+mc = M.MAX_CRIT; M.MAX_CRIT = 0.5                  # o teto atual fica abaixo de 0.5; aqui só importa o dobro
 r = pet(spd=20, atk=4, crit=0.5); won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=100, spd=10)], random.Random(2), 1)
+M.MAX_CRIT = mc
 s = next(x for x in steps if x["who"] == "pet"); assert s["crit"] and s["dmg"] >= 3 * 3     # (4±1) * 1.5 * 2
 # sem o dobro e com crit 0, nunca crita
 r = pet(spd=19, atk=4); won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=100, spd=10)], random.Random(2), 1)
@@ -240,7 +242,7 @@ assert M.fx_text({"custo_ataque": 2, "furia": 1}) == "-2 HP por ataque, fúria +
 assert M.fx_text({"queimar": 0.2, "area": True}) == "ataque em área, 20% queimadura"
 assert M.fx_text({"congelar": 0.29}) == "29% congelamento"
 # --- Task 6: golpe duplo e ajudantes ---
-assert M.stats(pet(duplo=1.0))["duplo"] == 0.5 and M.stats(pet())["duplo"] == 0 and M.stats(pet())["ajudante"] == 0
+assert M.stats(pet(duplo=1.0))["duplo"] == M.MAX_DUPLO and M.stats(pet())["duplo"] == 0 and M.stats(pet())["ajudante"] == 0
 assert M.stats(pet(ajudante=2))["ajudante"] == 2
 # duplo: segundo golpe no mesmo alvo, logo depois do primeiro; custo_ataque cobrado uma vez por turno
 r = pet(atk=2, duplo=1.0, custo_ataque=1); r["shield"] = 10**6
