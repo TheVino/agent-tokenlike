@@ -57,6 +57,8 @@ SLEEP_AFTER_S = 10 * 60     # parado há 10 min -> dorme (Zzz). Nunca morre por 
 SAVE_EVERY_S = 30
 RESPAWN_S = 12              # tempo mostrando a lápide antes da run nova
 SIZES = {"Pequeno": 4, "Médio": 6, "Grande": 8}  # px de tela por pixel da arte
+MODES = {"auto": "Auto", "interativo": "Interativo"}
+CHOICE_BAR_W = 150          # largura da barrinha de tempo do painel de escolha
 TRANSPARENT = "#ff00fe"     # cor "chave" que o Windows deixa invisível
 
 PANEL_BG = "#1d1b2b"
@@ -219,6 +221,7 @@ DEFAULT_STATE = {
     "xp_total": 0.0,
     "daily": {},
     "size": "Médio",
+    "mode": "auto",              # "auto" ou "interativo" (o jogador escolhe pegar/consumir)
     "pos": None,
     "topmost": True,
     "last_fed": 0.0,
@@ -497,6 +500,8 @@ class PetApp:
         self.chars = all_characters()
         if self.state["size"] not in SIZES:
             self.state["size"] = "Médio"
+        if self.state["mode"] not in MODES:
+            self.state["mode"] = "auto"
         run = self.state.get("run")
         if not run or run.get("dead") or run.get("char") not in self.chars:
             self.new_run(announce=False)
@@ -529,6 +534,8 @@ class PetApp:
         self.busy_until = time.time() + 1.5
         self.respawn_at = None
         self.popup_win = None
+        self.choice_win = None
+        self.pending_since = None     # quando a janela de escolha começou (só em memória)
         self._drag = None
         self._moved = False
 
@@ -700,6 +707,12 @@ class PetApp:
             size_menu.add_radiobutton(label=name, value=name, variable=self.size_var,
                                       command=self.change_size)
         self.menu.add_cascade(label="Tamanho", menu=size_menu)
+        mode_menu = tk.Menu(self.menu, tearoff=0)
+        self.mode_var = tk.StringVar(value=self.state["mode"])
+        for key, label in MODES.items():
+            mode_menu.add_radiobutton(label=label, value=key, variable=self.mode_var,
+                                      command=self.change_mode)
+        self.menu.add_cascade(label="Modo", menu=mode_menu)
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.menu.add_checkbutton(label="Sempre por cima", variable=self.top_var,
                                   command=self.toggle_top)
@@ -761,6 +774,12 @@ class PetApp:
         self.build()
         if self.run["dead"]:
             self.show_tomb()
+
+    def change_mode(self):
+        self.state["mode"] = self.mode_var.get()
+        if self.state["mode"] == "auto" and self.run["pending"]:
+            self.finish_pending(M.resolve_pending(self.run, self.meta))
+        self.save()
 
     def toggle_top(self):
         self.state["topmost"] = bool(self.top_var.get())
@@ -840,7 +859,8 @@ class PetApp:
 
     # -------------------------------------------------------------- salas
     def play_room(self):
-        ev = M.enter_room(self.run, self.meta, self.rng, self.char.stage_floors, mode="auto")
+        ev = M.enter_room(self.run, self.meta, self.rng, self.char.stage_floors,
+                          mode=self.state["mode"])
         steps = []
         t = 0
 
@@ -864,7 +884,8 @@ class PetApp:
                                        self.floater(f"-{d}", TEXT, x=self.fcx, life=10)))
                 elif who == "foe":
                     at(t, lambda d=d: (self._set("foe_lunge", [-5, -10, -5, 0]),
-                                       self.floater(f"-{d}", HURT, life=10)))
+                                       self.floater(f"-{d}", HURT, life=10) if d
+                                       else self.floater("bloqueou!", CYAN, life=10)))
                 else:
                     at(t, lambda: self.floater("esquivou!", CYAN, life=10))
                 t += 380
@@ -876,6 +897,8 @@ class PetApp:
         elif kind == "trap":
             if ev.get("dodged"):
                 at(t, lambda: self.floater("esquivou!", CYAN))
+            elif ev["dmg"] == 0:                       # o escudo absorveu tudo
+                at(t, lambda: self.floater("bloqueou!", CYAN))
             else:
                 at(t, lambda: (self._set("hop", [-4, -8, -4, 0]),
                                self.floater(f"-{ev['dmg']}", HURT)))
@@ -892,6 +915,29 @@ class PetApp:
         if ev.get("gold") and kind not in ("monster", "boss", "mimic"):
             at(t, lambda: self.floater(f"+{ev['gold']} $", GOLD, x=self.fcx))
             t += 450
+        t = self._offer_steps(ev, at, t)
+        if ev.get("pending"):
+            key, rar = ev["pending"]["key"], ev["pending"]["rar"]
+            at(t, lambda: self.show_foe(key, False))
+            at(t, lambda: self.floater(M.ITEMS[key]["name"], M.RAR_COLOR.get(rar) or GOLD,
+                                       x=self.fcx, life=24))
+            at(t, self.show_choice)
+            t += 700
+        if ev["died"]:
+            at(t, self.on_death)
+            t += 400
+        else:
+            at(t, self.hide_foe)
+        if ev.get("unlocks"):
+            at(t, lambda: self.announce_unlocks(ev["unlocks"]))
+        at(t, self.update_panel)
+
+        for ms, fn in steps:
+            self.root.after(ms, fn)
+        self.busy_until = time.time() + t / 1000 + 0.8
+
+    def _offer_steps(self, ev, at, t):
+        """Animação das linhas e da oferta resolvida (item pego ou consumido); devolve o novo t."""
         for line in ev["lines"]:
             at(t, lambda line=line: self.floater(line, TEXT, life=24))
             t += 600
@@ -907,23 +953,31 @@ class PetApp:
             t += 700
         if ev.get("consumed"):
             c = ev["consumed"]
-            if "heal" in c:
+            if c.get("heal"):
                 at(t, lambda: self.floater(f"+{c['heal']} ♥", GOOD))
+            elif "heal" in c:                          # curou 0: o HP já estava cheio
+                at(t, lambda: self.floater("HP já cheio", MUTED))
             else:
                 at(t, lambda: self.floater(f"+{c['shield']} escudo", CYAN))
             t += 600
-        if ev["died"]:
-            at(t, self.on_death)
-            t += 400
-        else:
-            at(t, self.hide_foe)
-        if ev.get("unlocks"):
-            at(t, lambda: self.announce_unlocks(ev["unlocks"]))
-        at(t, self.update_panel)
+        return t
 
+    def finish_pending(self, ev):
+        """Fecha o painel e anima a oferta resolvida (escolha, janela vencida ou troca p/ auto)."""
+        self.close_choice()
+        steps = []
+        t = self._offer_steps(ev, lambda ms, fn: steps.append((ms, fn)), 0)
+        if ev.get("unlocks"):
+            steps.append((t, lambda: self.announce_unlocks(ev["unlocks"])))
+        steps.append((t, self.update_panel))
         for ms, fn in steps:
             self.root.after(ms, fn)
         self.busy_until = time.time() + t / 1000 + 0.8
+        self.save()
+
+    def choose(self, choice):
+        if self.run["pending"]:
+            self.finish_pending(M.choose_pending(self.run, self.meta, choice))
 
     def _set(self, attr, value):
         setattr(self, attr, list(value))
@@ -1011,9 +1065,21 @@ class PetApp:
         now = time.time()
         run = self.run
         try:
+            if self.choice_win is not None and not run["pending"]:
+                self.close_choice()                # a pendência sumiu (run nova, desistiu...)
             if run["dead"]:
                 if self.respawn_at and now >= self.respawn_at:
                     self.new_run()
+            elif now >= self.busy_until and run["pending"]:
+                # nunca entra em sala com escolha aberta; os tokens continuam enchendo a energia
+                if self.pending_since is None:
+                    self.pending_since = now       # também ao abrir o app com pendência no save
+                if self.state["mode"] == "auto" or (
+                        now - self.pending_since >= M.CHOICE_WINDOW_S and M.can_enter(run)):
+                    self.finish_pending(M.resolve_pending(run, self.meta))
+                else:
+                    self.show_choice()
+                    self.update_choice()
             elif now >= self.busy_until and M.can_enter(run):
                 self.play_room()
 
@@ -1095,10 +1161,71 @@ class PetApp:
         except tk.TclError:
             pass
 
+    def show_choice(self):
+        """Painel Pegar/Consumir ao lado do pet (um só por vez)."""
+        p = self.run["pending"]
+        if self.choice_win is not None or not p:
+            return
+        key, rar = p["key"], p["rar"]
+        it = M.ITEMS[key]
+        w = tk.Toplevel(self.root)
+        w.overrideredirect(True)
+        w.attributes("-topmost", True)
+        w.configure(bg=PANEL_BG, highlightbackground=PANEL_EDGE, highlightthickness=2)
+        self.choice_img = self.art_img(key)       # referência: o tk não guarda a imagem sozinho
+        tk.Label(w, image=self.choice_img, bg=PANEL_BG).pack(pady=(8, 2))
+        tk.Label(w, text=f"{it['name']}  ·  {M.RAR_NAMES[rar]}", bg=PANEL_BG,
+                 fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=10)
+        cf = M.consume_fx(key, rar)
+        cons = f"+{cf['heal']} ♥" if "heal" in cf else f"+{cf['shield']} escudo"
+        tk.Label(w, text=f"Pegar: {M.fx_text(M.item_fx(key, rar))}\nConsumir: {cons}",
+                 justify="left", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(padx=10)
+        row = tk.Frame(w, bg=PANEL_BG)
+        row.pack(pady=4)
+        for label, choice in (("Pegar", "pegar"), ("Consumir", "consumir")):
+            tk.Button(row, text=label, command=lambda c=choice: self.choose(c), bg=PANEL_EDGE,
+                      fg=TEXT, activebackground=PANEL_EDGE, activeforeground=TEXT, relief="flat",
+                      bd=0, font=self.font_small, padx=8, pady=2).pack(side="left", padx=4)
+        self.choice_cv = tk.Canvas(w, width=CHOICE_BAR_W, height=6, bg=BAR_BG,
+                                   highlightthickness=0, bd=0)
+        self.choice_cv.pack(pady=(2, 2))
+        self.choice_bar = self.choice_cv.create_rectangle(0, 0, CHOICE_BAR_W, 6, fill=ENERGY,
+                                                          outline="")
+        self.choice_wait = tk.Label(w, text="", bg=PANEL_BG, fg=MUTED, font=self.font_small)
+        self.choice_wait.pack(pady=(0, 6))
+        w.update_idletasks()
+        x = self.root.winfo_x() - w.winfo_width() - 6
+        if x < 0:
+            x = self.root.winfo_x() + self.W + 6
+        # alinhado por baixo com o pet, para não cobrir o popup (que cresce a partir do topo)
+        y = max(0, self.root.winfo_y() + self.H - w.winfo_height())
+        w.geometry(f"+{x}+{y}")
+        self.choice_win = w
+        self.update_choice()
+
+    def update_choice(self):
+        """Só mexe na barrinha do tempo e no texto das salas esperando."""
+        if self.choice_win is None:
+            return
+        since = time.time() if self.pending_since is None else self.pending_since
+        left = max(0.0, 1 - (time.time() - since) / M.CHOICE_WINDOW_S)
+        self.choice_cv.coords(self.choice_bar, 0, 0, CHOICE_BAR_W * left, 6)
+        rooms = int(self.run["energy"] // M.room_cost(self.run))
+        self.choice_wait.config(text=f"{rooms} salas esperando" if rooms >= 1 else "")
+
+    def close_choice(self):
+        w, self.choice_win, self.pending_since = self.choice_win, None, None
+        if w is not None:
+            try:
+                w.destroy()
+            except tk.TclError:
+                pass
+
     def show_stats(self):
         run, meta = self.run, self.meta
         st = M.stats(run)
-        lines = [f"Run #{run['id']}  -  {self.char.name} ({self.stage_title})",
+        lines = [f"Run #{run['id']}  -  {self.char.name} ({self.stage_title})"
+                 f"    Modo: {MODES[self.state['mode']]}",
                  f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
                  f"ATK {st['atk']}   DEF {st['def']}   Esquiva {int(st['dodge'] * 100)}%"
                  f"   Ouro {run['gold']}",

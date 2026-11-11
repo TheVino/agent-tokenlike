@@ -14,6 +14,7 @@ class Tk(Noop):
     def winfo_x(self): return 300
     def winfo_y(self): return 300
     def winfo_width(self): return 150
+    def winfo_height(self): return 120
     def winfo_screenwidth(self): return 1920
     def winfo_screenheight(self): return 1080
 class Canvas(Noop):
@@ -37,7 +38,7 @@ class Var:
     def set(self,v): self.v=v
 fake = types.ModuleType("tkinter")
 fake.Tk, fake.Canvas, fake.PhotoImage, fake.Toplevel = Tk, Canvas, PhotoImage, Tk
-fake.Label = fake.Menu = Noop
+fake.Label = fake.Menu = fake.Button = fake.Frame = Noop
 fake.StringVar = fake.BooleanVar = Var
 fake.TclError = TclError
 sys.modules["tkinter"] = fake
@@ -52,6 +53,7 @@ def pump(app, n):
         app.busy_until = 0
         if app.run["dead"] and app.respawn_at: app.respawn_at = 1
         app.feed(200_000, 600_000)
+        if app.run["pending"]: app.pending_since = 0   # envelhece a escolha para não travar
         app.tick()
         fns = PENDING[:]; PENDING.clear()
         for fn in fns:
@@ -92,6 +94,30 @@ for demo in (False, True):
     # reload from disk keeps meta
     app2 = tp.PetApp(Args(demo=demo)); PENDING.clear(); app2.rng = random.Random(SEED)
     assert app2.meta["runs"] == m["runs"], (app2.meta["runs"], m["runs"])
+    # modo interativo: janela de escolha
+    if app2.run["dead"]: app2.new_run(announce=False)
+    app2.state["mode"] = "interativo"; app2.run["pending"] = None
+    app2.run["energy"] = 5 * M.ROOM_COST; app2.busy_until = 0
+    offer = {"key": "adaga", "rar": "raro", "source": "chest"}; app2.run["pending"] = dict(offer)
+    app2.pending_since = time.time(); room_before = (app2.run["floor"], app2.run["room"])
+    app2.tick(); assert (app2.run["floor"], app2.run["room"]) == room_before   # espera a janela
+    app2.feed(300_000, 300_000); app2.tick(); assert app2.run["pending"]       # tokens vão para a mochila
+    app2.pending_since = time.time() - M.CHOICE_WINDOW_S - 1; app2.tick()
+    assert app2.run["pending"] is None                                       # resolveu sozinho e seguiu
+    app2.run["pending"] = dict(offer, key="tampa"); app2.pending_since = time.time(); app2.choose("consumir")
+    assert app2.run["pending"] is None and not any(i["key"] == "tampa" for i in app2.run["items"])
+    app2.run["pending"] = dict(offer, key="gorro"); app2.pending_since = time.time() - 999
+    app2.run["energy"] = 0; app2.busy_until = 0; app2.tick(); assert app2.run["pending"]   # sem energia: espera
+    app2.mode_var.set("auto"); app2.change_mode(); assert app2.run["pending"] is None    # trocar p/ auto resolve
+    # reabrir com pendência no save
+    app2.state["mode"] = "interativo"; app2.run["pending"] = dict(offer, key="chapeu"); app2.quit()
+    app3 = tp.PetApp(Args(demo=demo)); PENDING.clear(); app3.rng = random.Random(SEED)
+    app3.busy_until = 0; app3.run["energy"] = 5 * M.ROOM_COST
+    app3.tick(); assert app3.run["pending"] and app3.pending_since is not None
+    # pump nos dois modos
+    app3.state["mode"] = "interativo"; pump(app3, 300)
+    app3.mode_var.set("auto"); app3.change_mode(); pump(app3, 100)
+    app3.quit()
 log = tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)
