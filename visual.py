@@ -134,7 +134,6 @@ def compose(base, looks, arts):
     """looks = [(look, glow_color), ...] na ordem em que os itens foram pegos."""
     tipos = [l["type"] for l, _ in looks]
     out = dict(base)
-    cont = {}
     feito = set()
     for l, glow in looks:
         t = l["type"]
@@ -150,12 +149,24 @@ def compose(base, looks, arts):
         elif t == "adesivo":
             out = adesivo(out, arts[l["art"]], l["at"], glow)
     box = bbox(out)   # os objetos usam a caixa do corpo já mutado
+    por_ponto = {}
     for l, glow in looks:
         if l["type"] == "obj":
-            a = l["anchor"]
-            out = _colocar(out, arts[l["art"]], box, a, cont.get(a, 0), glow)
-            cont[a] = cont.get(a, 0) + 1
+            por_ponto.setdefault(l["anchor"], []).append((arts[l["art"]], glow))
+    for a, objs in por_ponto.items():
+        # se faltar espaço, ficam os mais recentes do ponto: o maior k em que os k últimos cabem em LOOK_BOX
+        k = len(objs)
+        while k > 1 and not all(_cabe(art, box, a, o) for o, (art, _) in enumerate(objs[-k:])):
+            k -= 1
+        for o, (art, glow) in enumerate(objs[-k:]):
+            out = _colocar(out, art, box, a, o, glow)
     return out
+
+
+def _cabe(art, box, anchor, ordem):
+    """A arte (sem o brilho) inteira dentro de LOOK_BOX nessa posição?"""
+    x0, y0, x1, y1 = LOOK_BOX
+    return all(x0 <= x < x1 and y0 <= y < y1 for (x, y) in _colocar({}, art, box, anchor, ordem, None))
 
 
 def crop(pm, box):

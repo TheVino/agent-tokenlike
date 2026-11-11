@@ -60,4 +60,25 @@ assert V.bbox(mut)[1] < V.bbox(slime)[1]
 for tipo, fn in (("espinhos", V.espinhos), ("gotas", V.gotas)):
     lk = ({"type": tipo, "color": "#e2384d"}, None)
     assert V.compose(slime, [lk] * 2, {}) == fn(slime, "#e2384d", 2), tipo
+# todos os itens de masmorra.ITEMS juntos: o mais novo de cada ponto aparece inteiro dentro de LOOK_BOX
+import masmorra as M
+arts = {k: V.grid_to_map(g, arte.PAL) for k, g in arte.ITEM_ART.items()}
+todos = [(it["look"], None) for it in M.ITEMS.values()]
+cheio = V.compose(slime, todos, arts)
+dentro = lambda p: V.LOOK_BOX[0] <= p[0] < V.LOOK_BOX[2] and V.LOOK_BOX[1] <= p[1] < V.LOOK_BOX[3]
+for anc in {l["anchor"] for l, _ in todos if l["type"] == "obj"}:
+    i = max(j for j, (l, _) in enumerate(todos) if l.get("anchor") == anc)
+    sem_ele = V.compose(slime, todos[:i] + todos[i + 1:], arts)
+    novo = {p for p in cheio if cheio[p] != sem_ele.get(p)}
+    assert novo and all(dentro(p) for p in novo), (anc, todos[i][0]["art"], [p for p in novo if not dentro(p)])
+# além da capacidade, o mais antigo do ponto some (12 chapéus: só os últimos cabem)
+chapeu = ({"type": "obj", "anchor": "topo", "art": "chapeu"}, None)
+vela = ({"type": "obj", "anchor": "topo", "art": "vela"}, None)
+assert V.compose(slime, [vela] + [chapeu] * 12, arts) == V.compose(slime, [chapeu] * 12, arts)
+assert V.compose(slime, [vela], arts) != slime                        # sozinho ele aparece
+# poucos itens: nada muda (dois de um ponto que cabem continuam os dois)
+adaga = ({"type": "obj", "anchor": "dir", "art": "adaga"}, None)
+bx = V.bbox(slime)
+assert V.compose(slime, [adaga] * 2, arts) == V._colocar(V._colocar(slime, arts["adaga"], bx, "dir", 0, None),
+                                                         arts["adaga"], bx, "dir", 1, None)
 print("ok: visual")
