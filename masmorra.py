@@ -108,16 +108,51 @@ ITEMS = {
                      "req": "andar10"},
 }
 
-# sprite, nome, mult. de vida, mult. de ataque, andar mínimo
+# sprite, nome, mult. de vida, mult. de ataque, andar mínimo, mult. de velocidade
 MONSTERS = [
-    ("morcego", "Morcego", 0.8, 0.9, 1),
-    ("rato", "Rato", 1.0, 0.8, 1),
-    ("aranha", "Aranha", 0.9, 1.2, 2),
-    ("esqueleto", "Esqueleto", 1.3, 1.0, 3),
-    ("olho", "Olho Flutuante", 1.0, 1.4, 5),
+    ("morcego", "Morcego", 0.8, 0.9, 1, 1.4),
+    ("rato", "Rato", 1.0, 0.8, 1, 1.1),
+    ("aranha", "Aranha", 0.9, 1.2, 2, 1.0),
+    ("esqueleto", "Esqueleto", 1.3, 1.0, 3, 0.7),
+    ("olho", "Olho Flutuante", 1.0, 1.4, 5, 0.9),
 ]
 BOSS_NAMES = {"morcego": "Morcego Vampiro", "rato": "Rei Rato", "aranha": "Aranha Mãe",
               "esqueleto": "Lorde Esqueleto", "olho": "Olho Abissal"}
+
+# combate: velocidade, crítico e elementos
+MON_SPD = (8, 0.3)            # (base, por andar)
+BOSS_SPD_BONUS = 1.2
+MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.03, 0.05, 1.5
+PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.05, 1.5
+MAX_CRIT = 0.6
+MAX_ELEM_CHANCE = 0.6
+ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
+BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
+BOSS_STATUS_CHANCE = 0.35
+
+
+def make_foe(m: tuple, f: int, boss: bool = False, mult: float = 1.0) -> dict:
+    """Monta o inimigo (monstro ou chefe) do andar f; mult escala HP e ATK antes de arredondar."""
+    if boss:
+        hp = BOSS_HP[0] + BOSS_HP[1] * (f - BOSS_EVERY)
+        atk = BOSS_ATK[0] + BOSS_ATK[1] * (f - BOSS_EVERY)
+    else:
+        hp = (MON_HP[0] + MON_HP[1] * f) * m[2]
+        atk = (MON_ATK[0] + MON_ATK[1] * f) * m[3]
+    hp = max(1, round(hp * mult))
+    return {"sprite": m[0], "name": BOSS_NAMES[m[0]] if boss else m[1], "boss": boss,
+            "element": BOSS_ELEMENT[m[0]] if boss else None,
+            "hp": hp, "hp_max": hp, "atk": max(1, round(atk * mult)),
+            "spd": (MON_SPD[0] + MON_SPD[1] * f) * m[5] * (BOSS_SPD_BONUS if boss else 1),
+            "crit": BOSS_CRIT if boss else MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
+
+
+def make_mimic(f: int) -> dict:
+    hp = max(1, round((MON_HP[0] + MON_HP[1] * f) * 1.4))
+    return {"sprite": "mimico", "name": "Mímico", "boss": False, "element": None,
+            "hp": hp, "hp_max": hp, "atk": max(1, round((MON_ATK[0] + MON_ATK[1] * f) * 1.1)),
+            "spd": MON_SPD[0] + MON_SPD[1] * f, "crit": MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
+
 
 ROOM_WEIGHTS = [("monster", 46), ("chest", 16), ("trap", 12), ("fountain", 11),
                 ("shop", 8), ("altar", 7)]
@@ -154,7 +189,8 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
         "id": run_id, "char": char_key, "floor": 1, "room": 0, "stage": 0,
         "hp": hp,
         "base": {"maxhp": hp, "atk": int(base_stats.get("atk", 3)),
-                 "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0))},
+                 "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0)),
+                 "spd": base_stats.get("spd", PET_SPD), "crit": PET_CRIT, "critdmg": PET_CRITDMG},
         "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
@@ -166,7 +202,7 @@ def _scale(fx: dict, rar: str) -> dict:
     m = RAR_MULT[rar]
     out = {}
     for k, v in fx.items():
-        if k == "trap" or v <= 0:
+        if k in ("trap", "area") or v <= 0:
             out[k] = v
         elif isinstance(v, int):
             out[k] = math.floor(v * m + 0.5)      # arredonda .5 para cima
@@ -195,6 +231,8 @@ def migrate_run(run: dict) -> dict:
         i.setdefault("floor", None)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
+    b = run.setdefault("base", {})
+    b.setdefault("spd", PET_SPD); b.setdefault("crit", PET_CRIT); b.setdefault("critdmg", PET_CRITDMG)
     if (run.get("pending") or {}).get("key") not in ITEMS:
         run["pending"] = None
     return run
@@ -203,17 +241,25 @@ def migrate_run(run: dict) -> dict:
 def stats(run: dict) -> dict:
     b = run["base"]
     st = {"maxhp": b["maxhp"], "atk": b["atk"], "def": b["def"], "dodge": b["dodge"],
-          "gold": 0.0, "trap": 1.0, "energy": 0.0, "lifesteal": 0}
+          "gold": 0.0, "trap": 1.0, "energy": 0.0, "lifesteal": 0,
+          "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
+          "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0}
     for it in run["items"]:
         for k, v in item_fx(it["key"], it["rar"]).items():
             if k == "trap":
                 st["trap"] *= v
+            elif k == "area":
+                st["area"] = st["area"] or bool(v)
             else:
                 st[k] += v
     st["maxhp"] = max(5, st["maxhp"])
     st["atk"] = max(1, st["atk"])
     st["dodge"] = min(MAX_DODGE, st["dodge"])
     st["energy"] = min(MAX_ENERGY_BONUS, st["energy"])
+    st["spd"] = max(1, st["spd"])
+    st["crit"] = min(MAX_CRIT, st["crit"])
+    for el in ELEMENTOS.values():
+        st[el] = min(MAX_ELEM_CHANCE, st[el])
     st["trap"] = min(TRAP_LIMITS[1], max(TRAP_LIMITS[0], st["trap"]))
     run["hp"] = min(run["hp"], st["maxhp"])
     return st
@@ -438,18 +484,11 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["gold"] = ev.get("gold", 0) + gold
 
     if kind in ("monster", "boss", "mimic"):
-        if kind == "boss":
-            m = rng.choice([m for m in MONSTERS if m[4] <= f])
-            sprite, name = m[0], BOSS_NAMES[m[0]]
-            hp = max(1, round(BOSS_HP[0] + BOSS_HP[1] * (f - BOSS_EVERY)))
-            atk = max(1, round(BOSS_ATK[0] + BOSS_ATK[1] * (f - BOSS_EVERY)))
-        elif kind == "mimic":
-            sprite, name = "mimico", "Mímico"
-            hp, atk = round((MON_HP[0] + MON_HP[1] * f) * 1.4), round((MON_ATK[0] + MON_ATK[1] * f) * 1.1)
+        if kind == "mimic":
+            foe = make_mimic(f)
         else:
-            m = rng.choice([m for m in MONSTERS if m[4] <= f])
-            sprite, name = m[0], m[1]
-            hp, atk = round((MON_HP[0] + MON_HP[1] * f) * m[2]), max(1, round((MON_ATK[0] + MON_ATK[1] * f) * m[3]))
+            foe = make_foe(rng.choice([m for m in MONSTERS if m[4] <= f]), f, boss=(kind == "boss"))
+        sprite, name, hp, atk = foe["sprite"], foe["name"], foe["hp"], foe["atk"]
         ev.update(name=name, sprite=sprite, boss=(kind == "boss"))
         hp_before = run["hp"]
         won, hits = fight(run, st, hp, atk, rng)
