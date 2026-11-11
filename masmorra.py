@@ -172,6 +172,7 @@ PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
 MAX_CRIT = 0.6
 MAX_ELEM_CHANCE = 0.3
 MAX_BLOQUEIO, MAX_ESPINHOS = 3, 0.5
+MAX_DUPLO = 0.5              # teto da chance de golpe duplo somada
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
 BOSS_STATUS_CHANCE = 0.15
@@ -261,6 +262,10 @@ def fx_text(fx: dict) -> str:
         parts.append(f"-{fx['custo_ataque']} HP por ataque")
     if fx.get("furia"):
         parts.append(f"fúria +{fx['furia']:g} ATK/10% HP perdido")
+    if fx.get("duplo"):
+        parts.append(f"{round(fx['duplo'] * 100)}% golpe duplo")
+    if fx.get("ajudante"):
+        parts.append(f"ajudante {fx['ajudante']:g} de dano")
     return ", ".join(parts)
 
 
@@ -337,7 +342,8 @@ def stats(run: dict) -> dict:
           "gold": 0.0, "trap": 1.0, "energy": 0.0, "lifesteal": 0,
           "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
           "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
-          "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0}
+          "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0,
+          "duplo": 0.0, "ajudante": 0}
     for it in run["items"]:
         for k, v in item_fx(it["key"], it["rar"]).items():
             if k == "trap":
@@ -357,6 +363,7 @@ def stats(run: dict) -> dict:
     st["trap"] = min(TRAP_LIMITS[1], max(TRAP_LIMITS[0], st["trap"]))
     st["bloqueio"] = min(MAX_BLOQUEIO, int(st["bloqueio"]))
     st["espinhos"] = min(MAX_ESPINHOS, st["espinhos"])
+    st["duplo"] = min(MAX_DUPLO, st["duplo"])
     run["hp"] = min(run["hp"], st["maxhp"])
     return st
 
@@ -493,6 +500,8 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     """Luta por rodadas. Devolve (venceu, passos, assassino, empate); muta run["hp"] e hp/status dos inimigos.
 
     Sem `area` o pet bate no inimigo vivo de menor HP; com `area`, um passo por alvo vivo.
+    `duplo`: chance de um 2º golpe no mesmo alvo (passo com duplo=True). Com `ajudante` > 0, o participante
+    "ajudante" age uma vez por rodada (spd do pet, logo depois dele) no inimigo vivo de menor HP; nunca é alvo.
     empate: a luta bateu no limite de MAX_ROUNDS (o pet sobrevive, mas a sala não dá prêmio).
     """
     passos = []
@@ -501,9 +510,9 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     cargas = st["bloqueio"]                              # golpes inimigos que o pet anula nesta luta
 
     def passo(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False,
-              bloqueado=False, espinhos=False):
-        passos.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status,
-                       "skip": skip, "dot": dot, "dodge": dodge, "bloqueado": bloqueado, "espinhos": espinhos})
+              bloqueado=False, espinhos=False, duplo=False):
+        passos.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status, "skip": skip,
+                       "dot": dot, "dodge": dodge, "bloqueado": bloqueado, "espinhos": espinhos, "duplo": duplo})
 
     def vivos():
         return [i for i, x in enumerate(foes) if x["hp"] > 0]
@@ -540,9 +549,19 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
         if not vivos():
             return True, passos, "", False
         # 2. ordem por velocidade; empate: pet primeiro, depois a ordem da lista (sort estável)
-        ordem = sorted([("pet", st["spd"])] + [(i, foes[i]["spd"]) for i in vivos()], key=lambda x: -x[1])
+        # o ajudante vem logo depois do pet (mesmo spd, sort estável)
+        ajud = [("ajudante", st["spd"])] if st["ajudante"] > 0 else []
+        ordem = sorted([("pet", st["spd"])] + ajud + [(i, foes[i]["spd"]) for i in vivos()], key=lambda x: -x[1])
         for who, _spd in ordem:
-            if who != "pet" and foes[who]["hp"] <= 0:
+            if who not in ("pet", "ajudante") and foes[who]["hp"] <= 0:
+                continue
+            if who == "ajudante":                          # sem status, crítico nem perder a vez
+                i = min(vivos(), key=lambda i: foes[i]["hp"])
+                d = round(st["ajudante"])
+                foes[i]["hp"] -= d
+                passo("ajudante", i, d)
+                if not vivos():
+                    return True, passos, "", False
                 continue
             if perde_vez(pst if who == "pet" else foes[who]["status"]):
                 passo(who, who, skip=True)
@@ -556,16 +575,20 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                     run["hp"] = max(1, run["hp"] - st["custo_ataque"])
                 for i in alvos:
                     x = foes[i]
-                    e_crit, mult = critico(st["crit"], st["critdmg"], st["spd"], x["spd"])
-                    d = round(max(1, atk + rng.randint(-1, 1)) * mult)
-                    x["hp"] -= d
-                    aplicado = None
-                    if x["hp"] > 0:
-                        for el, nome in STATUS_NOME.items():      # cada elemento rola separado
-                            if st[el] and rng.random() < st[el]:
-                                _aplicar_status(x["status"], nome)
-                                aplicado = aplicado or nome
-                    passo("pet", i, d, e_crit, aplicado)
+                    # 2º golpe (duplo): rola por alvo, só se o alvo sobreviveu; sem bônus de dobro de velocidade
+                    for dup in (False, True):
+                        if dup and (x["hp"] <= 0 or not st["duplo"] or rng.random() >= st["duplo"]):
+                            break
+                        e_crit, mult = critico(st["crit"], st["critdmg"], 0 if dup else st["spd"], x["spd"])
+                        d = round(max(1, atk + rng.randint(-1, 1)) * mult)
+                        x["hp"] -= d
+                        aplicado = None
+                        if x["hp"] > 0:
+                            for el, nome in STATUS_NOME.items():      # cada elemento rola separado
+                                if st[el] and rng.random() < st[el]:
+                                    _aplicar_status(x["status"], nome)
+                                    aplicado = aplicado or nome
+                        passo("pet", i, d, e_crit, aplicado, duplo=dup)
                 if not vivos():
                     return True, passos, "", False
             else:
@@ -824,7 +847,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 4
+REGRAS_REV = 5
 
 
 def _balance_version() -> str:
@@ -835,7 +858,7 @@ def _balance_version() -> str:
             BOSS_HP, BOSS_ATK, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
             [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
-            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOQUEIO, MAX_ESPINHOS, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
+            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOQUEIO, MAX_ESPINHOS, MAX_DUPLO, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
             QUEIMA_TURNOS, ELETRO_CHANCE, ELETRO_TURNOS, VENENO_TURNOS, VENENO_MAX_PILHAS, GELO_CHANCE, GELO_TURNOS,
             MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]

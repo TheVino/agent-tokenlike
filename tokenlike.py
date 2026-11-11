@@ -1144,7 +1144,7 @@ class PetApp:
         def fx(i):
             return self.foe_xy[i][0] if i in self.foe_on else self.fcx
         x = None if tgt == "pet" else fx(tgt)
-        txt = f"-{h['dmg']}" + ("!" if h["crit"] else "")
+        txt = f"-{h['dmg']}" + ("!" if h["crit"] else "") + (" x2" if h.get("duplo") else "")
         if h["skip"]:
             self.floater("perdeu a vez", MUTED, x=None if who == "pet" else fx(who), life=10)
         elif h["dot"]:
@@ -1156,6 +1156,8 @@ class PetApp:
             self.floater("bloqueou!", CYAN, life=10)
         elif h.get("espinhos"):                           # espinhos: o dano volta para o atacante, sem bote
             self.floater(f"-{h['dmg']}", GOOD, x=x, life=10)
+        elif who == "ajudante":                           # ajudante: o número sai de cima do pet, sem bote
+            self.floater(txt, GOOD, life=10)
         elif who == "pet":
             self.lunge = [5, 10, 5, 0]
             self.floater(txt, GOLD if h["crit"] else TEXT, x=x, life=10)

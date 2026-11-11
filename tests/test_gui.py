@@ -207,6 +207,30 @@ normal = app6.look_maps[0]
 app6.set_pet_status("veneno"); assert app6.pet_status == "veneno" and app6.look_maps[0] != normal
 app6.set_pet_status(None); assert app6.look_maps[0] == normal
 app6.set_pet_status("queimadura"); app6.new_run(); assert app6.pet_status is None
+# golpe duplo e ajudante (item _t temporário): centenas de salas sem exceção; "x2" e o número do ajudante na tela
+M.ITEMS["_t"] = {"name": "t", "fx": {"duplo": 0.5, "ajudante": 3}, "rarities": ["comum"], "consume": {"heal": 1},
+                 "look": {"type": "obj", "anchor": "flutua", "art": "adaga"}}
+textos, fl0 = [], app6.floater
+app6.floater = lambda text, *a, **k: (textos.append((text, k.get("x"))), fl0(text, *a, **k))
+passos_vistos = []
+hit0 = app6.anim_hit
+app6.anim_hit = lambda h, *a: (passos_vistos.append(h), hit0(h, *a))
+for _ in range(300):
+    app6.busy_until = 0
+    if app6.run["dead"]:
+        app6.respawn_at = 1
+    app6.run["items"] = [{"key": "_t", "rar": "comum", "floor": 1}]
+    app6.run["energy"] = 10 * M.ROOM_COST
+    app6.tick()
+    fns = PENDING[:]; PENDING.clear()
+    for fn in fns:
+        if fn is None or getattr(fn, "__name__", "") in ("tick", "poll"): continue
+        fn()
+app6.run["items"] = []; del M.ITEMS["_t"]; app6.refresh_look()
+del app6.floater, app6.anim_hit
+assert any(h["who"] == "ajudante" for h in passos_vistos) and any(h["duplo"] for h in passos_vistos)
+assert any(t.endswith(" x2") for t, _ in textos)
+assert any(t == f"-{h['dmg']}" and x is None for h in passos_vistos if h["who"] == "ajudante" for t, x in textos)
 app6.show_stats(); app6.quit()
 # looks elementais animados: 3 fases por quadro (e no piscar/dormir); sem animação, 1 fase só
 app7 = tp.PetApp(Args()); PENDING.clear(); app7.rng = random.Random(SEED)

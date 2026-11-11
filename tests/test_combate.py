@@ -52,7 +52,7 @@ def pet(spd=10, atk=3, crit=0.0, **fx):
     return r
 
 
-CHAVES = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge", "bloqueado", "espinhos"}
+CHAVES = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge", "bloqueado", "espinhos", "duplo"}
 # ordem: inimigo mais rápido age antes; empate -> pet antes
 r = pet(spd=5); won, steps, _, _ = M.combate(r, M.stats(r), [foe(spd=9)], random.Random(1), 1)
 assert steps[0]["who"] == 0 and all(set(x) == CHAVES for x in steps)
@@ -139,7 +139,7 @@ for _ in range(200):
         assert all(set(x) == CHAVES for x in ev["hits"])
     else:
         assert "foes" not in ev
-assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 4
+assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 5
 # empate via enter_room (chefe): passa a sala, mas sem ouro, kills, bônus de chefe nem item
 rounds = M.MAX_ROUNDS; M.MAX_ROUNDS = 1
 meta = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 1}, 1)
@@ -239,4 +239,36 @@ assert M.fx_text({"cura_sala": 3, "cura_andar": 5}) == "+3 HP por sala, +5 HP po
 assert M.fx_text({"custo_ataque": 2, "furia": 1}) == "-2 HP por ataque, fúria +1 ATK/10% HP perdido"
 assert M.fx_text({"queimar": 0.2, "area": True}) == "ataque em área, 20% queimadura"
 assert M.fx_text({"congelar": 0.29}) == "29% congelamento"
+# --- Task 6: golpe duplo e ajudantes ---
+assert M.stats(pet(duplo=1.0))["duplo"] == 0.5 and M.stats(pet())["duplo"] == 0 and M.stats(pet())["ajudante"] == 0
+assert M.stats(pet(ajudante=2))["ajudante"] == 2
+# duplo: segundo golpe no mesmo alvo, logo depois do primeiro; custo_ataque cobrado uma vez por turno
+r = pet(atk=2, duplo=1.0, custo_ataque=1); r["shield"] = 10**6
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=200, atk=1, spd=1)], random.Random(8), 1)
+dup = [k for k, x in enumerate(steps) if x["duplo"]]
+assert dup and all(steps[k]["who"] == "pet" and steps[k - 1]["who"] == "pet" and not steps[k - 1]["duplo"]
+                   and steps[k]["target"] == steps[k - 1]["target"] for k in dup)
+assert all(set(x) == CHAVES for x in steps)
+turnos = sum(1 for x in steps if x["who"] == "pet" and not x["duplo"])
+assert r["hp"] == max(1, 30 - turnos) and 0 < len(dup) < turnos
+# duplo sem bônus de dobro de velocidade: com crit 0 nunca crita, mesmo com o dobro (o 1º golpe crita)
+r = pet(spd=20, atk=2, duplo=1.0); r["shield"] = 10**6
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=500, atk=1, spd=5)], random.Random(9), 1)
+assert any(x["duplo"] for x in steps) and not any(x["duplo"] and x["crit"] for x in steps)
+# ajudante: uma vez por rodada, logo depois do pet no empate, nunca é alvo, sem crítico nem status
+r = pet(atk=1, ajudante=1, queimar=1.0, crit=0.5); r["shield"] = 10**6
+won, steps, _, empate = M.combate(r, M.stats(r), [foe(hp=10**6, atk=0, spd=10)], random.Random(10), 1)
+aj = [k for k, x in enumerate(steps) if x["who"] == "ajudante"]
+assert empate and len(aj) == M.MAX_ROUNDS
+assert all(steps[k - 1]["who"] == "pet" and steps[k + 1]["who"] == 0 for k in aj if not steps[k - 1]["dot"])
+assert all(not steps[k]["crit"] and steps[k]["status"] is None and steps[k]["dmg"] == 1 for k in aj)
+assert not any(x["target"] == "ajudante" for x in steps)
+# ajudante mata a horda sozinho (pet com atk 1 e ajudante alto); vitória conta todos os inimigos
+r = pet(atk=1, ajudante=50); r["shield"] = 10**6
+fs = [foe(hp=40, atk=1, spd=1) for _ in range(3)]
+won, steps, _, empate = M.combate(r, M.stats(r), fs, random.Random(11), 1)
+assert won and not empate and steps[-1]["who"] == "ajudante" and all(x["hp"] <= 0 for x in fs)
+assert sum(1 for x in steps if x["who"] == "ajudante") == 3
+M.ITEMS.pop("_t", None)
+assert M.fx_text({"duplo": 0.2, "ajudante": 3}) == "20% golpe duplo, ajudante 3 de dano"
 print("ok: combate")
