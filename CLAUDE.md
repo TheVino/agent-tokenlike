@@ -23,12 +23,17 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   (`~/.petdex/pets/<slug>/`, `~/.codex/pets/<slug>/`, só PNG, `comunidade=True`, menu "Comunidade"; só lidos, nunca copiados).
   Na GUI, `estado_atual` escolhe: escolha pendente `review` > luta `running` > morte `failed` (antes da lápide) >
   descanso/sono `waiting` > `idle`; `waving` ~1 s após o carinho, `jumping` na evolução e ao vencer chefe.
-  `refresh_look` compõe `estados_fx[estado][quadro][fase]` uma vez; heróis sem estados (Slime, PNG) seguem como antes.
+  O PNG é decodificado por `folha.ler_png` (zlib + struct, 8 bits; opaco = alfa > 128), não pelo Tk. A descoberta
+  (`all_characters`) só lê o cabeçalho; o corte (`completar_estagio`/`ler_folha`, cache por caminho+mtime, guarda só os
+  mapas reduzidos) roda numa thread quando o herói fica ativo, e o `after` troca o visual ("preparando herói…").
+  `refresh_look` compõe na hora só o idle e o estado na tela; os outros de `estados_fx` saem na 1ª leitura
+  (cache `fx_cache` por estado + itens + status). Todos os estados usam o mesmo k e o pivô na base da caixa aparada.
+  Heróis sem estados (Slime, PNG) seguem como antes.
   Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
 - `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
-  `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso
+  `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso
   que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói e testa o modo interativo;
   usa `random.Random(SEED)` para ser determinístico).
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.

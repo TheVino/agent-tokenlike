@@ -5,7 +5,6 @@ home = tempfile.mkdtemp(); os.environ["HOME"]=home; os.environ["USERPROFILE"]=ho
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 PENDING=[]
-FOLHAS={}  # caminho -> (w, h, opaco(x, y)): folhas sintéticas lidas pelo PhotoImage falso
 class Noop:
     def __init__(self,*a,**k): pass
     def __getattr__(self, n): return lambda *a, **k: None
@@ -49,7 +48,6 @@ class PhotoImage(Noop):
         self.op=None
         if file:
             assert Path(file).is_file(), file
-            if str(file) in FOLHAS: width,height,self.op=FOLHAS[str(file)]
         self.w,self.h=width,height
     def width(self): return self.w
     def height(self): return self.h
@@ -315,41 +313,60 @@ heroes = tp.load_png_characters(pasta)
 assert [c.key for c in heroes] == ["bom"] and heroes[0].stats["spd"] == 12.0 and heroes[0].stats["hp"] == 18
 assert tp.LOG_FILE.read_text().count("ignorado") >= 2
 # heróis por spritesheet: folha sintética de 9 linhas x 8 quadros, corpo opaco no meio de cada célula
-def folha_falsa(path, w, h, linhas=9):
-    path.parent.mkdir(parents=True, exist_ok=True); path.write_bytes(b"png")
-    cw, ch = w // 8, h // linhas
-    FOLHAS[str(path)] = (w, h, lambda x, y: cw//4 <= x % cw < 3*cw//4 and ch//4 <= y % ch < ch-2 and x < cw*8)
+sys.path.insert(0, str(ROOT / "tests")); from _png import folha_png   # PNG de verdade: exercita o decodificador
+def pronto(app):   # espera a thread da folha e roda os after pendentes (o Tk falso não tem mainloop)
+    for st in app.char.stages:
+        if st.get("thread"): st["thread"].join()
+    for _ in range(5):
+        fns = PENDING[:]; PENDING.clear()
+        for fn in fns:
+            if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 chars = Path(tempfile.mkdtemp())
-folha_falsa(chars/"x"/"spritesheet.png", 512, 576)            # grade 8x9 de 64 px
+folha_png(chars/"x"/"spritesheet.png", 512, 576, sobe={4: 10})   # grade 8x9 de 64 px; "jumping" 10 px acima
 x = {c.key: c for c in tp.load_png_characters(chars)}["x"]
-assert set(x.stages[0]["estados"]) == set(tp.folha.ESTADOS) and all(len(v) == 8 for v in x.stages[0]["estados"].values())
-assert x.stages[0]["estados"]["failed"][0][2] == (16, 5 * 64 + 16, 48, 5 * 64 + 62) and x.stages[0]["estados"]["failed"][0][3] == 1
-pm = tp.spec_to_map(x.stages[0]["frames"][0])
-assert tp.spec_altura(x.stages[0]["frames"][0]) == 46 and tp.spec_k(x.stages[0]["frames"][0]) == 3   # célula aparada: 46 px
-assert max(y for _, y in pm) == 47 and min(y for _, y in pm) == 2    # base em 16k - 1
+assert "estados" not in x.stages[0]                               # a descoberta não corta a folha
+st = tp.completar_estagio(x.stages[0]); assert "erro" not in st, st.get("erro")
+assert set(st["estados"]) == set(tp.folha.ESTADOS) and all(len(v) == 8 for v in st["estados"].values())
+# ruído de alfa 8 no fundo todo não conta como opaco: a caixa é o corpo, não a célula
+assert st["estados"]["failed"][0][2] == (16, 5 * 64 + 6, 48, 5 * 64 + 62) and st["estados"]["failed"][0][3] == 2
+assert tp.spec_altura(st["frames"][0]) == 28 and tp.spec_k(st["frames"][0]) == 2   # 56 px aparados, N = 2
+pm = tp.spec_to_map(st["frames"][0], 2); pj = tp.spec_to_map(st["estados"]["jumping"][0], 2)
+assert max(y for _, y in pm) == 31 and min(y for _, y in pm) == 9 and set(pm.values()) == {"#c86432"}
+assert max(y for _, y in pj) == 26 and min(x for x, _ in pj) == min(x for x, _ in pm)   # pulo sai do chão, mesmo pivô
+# PNG de formato que o decodificador não lê: ignorado (e logado) na descoberta
+(chars/"q").mkdir(); (chars/"q"/"spritesheet.png").write_bytes((chars/"x"/"spritesheet.png").read_bytes()[:24] + bytes([16]) + bytes(5))
+assert "q" not in {c.key for c in tp.load_png_characters(chars)} and "formato de PNG não suportado" in tp.LOG_FILE.read_text(encoding="utf-8")
 # Petdex num HOME temporário: PNG vira herói da comunidade; só WebP é ignorado; pet.json inválido não derruba
 pets = Path(home)/".petdex"/"pets"
-folha_falsa(pets/"y"/"spritesheet.png", 512, 576); (pets/"y"/"pet.json").write_text('{"name": "Yzinho", "x": 1}')
+folha_png(pets/"y"/"spritesheet.png", 512, 576); (pets/"y"/"pet.json").write_text('{"name": "Yzinho", "x": 1}')
 (pets/"w").mkdir(); (pets/"w"/"spritesheet.webp").write_bytes(b"w")
-folha_falsa(pets/"z"/"a.png", 500, 600); (pets/"z"/"pet.json").write_text("{nada")   # corte automático
-t0 = time.time()
-folha_falsa(Path(home)/".codex"/"pets"/"g"/"spritesheet.png", 1536, 1872)
-dex = {c.key: c for c in tp.load_petdex_characters()}
+folha_png(pets/"z"/"a.png", 500, 600); (pets/"z"/"pet.json").write_text("{nada")   # corte automático
+folha_png(Path(home)/".codex"/"pets"/"g"/"spritesheet.png", 1536, 1872)
+grande = (Path(home)/".codex"/"pets"/"g"/"spritesheet.png").read_bytes()
+for i in range(4):
+    (Path(home)/".codex"/"pets"/f"g{i}").mkdir(); (Path(home)/".codex"/"pets"/f"g{i}"/"spritesheet.png").write_bytes(grande)
+t0 = time.time(); dex = {c.key: c for c in tp.load_petdex_characters()}
+dt = time.time() - t0; assert dt < 0.5, dt                        # 5 folhas grandes: só o cabeçalho é lido
 y = dex["petdex:y"]
 assert y.name == "Yzinho" and y.comunidade and y.unlock is None and y.stats["hp"] == 20 and y.stats["spd"] == 10
 assert "petdex:w" not in dex and "converta para PNG" in tp.LOG_FILE.read_text()
-assert dex["petdex:z"].name == "z" and len(dex["petdex:z"].stages[0]["estados"]["idle"]) == 8
-g = dex["petdex:g"].stages[0]["frames"]; assert len(g) == 8 and tp.spec_altura(g[0]) <= 48
+z = tp.completar_estagio(dex["petdex:z"].stages[0]); assert dex["petdex:z"].name == "z" and len(z["estados"]["idle"]) == 8
 assert "petdex:y" in tp.all_characters()
+t0 = time.time()
 app8 = tp.PetApp(Args()); PENDING.clear(); app8.rng = random.Random(SEED)
 app8.char_var.set("petdex:g"); app8.change_character(); app8.new_run()
-assert app8.char.key == "petdex:g" and app8.hero_k >= 2
+assert app8.char.key == "petdex:g" and app8.estados_fx == {}     # ainda cortando: visual anterior
+pronto(app8)
+g = app8.char.stages[0]["frames"]; assert len(g) == 8 and tp.spec_altura(g[0]) <= 48
+assert app8.hero_k >= 2 and set(app8.estados_fx) == set(tp.folha.ESTADOS)
 dt = time.time() - t0; assert dt < 3.0, dt
 pump(app8, 300); app8.quit()
 # estados da folha na GUI: cada estado tem as próprias imagens, compostas uma vez
 app9 = tp.PetApp(Args()); PENDING.clear(); app9.rng = random.Random(SEED)
-app9.char_var.set("petdex:y"); app9.change_character(); app9.new_run()
+app9.char_var.set("petdex:y"); app9.change_character(); app9.new_run(); pronto(app9)
 fx = app9.estados_fx; assert set(fx) == set(tp.folha.ESTADOS)
+def compostos(): return {ck[0] for ck in app9.fx_cache if ck[1] == app9.fx_sig}
+assert compostos() <= {"idle"}, compostos()
 def mostrando(): return cv9.it[app9.sprite][2]["image"]
 cv9 = app9.canvas
 def todas(e): return {id(i) for q in fx[e] for i in q}
@@ -365,6 +382,10 @@ app9.luta_until = 0
 app9.on_release(types.SimpleNamespace(x=app9.pcx, y=app9.base_y - 1)); app9.tick()
 assert id(mostrando()) in todas("waving")
 app9.run["dead"] = True; app9.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
+# pegar item recompõe só o idle e o estado na tela; outro estado é composto uma vez, na 1ª vez que aparece
+app9.run["items"].append({"key": next(iter(M.ITEMS)), "rar": "comum"}); app9.refresh_look()
+fx = app9.estados_fx; assert compostos() == {"idle", "waving"}, compostos()
+assert fx["jumping"] is fx["jumping"] and compostos() == {"idle", "waving", "jumping"}
 app9.on_death(); app9.tick(); assert id(mostrando()) in todas("failed")
 for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()

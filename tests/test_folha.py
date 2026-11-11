@@ -70,4 +70,27 @@ assert F.detectar_grade(1536, 900) is None  # celulas 192x100: nada quadrado
 assert F.fator_reducao(208) == 5 and F.fator_reducao(64) == 2 and F.fator_reducao(16) == 1
 assert F.fator_reducao(48) == 1 and F.fator_reducao(49) == 2
 
+# decodificador de PNG: todos os filtros e tipos de cor de 8 bits
+import random, tempfile
+from _png import escrever_png
+tmp = Path(tempfile.mkdtemp())
+rnd = random.Random(3)
+W, H = 7, 6
+rgba = [bytes(rnd.randrange(256) for _ in range(W * 4)) for _ in range(H)]
+escrever_png(tmp / "a.png", W, H, rgba, 6, filtros=(0, 1, 2, 3, 4))
+assert F.ler_png(tmp / "a.png") == (W, H, b"".join(rgba))
+rgb = [bytes(rnd.randrange(256) for _ in range(W * 3)) for _ in range(H)]
+escrever_png(tmp / "b.png", W, H, rgb, 2, filtros=(4, 3, 2, 1, 0))
+_, _, d = F.ler_png(tmp / "b.png")
+assert d[0:4] == rgb[0][0:3] + bytes([255]) and d[-4:] == rgb[-1][-3:] + bytes([255])
+escrever_png(tmp / "c.png", 2, 1, [bytes([9, 200, 7, 50])], 4)          # cinza + alfa
+assert F.ler_png(tmp / "c.png")[2] == bytes([9, 9, 9, 200, 7, 7, 7, 50])
+escrever_png(tmp / "d.png", 3, 1, [bytes([0, 1, 1])], 3, plte=bytes([1, 2, 3, 4, 5, 6]), trns=bytes([0]))
+assert F.ler_png(tmp / "d.png")[2] == bytes([1, 2, 3, 0, 4, 5, 6, 255, 4, 5, 6, 255])
+(tmp / "e.png").write_bytes((tmp / "d.png").read_bytes()[:24] + bytes([16]) + (tmp / "d.png").read_bytes()[25:])
+try:
+    F.ler_png(tmp / "e.png"); assert False
+except ValueError as e:
+    assert "formato de PNG não suportado" in str(e)
+
 print("test_folha ok")

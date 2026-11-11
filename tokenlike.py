@@ -29,6 +29,7 @@ import os
 import random
 import shutil
 import sys
+import threading
 import time
 import traceback
 from collections import deque
@@ -536,65 +537,79 @@ def builtin_characters() -> list[CharacterDef]:
 
 
 DEFAULT_STATS = {"hp": 20, "atk": 3, "def": 0, "dodge": 0, "spd": 10.0}
-_FOLHAS = {}  # (caminho, mtime) -> (linhas de caixas, N): cada folha é cortada uma vez
-_IMGS = {}    # ponytail: nunca esvaziado (poucas folhas por sessão); limpar ao trocar de herói se crescer
-# caminho -> (mtime, PhotoImage): spec_to_map não reabre o PNG a cada quadro
-
-
-def _img_folha(path: Path):
-    mt = path.stat().st_mtime
-    if _IMGS.get(str(path), (None,))[0] != mt:
-        _IMGS[str(path)] = (mt, tk.PhotoImage(file=str(path)))
-    return _IMGS[str(path)][1]
+_FOLHAS = {}  # (caminho, mtime) -> (linhas de caixas, N, {caixa: PixelMap reduzido}); o PNG decodificado é descartado
 
 
 def ler_folha(path: Path):
-    """Linhas de caixas da folha e o fator N de redução. Grade fixa quando o tamanho bate; senão corte
-    automático numa grade de opacidade amostrada (1 a cada N px), porque a máscara completa é lenta."""
+    """Linhas de caixas da folha, o fator N de redução e o mapa reduzido de cada caixa. Puro (roda na thread).
+    Opaco = alfa > 128; a máscara é amostrada (1 a cada `a` px) e perde as ilhas de até 2 px."""
     ck = (str(path), path.stat().st_mtime)
     if ck not in _FOLHAS:
-        src = _img_folha(path)
-        w, h = src.width(), src.height()
+        w, h, rgba = folha.ler_png(path)
+        op = rgba[3::4].translate(folha.OPACO)
         grade = folha.detectar_grade(w, h)
         if grade:
             cols, lins = grade
             cw, ch = w // cols, h // lins
-            a = folha.fator_reducao(ch)   # varredura amostrada: transparency_get do Tk é lento
-            ocup = [[(ox, oy) for ox in range(0, cw, a) for oy in range(0, ch, a)
-                     if not src.transparency_get(c * cw + ox, r * ch + oy)]
-                    for r in range(lins) for c in range(cols)]
-            pts = [p for cel in ocup for p in cel]
+            a = folha.fator_reducao(ch)
+        else:
+            a = folha.fator_reducao(h // 9)
+        ws, hs = -(-w // a), -(-h // a)
+        m = folha._mascara(ws, hs, lambda x, y: op[y * a * w + x * a])
+        if grade:
+            ocup = {}   # célula -> pontos opacos (offset dentro da célula)
+            for ys, lin in enumerate(m):
+                for xs in range(ws):
+                    if lin[xs]:
+                        X, Y = xs * a, ys * a
+                        ocup.setdefault((Y // ch, X // cw), []).append((X % cw, Y % ch))
+            pts = [p for cel in ocup.values() for p in cel]
             if not pts:
                 raise ValueError(f"folha sem quadros: {path.name}")
             # uma caixa só (união do opaco de todas as células) para os quadros não tremerem
             ox0, oy0 = min(x for x, _ in pts), min(y for _, y in pts)
             ox1, oy1 = min(cw, max(x for x, _ in pts) + a), min(ch, max(y for _, y in pts) + a)
             linhas = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols)]
-                      if any(ocup[r * cols + c] for c in range(cols)) else [] for r in range(lins)]
+                      if any((r, c) in ocup for c in range(cols)) else [] for r in range(lins)]
             n = folha.fator_reducao(oy1 - oy0)
         else:
-            # ponytail: caixas com precisão de N px (amostra); corte exato custa ~5 s em folha grande
-            n = folha.fator_reducao(h // 9)
-            ws, hs = -(-w // n), -(-h // n)
-            op = [[not src.transparency_get(x * n, y * n) for x in range(ws)] for y in range(hs)]
-            linhas = [[(x0 * n, y0 * n, min(w, x1 * n), min(h, y1 * n)) for x0, y0, x1, y1 in lin]
-                      for lin in folha.cortar(ws, hs, lambda x, y: op[y][x])]
-            if any(linhas):  # N pela altura real das linhas, não pela suposição de 9 linhas
-                n = folha.fator_reducao(max(c[3] - c[1] for lin in linhas for c in lin))
+            # ponytail: caixas com precisão de `a` px (amostra); corte exato custa ~5 s em folha grande
+            linhas = [[(x0 * a, y0 * a, min(w, x1 * a), min(h, y1 * a)) for x0, y0, x1, y1 in lin]
+                      for lin in folha.cortar(ws, hs, lambda x, y: m[y][x])]
+            n = folha.fator_reducao(max((c[3] - c[1] for lin in linhas for c in lin), default=1))
         if not any(linhas):
             raise ValueError(f"folha sem quadros: {path.name}")
-        _FOLHAS[ck] = linhas, n
+        mapas = {}
+        for lin in linhas:
+            for (x0, y0, x1, y1) in lin:
+                mapas[(x0, y0, x1, y1)] = {
+                    ((x - x0) // n, (y - y0) // n): "#%02x%02x%02x" % tuple(rgba[4 * (y * w + x):4 * (y * w + x) + 3])
+                    for y in range(y0, y1, n) for x in range(x0, x1, n) if op[y * w + x]}
+        _FOLHAS[ck] = linhas, n, mapas
     return _FOLHAS[ck]
 
 
 def stage_da_folha(path: Path, floor: int, title: str) -> dict:
-    """Estágio de herói de spritesheet: estados na ordem das linhas; linha vazia ou ausente usa o Idle."""
-    linhas, n = ler_folha(path)
-    specs = [[("sheet", path, c, n) for c in lin] for lin in linhas]
-    idle = next(l for l in specs if l)
-    estados = {e: (specs[i] if i < len(specs) and specs[i] else idle) for i, e in enumerate(folha.ESTADOS)}
-    return {"floor": floor, "title": title, "frames": estados["idle"], "blink": None, "sleep": None,
-            "estados": estados}
+    """Estágio de spritesheet ainda não cortado: a descoberta só lê o cabeçalho do PNG (barato).
+    `completar_estagio` (na thread, ao ativar o herói) preenche "frames" e "estados"."""
+    with open(path, "rb") as f:
+        folha.info_png(f.read(29))
+    return {"floor": floor, "title": title, "sheet": path, "frames": None, "blink": None, "sleep": None}
+
+
+def completar_estagio(stage: dict) -> dict:
+    """Corta a folha do estágio: estados na ordem das linhas; linha vazia ou ausente usa o Idle.
+    Erro vira stage["erro"] (a GUI volta para o Slime). Puro: pode rodar fora da thread do Tk."""
+    try:
+        linhas, n, _ = ler_folha(stage["sheet"])
+        specs = [[("sheet", stage["sheet"], c, n) for c in lin] for lin in linhas]
+        idle = next(l for l in specs if l)
+        estados = {e: (specs[i] if i < len(specs) and specs[i] else idle) for i, e in enumerate(folha.ESTADOS)}
+        stage["frames"] = estados["idle"]
+        stage["estados"] = estados      # por último: quem vê "estados" já vê "frames"
+    except Exception as e:
+        stage["erro"] = str(e)
+    return stage
 
 
 def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
@@ -694,6 +709,20 @@ def all_characters() -> dict[str, CharacterDef]:
 
 
 # ------------------------------------------------------------------- GUI
+class _EstadosFx(dict):
+    """estado -> imagens [quadro][fase]; compõe na primeira leitura e guarda em app.fx_cache."""
+    def __init__(self, app, nomes):
+        super().__init__((e, None) for e in nomes)
+        self.app = app
+
+    def __getitem__(self, e):
+        ck = (e, self.app.fx_sig)
+        if ck not in self.app.fx_cache:
+            dict.__getitem__(self, e)           # KeyError para estado que a folha não tem
+            self.app.fx_cache[ck] = self.app.fx_compor(e)
+        return self.app.fx_cache[ck]
+
+
 def render_grid(grid, pal, s):
     h, w = len(grid), max(len(r) for r in grid)
     img = tk.PhotoImage(width=w * s, height=h * s)
@@ -712,17 +741,15 @@ def _hex(v):
     return "#%02x%02x%02x" % tuple(int(c) for c in v[:3])
 
 
-def spec_to_map(spec):
-    """Spec do herói -> PixelMap com o quadro em (0..16, 0..16), centrado na horizontal e base em y = 16."""
+def spec_to_map(spec, k: int = None):
+    """Spec do herói -> PixelMap com o quadro em (0..16, 0..16), centrado na horizontal e base em y = 16.
+    Folha: quadro de 16k (k do estágio, igual para todos os estados), base da caixa aparada na base do quadro,
+    então um quadro de pulo sai do chão."""
     if spec[0] == "sheet":
-        _, path, (x0, y0, x1, y1), n = spec
-        src = _img_folha(path)
-        pm = {((x - x0) // n, (y - y0) // n): _hex(src.get(x, y))
-              for y in range(y0, y1, n) for x in range(x0, x1, n) if not src.transparency_get(x, y)}
-        if not pm:
-            return {}
-        w, lado = -(-(x1 - x0) // n), 16 * spec_k(spec)
-        dx, dy = (lado - w) // 2, lado - 1 - max(y for _, y in pm)   # base do desenho na base do quadro
+        _, path, box, n = spec
+        pm = ler_folha(path)[2][box]
+        w, h, lado = -(-(box[2] - box[0]) // n), -(-(box[3] - box[1]) // n), 16 * (k or spec_k(spec))
+        dx, dy = (lado - w) // 2, lado - h
         return {(x + dx, y + dy): c for (x, y), c in pm.items()}
     if spec[0] == "grid":
         grid = spec[1]
@@ -748,7 +775,7 @@ def spec_altura(spec) -> int:
 
 
 def spec_k(spec) -> int:
-    return max(1, round(spec_altura(spec) / 16))
+    return max(1, -(-spec_altura(spec) // 16))   # para cima: o quadro nunca corta o herói
 
 
 def render_map(pm, s: int, k: int = 1):
@@ -990,9 +1017,20 @@ class PetApp:
 
     def load_images(self):
         stage = self.char.stages[min(self.run["stage"], len(self.char.stages) - 1)]
+        if stage.get("sheet") and "estados" not in stage and "erro" not in stage:
+            self.preparar_folha(stage)          # na thread; até lá fica o visual anterior (ou o do Slime)
+            if getattr(self, "frame_maps", None) is not None:
+                return
+            stage = builtin_characters()[0].stages[0]
         try:
+            if stage.get("erro"):
+                raise ValueError(stage["erro"])
+            # herói de spritesheet: um k só no estágio (mesma escala e mesmo pivô em todos os estados)
+            todos = [sp for specs in stage.get("estados", {}).values() for sp in specs] or stage["frames"]
+            h = max(spec_altura(sp) for sp in todos)
+            k = max(1, -(-h // 16))
             # só os mapas de pixels; as imagens saem de refresh_look (com os itens por cima)
-            self.frame_maps = [spec_to_map(s) for s in stage["frames"]]
+            self.frame_maps = [spec_to_map(s, k) for s in stage["frames"]]
             self.blink_map = spec_to_map(stage["blink"]) if stage["blink"] else None
             self.sleep_map = spec_to_map(stage["sleep"]) if stage["sleep"] else None
         except Exception as e:
@@ -1001,12 +1039,27 @@ class PetApp:
             log(f"erro carregando imagens de '{self.char.key}': {e}; voltando para o Slime")
             self.run["char"] = "slime"
             return self.load_images()
-        # herói de spritesheet: os mapas de cada estado (os antigos não têm "estados")
-        self.estado_maps = {e: [spec_to_map(sp) for sp in specs]
+        self.hero_k, self.hero_px = k, max(1, round(self.px * 16 / h))
+        self.estado_maps = {e: [spec_to_map(sp, k) for sp in specs]   # os heróis antigos não têm "estados"
                             for e, specs in stage.get("estados", {}).items()}
+        self.fx_cache = {}         # estados compostos: (estado, assinatura) -> [quadro][fase]
         self.stage_title = stage["title"]
-        h = spec_altura(stage["frames"][0])
-        self.hero_k, self.hero_px = spec_k(stage["frames"][0]), max(1, round(self.px * 16 / h))
+
+    def preparar_folha(self, stage):
+        """Decodifica e corta a folha numa thread (só Python puro); o Tk volta na thread principal pelo after."""
+        if stage.get("thread") is None:
+            stage["thread"] = threading.Thread(target=completar_estagio, args=(stage,), daemon=True)
+            stage["thread"].start()
+            self.root.after(0, lambda: self.floater("preparando herói…", MUTED))
+            self.root.after(100, lambda: self.esperar_folha(stage))
+
+    def esperar_folha(self, stage):
+        if stage["thread"].is_alive():
+            self.root.after(100, lambda: self.esperar_folha(stage))
+            return
+        if self.char.stages[min(self.run["stage"], len(self.char.stages) - 1)] is stage:
+            self.load_images()
+            self.refresh_look()
 
     def refresh_look(self, k: int = None, px_heroi: int = None):
         """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick.
@@ -1035,9 +1088,16 @@ class PetApp:
         self.blink_fx = [img(mapa(self.blink_map, j)) for j in fases] if self.blink_map else None
         self.sleep_fx = ([img(mapa(self.sleep_map, j)) for j in fases] if self.sleep_map
                          else (self.blink_fx or self.frames_fx[0]))
-        # estados da folha: [quadro][fase], compostos uma vez aqui (o idle reaproveita frames_fx)
-        self.estados_fx = {e: (self.frames_fx if e == "idle" else [[img(mapa(pm, j)) for j in fases] for pm in pms])
-                           for e, pms in getattr(self, "estado_maps", {}).items()}
+        # estados da folha: [quadro][fase], compostos na 1ª vez que aparecem (só idle e o atual saem aqui);
+        # cache por (estado, itens, status, escala), então tirar e pôr o mesmo status não recompõe
+        sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, px_heroi)
+        self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0]}
+        self.fx_cache[("idle", sig)] = self.frames_fx
+        self.fx_compor = lambda e: [[img(mapa(pm, j)) for j in fases] for pm in self.estado_maps[e]]
+        self.fx_sig = sig
+        self.estados_fx = _EstadosFx(self, getattr(self, "estado_maps", {}))
+        if getattr(self, "estado_visto", None) in self.estados_fx:
+            self.estados_fx[self.estado_visto]
         self.canvas.itemconfigure(self.sprite, image=self.frames_fx[0][0])
         self.place_pet(0, 0)
 
@@ -1625,6 +1685,7 @@ class PetApp:
 
     def quadro_estado(self, estado, now):
         qs = self.estados_fx[estado]
+        self.estado_visto = estado
         q = qs[int(now * 1000 / self.char.frame_ms) % len(qs)]
         return q[int(now * 1000 / FX_MS) % len(q)]
 
