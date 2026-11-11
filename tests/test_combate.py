@@ -234,11 +234,16 @@ assert primeiro_golpe(30) <= 4 and primeiro_golpe(6) >= 3 + 8 - 1
 pesos = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("shop", 1)]                 # loja sem ouro: sala sem efeito no HP
 r = pet(cura_sala=5); r["hp"], r["energy"] = 10, 1e9
 ev = M.enter_room(r, M.new_meta(), random.Random(7)); assert ev["kind"] == "shop" and r["hp"] == 10 + M.REGEN_PER_ROOM + 5
+assert ev["cura_item"] == 5                                            # a GUI mostra "+5 ♥" (só a parte do item)
 r = pet(cura_sala=50); r["hp"], r["energy"] = 10, 1e9
-M.enter_room(r, M.new_meta(), random.Random(7)); assert r["hp"] == M.stats(r)["maxhp"]
+ev = M.enter_room(r, M.new_meta(), random.Random(7)); assert r["hp"] == M.stats(r)["maxhp"]
+assert ev["cura_item"] == r["hp"] - 10 - M.REGEN_PER_ROOM                # só o que curou de verdade
+r = pet(); r["hp"], r["energy"] = 10, 1e9
+assert "cura_item" not in M.enter_room(r, M.new_meta(), random.Random(7))   # sem item de cura: sem floater
 M.ROOM_WEIGHTS = pesos
 r = pet(cura_andar=5); r["hp"], r["energy"], r["room"] = 10, 1e9, M.ROOMS_PER_FLOOR
 ev = M.enter_room(r, M.new_meta(), random.Random(7)); assert ev["kind"] == "stairs" and r["hp"] == 10 + M.FLOOR_BONUS_HP + 5
+assert ev["cura_item"] == 5
 r = pet(cura_andar=99); r["hp"], r["energy"], r["room"] = 10, 1e9, M.ROOMS_PER_FLOOR
 M.enter_room(r, M.new_meta(), random.Random(7)); assert r["hp"] == M.stats(r)["maxhp"]
 # fx_text: todo item tem texto e os campos novos aparecem

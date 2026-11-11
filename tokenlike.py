@@ -528,6 +528,18 @@ def render_map(pm, s: int):
 _ITEM_ARTS = {}
 
 
+ELEMENTO_LOOK = {"queimar": "chamas", "eletrizar": "faiscas", "envenenar": "gotas_veneno", "congelar": "geada"}
+
+
+def pet_looks(run):
+    """Looks dos itens [(look, brilho)] + um look animado por elemento que o pet aplica e ainda não aparece."""
+    looks = [(M.ITEMS[it["key"]]["look"], M.RAR_COLOR.get(it["rar"]))
+             for it in run["items"] if it["key"] in M.ITEMS]
+    tipos = {l["type"] for l, _ in looks}
+    st = M.stats(run)
+    return looks + [({"type": t}, None) for k, t in ELEMENTO_LOOK.items() if st[k] > 0 and t not in tipos]
+
+
 def item_arts():
     """Arte dos itens como PixelMap (em cache: nunca muda)."""
     if not _ITEM_ARTS:
@@ -746,8 +758,7 @@ class PetApp:
 
     def refresh_look(self):
         """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick."""
-        looks = [(M.ITEMS[it["key"]]["look"], M.RAR_COLOR.get(it["rar"]))
-                 for it in self.run["items"] if it["key"] in M.ITEMS]
+        looks = pet_looks(self.run)
         arts = item_arts()
         cor = STATUS_COR.get(self.pet_status)
 
@@ -1020,6 +1031,8 @@ class PetApp:
         else:
             at(0, lambda: self.show_foe(ev.get("sprite"), ev.get("boss", False)))
         at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22))
+        if ev.get("cura_item"):                        # cura_sala / cura_andar dos itens
+            at(250, lambda: self.floater(f"+{ev['cura_item']} ♥", GOOD))
         t = 500
 
         if kind in ("monster", "boss", "mimic", "horde"):

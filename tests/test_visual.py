@@ -106,4 +106,17 @@ for f in range(V.FASES):
 # gotas caem 1 px por fase: o quadro 1 é o 0 deslocado (exceto o retorno ao topo)
 _g = [{p for p in V.gotas_veneno(slime, 1, f) if p not in slime} for f in range(3)]
 assert _g[0] != _g[1] != _g[2] and any((x, y + 1) in _g[1] for x, y in _g[0])
+# R11: item elemental sem look animado ainda mostra o elemento (look derivado, uma vez por elemento)
+import masmorra as M
+_run = M.new_run("slime", {}, 1)
+_run["items"] = [{"key": "tocha", "rar": "comum"}]
+_pl = tp.pet_looks(_run)
+assert [l["type"] for l, _ in _pl].count("chamas") == 1
+assert len({tuple(sorted(V.compose(slime, _pl, _arts, fase=f).items())) for f in range(V.FASES)}) == V.FASES
+_run["items"] = [{"key": "brasa", "rar": "comum"}, {"key": "tocha", "rar": "comum"}]
+assert [l["type"] for l, _ in tp.pet_looks(_run)].count("chamas") == 1        # brasa já tem chamas: não dobra
+_run["items"] = [{"key": "brasa", "rar": "comum"}, {"key": "pelagem_chamuscada", "rar": "raro"}]
+assert [l["type"] for l, _ in tp.pet_looks(_run)].count("chamas") == 2        # explícitos mantêm o nível
+_run["items"] = []
+assert tp.pet_looks(_run) == []
 print("ok: visual")

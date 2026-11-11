@@ -145,7 +145,7 @@ ITEMS = {
                      "req": "chefe1"},
     "bafo_gelido":  {"name": "Bafo Gélido",        "rarities": _C, "fx": {"congelar": 0.06, "def": 1, "atk": 1},
                      "consume": {"shield": 6}, "look": {"type": "geada"}},
-    "estilhaco":    {"name": "Estilhaço de Gelo",  "rarities": _C, "fx": {"congelar": 0.06, "atk": 3},
+    "estilhaco":    {"name": "Estilhaço de Gelo",  "rarities": _C, "fx": {"congelar": 0.06, "atk": 2},
                      "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "estilhaco"}},
     "cachecol":     {"name": "Cachecol de Neve",   "rarities": _C, "fx": {"congelar": 0.06, "def": 1, "maxhp": 3, "atk": 1},
                      "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "cachecol"}},
@@ -160,7 +160,7 @@ ITEMS = {
     "casco_tartaruga": {"name": "Casco de Jabuti Velho", "rarities": _R, "fx": {"bloqueio": 1, "spd": -2},
                      "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "esq", "art": "casco_tartaruga"},
                      "req": "andar5"},
-    "manopla_rebite": {"name": "Manopla Rebitada", "rarities": _C, "fx": {"bloqueio": 1},
+    "manopla_rebite": {"name": "Manopla Rebitada", "rarities": _C, "fx": {"bloqueio": 1, "atk": 1},
                      "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "dir", "art": "manopla_rebite"}},
     "sino_guarda":  {"name": "Sininho de Alerta",  "rarities": _C, "fx": {"bloqueio": 1, "maxhp": -3},
                      "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "sino_guarda"}},
@@ -201,7 +201,7 @@ ITEMS = {
     "calice_rubro": {"name": "Cálice Rubro",       "rarities": ["raro", "epico"], "fx": {"custo_ataque": 1, "atk": 2, "lifesteal": 3},
                      "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "flutua", "art": "calice_rubro"},
                      "req": "andar5"},
-    "pacto_carmesim": {"name": "Pacto Carmesim",   "rarities": ["epico", "lendario"], "fx": {"custo_ataque": 2, "furia": 1, "atk": 2},
+    "pacto_carmesim": {"name": "Selo da Gota Rubra", "rarities": ["epico", "lendario"], "fx": {"custo_ataque": 2, "furia": 1, "atk": 2},
                      "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "pacto_carmesim"},
                      "req": "chefe1"},
     # leva C: golpes (duplo), área, ajudantes (sempre obj flutua) e crítico
@@ -289,14 +289,14 @@ ITEMS = {
                      "req": "chefe1"},
     "bolsa_sapo":   {"name": "Bolsa de Couro de Sapo", "rarities": _C, "fx": {"gold": 0.3, "desconto": 0.1, "def": 1, "maxhp": 3},
                      "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "bolsa_sapo"}},
-    "cupom":        {"name": "Cupom Amassado",     "rarities": _C, "fx": {"desconto": 0.2, "maxhp": 5},
+    "cupom":        {"name": "Bilhete de Barganha", "rarities": _C, "fx": {"desconto": 0.2, "maxhp": 5},
                      "consume": {"shield": 5}, "look": {"type": "adesivo", "art": "cupom", "at": [0.7, 0.5]}},
     "balanca":      {"name": "Balança Torta",      "rarities": _C, "fx": {"desconto": 0.15, "def": 1, "atk": 1},
                      "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "dir", "art": "balanca"}},
     "dente_ouro":   {"name": "Dente de Ouro",      "rarities": _R, "fx": {"gold": 0.4, "atk": 2},
                      "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "frente", "art": "dente_ouro"},
                      "req": "andar5"},
-    "cofrinho":     {"name": "Cofrinho de Barro",  "rarities": ["lendario"], "fx": {"gold": 0.5, "desconto": 0.2, "maxhp": 8},
+    "cofrinho":     {"name": "Moringa de Moedas",  "rarities": ["lendario"], "fx": {"gold": 0.5, "desconto": 0.2, "maxhp": 8},
                      "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "flutua", "art": "cofrinho"},
                      "req": "rico"},
     "sanguessuga":  {"name": "Sanguessuga Mansa",  "rarities": _C, "fx": {"lifesteal": 2, "maxhp": 4, "atk": 1},
@@ -732,7 +732,6 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
             if who == "ajudante":                          # sem status, crítico nem perder a vez
                 i = min(vivos(), key=lambda i: foes[i]["hp"])
                 d = max(1, round(st["ajudante"]))      # nunca 0 de dano
-                assert d >= 1
                 foes[i]["hp"] -= d
                 passo("ajudante", i, d)
                 if not vivos():
@@ -835,6 +834,13 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
         meta["best"] = {"floor": run["floor"], "room": run["room"]}
 
 
+def _curar_item(run, ev, maxhp, hp, cura):
+    """HP = hp + cura (até maxhp); o que a cura do item somou de verdade vai em ev["cura_item"] (floater na GUI)."""
+    run["hp"] = min(maxhp, hp + cura)
+    if run["hp"] > hp:
+        ev["cura_item"] = run["hp"] - hp
+
+
 def enter_room(run: dict, meta: dict, rng: random.Random,
                stage_floors: list[int] | None = None, mode: str = "auto") -> dict:
     """Gasta energia, resolve a próxima sala e devolve o que aconteceu.
@@ -865,11 +871,12 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["evolved"] = True
         _check_achievements(run, meta, ev)
         st = stats(run)
-        run["hp"] = min(st["maxhp"], run["hp"] + st["cura_andar"])
+        _curar_item(run, ev, st["maxhp"], run["hp"], st["cura_andar"])
         return ev
 
     run["room"] += 1
-    run["hp"] = min(st["maxhp"], run["hp"] + REGEN_PER_ROOM + st["cura_sala"])   # regenera a cada sala (+ cura_sala)
+    # regenera a cada sala (+ cura_sala)
+    _curar_item(run, ev, st["maxhp"], min(st["maxhp"], run["hp"] + REGEN_PER_ROOM), st["cura_sala"])
 
     if run["room"] == ROOMS_PER_FLOOR and f % BOSS_EVERY == 0:
         kind = "boss"

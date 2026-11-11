@@ -227,6 +227,16 @@ for _ in range(300):
         if fn is None or getattr(fn, "__name__", "") in ("tick", "poll"): continue
         fn()
 app6.run["items"] = []; del M.ITEMS["_t"]; app6.refresh_look()
+# cura_sala / cura_andar: floater "+N ♥" quando o item cura ao entrar na sala ou na escada
+er0, PENDING[:] = M.enter_room, []
+M.enter_room = lambda *a, **k: {"kind": "shop", "name": "Loja", "sprite": "loja", "lines": [], "won": False,
+                                "died": False, "cura_item": 37}
+app6.play_room()
+M.enter_room = er0
+for fn in PENDING[:]:
+    if fn is not None and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
+PENDING.clear()
+assert ("+37 ♥", None) in textos, textos[-5:]
 del app6.floater, app6.anim_hit
 assert any(h["who"] == "ajudante" for h in passos_vistos) and any(h["duplo"] for h in passos_vistos)
 assert any(t.endswith(" x2") for t, _ in textos)
