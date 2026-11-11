@@ -172,6 +172,7 @@ PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
 MAX_CRIT = 0.6
 MAX_ELEM_CHANCE = 0.3
 MAX_BLOQUEIO, MAX_ESPINHOS = 3, 0.5
+MAX_SORTE, MAX_DESCONTO = 1.0, 0.6   # tetos de sorte (raridade) e desconto da loja
 MAX_DUPLO = 0.5              # teto da chance de golpe duplo somada
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
@@ -266,6 +267,12 @@ def fx_text(fx: dict) -> str:
         parts.append(f"{round(fx['duplo'] * 100)}% golpe duplo")
     if fx.get("ajudante"):
         parts.append(f"ajudante {fx['ajudante']:g} de dano")
+    if fx.get("crescer"):
+        parts.append(f"+1 ATK a cada {fx['crescer']} kills")
+    if fx.get("sorte"):
+        parts.append(f"+{round(fx['sorte'] * 100)}% sorte")
+    if fx.get("desconto"):
+        parts.append(f"-{round(fx['desconto'] * 100)}% preço na loja")
     return ", ".join(parts)
 
 
@@ -297,6 +304,8 @@ def _scale(fx: dict, rar: str) -> dict:
     for k, v in fx.items():
         if k in ("trap", "area", "custo_ataque") or v <= 0:
             out[k] = v
+        elif k == "crescer":                          # menos kills por ponto = melhor: escala para baixo, piso 3
+            out[k] = max(3, math.ceil(v / m))
         elif isinstance(v, int):
             out[k] = math.floor(v * m + 0.5)      # arredonda .5 para cima
         else:
@@ -322,6 +331,7 @@ def migrate_run(run: dict) -> dict:
         run["items"] = [i for i in (items or []) if isinstance(i, dict) and i.get("key") in ITEMS]
     for i in run["items"]:
         i.setdefault("floor", None)
+        i.setdefault("kills0", 0)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
     b = run.setdefault("base", {})
@@ -343,10 +353,12 @@ def stats(run: dict) -> dict:
           "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
           "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
           "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0,
-          "duplo": 0.0, "ajudante": 0}
+          "duplo": 0.0, "ajudante": 0, "sorte": 0.0, "desconto": 0.0}
     for it in run["items"]:
         for k, v in item_fx(it["key"], it["rar"]).items():
-            if k == "trap":
+            if k == "crescer":                        # +1 ATK a cada v kills feitos depois de pegar o item
+                st["atk"] += max(0, run["kills"] - it.get("kills0", 0)) // v
+            elif k == "trap":
                 st["trap"] *= v
             elif k == "area":
                 st["area"] = st["area"] or bool(v)
@@ -364,6 +376,8 @@ def stats(run: dict) -> dict:
     st["bloqueio"] = min(MAX_BLOQUEIO, int(st["bloqueio"]))
     st["espinhos"] = min(MAX_ESPINHOS, st["espinhos"])
     st["duplo"] = min(MAX_DUPLO, st["duplo"])
+    st["sorte"] = min(MAX_SORTE, st["sorte"])
+    st["desconto"] = min(MAX_DESCONTO, st["desconto"])
     run["hp"] = min(run["hp"], st["maxhp"])
     return st
 
@@ -406,7 +420,10 @@ def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) ->
     if not pool:
         return None
     lo = 1 if best else 0
-    idx = max(lo, rng.choices(range(len(RARITIES)), _rarity_weights(run["floor"]))[0])
+    w = _rarity_weights(run["floor"])
+    luck = 1 + stats(run)["sorte"]
+    w = [w[0]] + [x * luck for x in w[1:]]            # sorte puxa raro, épico e lendário
+    idx = max(lo, rng.choices(range(len(RARITIES)), w)[0])
     # desce uma raridade por vez, depois sobe; abaixo do piso só em último caso
     order = list(range(idx, lo - 1, -1)) + list(range(idx + 1, len(RARITIES))) + list(range(lo - 1, -1, -1))
     for i in order:
@@ -415,6 +432,11 @@ def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) ->
         if cands:
             return {"key": rng.choice(cands), "rar": rar}
     return None
+
+
+def shop_price(run: dict, f: int) -> int:
+    """Preço do item na loja no andar f, com o desconto dos itens (mínimo 1)."""
+    return max(1, round((SHOP_PRICE[0] + SHOP_PRICE[1] * f) * (1 - stats(run)["desconto"])))
 
 
 def auto_choice(run: dict, offer: dict) -> str:
@@ -428,7 +450,7 @@ def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
     """Aplica a escolha. As conquistas ficam com quem chama (enter_room / *_pending)."""
     item = {"key": offer["key"], "rar": offer["rar"]}      # sem andar: é o que o evento (GUI) recebe
     if choice == "pegar":
-        run["items"].append({**item, "floor": run["floor"]})
+        run["items"].append({**item, "floor": run["floor"], "kills0": run["kills"]})
         hp_bonus = item_fx(item["key"], item["rar"]).get("maxhp", 0)
         if hp_bonus > 0:
             run["hp"] += hp_bonus
@@ -557,7 +579,8 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 continue
             if who == "ajudante":                          # sem status, crítico nem perder a vez
                 i = min(vivos(), key=lambda i: foes[i]["hp"])
-                d = round(st["ajudante"])
+                d = max(1, round(st["ajudante"]))      # nunca 0 de dano
+                assert d >= 1
                 foes[i]["hp"] -= d
                 passo("ajudante", i, d)
                 if not vivos():
@@ -793,7 +816,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
     elif kind == "shop":
         ev.update(name="Lojinha", sprite="loja")
-        potion, item_price = 6 + f, SHOP_PRICE[0] + SHOP_PRICE[1] * f
+        potion, item_price = 6 + f, shop_price(run, f)
         if run["hp"] < st["maxhp"] * 0.5 and run["gold"] >= potion:
             run["gold"] -= potion
             heal = min(st["maxhp"] - run["hp"], round(st["maxhp"] * 0.5))
@@ -847,7 +870,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 5
+REGRAS_REV = 6
 
 
 def _balance_version() -> str:

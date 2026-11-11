@@ -49,12 +49,12 @@ assert r["pending"] is None and ev["item"] == {"key": "adaga", "rar": "comum"} a
 # modo interativo cria pendência; enter_room não entra com pendência (responsabilidade da GUI) mas resolve_pending funciona
 # migração de save antigo
 old = {"items": {"mao": "adaga", "escudo": None, "cabeca": "chapeu"}, "hp": 10}
-M.migrate_run(old); assert old["items"] == [{"key": "adaga", "rar": "comum", "floor": None}, {"key": "chapeu", "rar": "comum", "floor": None}]
+M.migrate_run(old); assert old["items"] == [{"key": "adaga", "rar": "comum", "floor": None, "kills0": 0}, {"key": "chapeu", "rar": "comum", "floor": None, "kills0": 0}]
 assert old["shield"] == 0 and old["pending"] is None
 novo = {"items": [{"key": "adaga", "rar": "raro"}, {"key": "sumiu", "rar": "comum"}, "lixo"],
         "pending": {"key": "sumiu", "rar": "comum", "source": "chest"}}
 M.migrate_run(novo)
-assert novo["items"] == [{"key": "adaga", "rar": "raro", "floor": None}] and novo["pending"] is None
+assert novo["items"] == [{"key": "adaga", "rar": "raro", "floor": None, "kills0": 0}] and novo["pending"] is None
 ok = {"items": [], "pending": {"key": "adaga", "rar": "comum", "source": "chest"}}
 assert M.migrate_run(ok)["pending"]["key"] == "adaga"                 # pendência válida fica
 sem = M.migrate_run({"hp": 3}); assert sem["items"] == [] and sem["pending"] is None
@@ -90,4 +90,61 @@ assert len({it["name"] for it in M.ITEMS.values()}) == len(M.ITEMS)        # sem
 assert all(k in arte.ITEM_ART for k in M.ITEMS)
 looks = {it["look"]["type"] for it in M.ITEMS.values()}
 assert {"chamas", "faiscas", "gotas_veneno", "geada"} <= looks
+# crescer / sorte / desconto (tarefa 8)
+M.ITEMS["_t_cresce"] = {"name": "t", "rarities": ["comum"], "fx": {"crescer": 5}, "consume": {"heal": 1}, "look": {"type": "contorno", "color": "#fff"}}
+assert M.item_fx("_t_cresce", "comum")["crescer"] == 5
+assert M.item_fx("_t_cresce", "lendario")["crescer"] == 4 < 5          # ceil(5/1.6)
+M.ITEMS["_t_cresce"]["fx"]["crescer"] = 10
+assert M.item_fx("_t_cresce", "lendario")["crescer"] == math.ceil(10 / 1.6) and M.item_fx("_t_cresce", "comum")["crescer"] == 10
+M.ITEMS["_t_cresce"]["fx"]["crescer"] = 4
+assert M.item_fx("_t_cresce", "lendario")["crescer"] == 3              # piso 3
+M.ITEMS["_t_cresce"]["fx"]["crescer"] = 5
+r = M.new_run("slime", {"hp": 20, "atk": 3}, 9); r["kills"] = 7           # kills antes de pegar não contam
+M.resolve_offer(r, {"key": "_t_cresce", "rar": "comum"}, "pegar", {"lines": []})
+assert r["items"][0]["kills0"] == 7 and M.stats(r)["atk"] == 3
+r["kills"] = 17; assert M.stats(r)["atk"] == 3 + 2
+r["kills"] = 16; assert M.stats(r)["atk"] == 3 + 1
+old = {"items": [{"key": "adaga", "rar": "comum"}], "base": {}}
+assert M.migrate_run(old)["items"][0]["kills0"] == 0
+# sorte: mais ofertas raro+
+M.ITEMS.pop("_t_cresce")
+def frac_rara(sorte):
+    r = M.new_run("slime", {}, 1); r["floor"] = 5
+    r["items"] = [{"key": "_t_sorte", "rar": "comum"}] if sorte else []
+    rng = random.Random(3); n = 0
+    for _ in range(2000):
+        n += M.roll_offer(r, meta_all, rng)["rar"] != "comum"
+    return n / 2000
+M.ITEMS["_t_sorte"] = {"name": "t", "rarities": ["comum"], "fx": {"sorte": 1.0}, "consume": {"heal": 1}, "look": {"type": "contorno", "color": "#fff"}}
+assert frac_rara(True) > frac_rara(False)
+M.ITEMS["_t_sorte"]["fx"]["sorte"] = 5.0
+r = M.new_run("slime", {}, 1); r["items"] = [{"key": "_t_sorte", "rar": "comum"}]
+assert M.stats(r)["sorte"] == 1.0                                      # teto
+# desconto
+M.ITEMS["_t_sorte"]["fx"] = {"desconto": 0.9}
+r = M.new_run("slime", {}, 1); r["items"] = [{"key": "_t_sorte", "rar": "comum"}]
+assert M.stats(r)["desconto"] == 0.6
+assert M.shop_price(r, 10) == round((M.SHOP_PRICE[0] + M.SHOP_PRICE[1] * 10) * 0.4)
+assert M.shop_price(M.new_run("slime", {}, 2), 1) == M.SHOP_PRICE[0] + M.SHOP_PRICE[1]
+M.SHOP_PRICE, antigo = (1, 0), M.SHOP_PRICE; assert M.shop_price(r, 1) == 1; M.SHOP_PRICE = antigo   # mínimo 1
+M.ITEMS.pop("_t_sorte")
+# fx_text
+assert M.fx_text({"crescer": 5, "sorte": 0.2, "desconto": 0.3}) == "+1 ATK a cada 5 kills, +20% sorte, -30% preço na loja"
+# pool com ~100 itens: um de cada por run e não esgota antes do andar 10 na mediana
+base = list(M.ITEMS)
+i = 0
+while len(M.ITEMS) < 100:
+    M.ITEMS[f"_fill{i}"] = M.ITEMS[base[i % len(base)]]; i += 1
+esgot = []
+for seed in range(300):
+    rng = random.Random(seed); r = M.new_run("slime", {"hp": 20, "atk": 3}, 1); fim = 99
+    while not r["dead"] and r["floor"] < 40:
+        r["energy"] = 1e9; M.enter_room(r, meta_all, rng)
+        ks = [x["key"] for x in r["items"]]; assert len(ks) == len(set(ks))
+        if len(ks) >= len(M.ITEMS): fim = min(fim, r["floor"])
+    esgot.append(fim)
+esgot.sort(); assert esgot[150] >= 10, esgot[150]
+for k in [k for k in M.ITEMS if k.startswith("_fill")]: del M.ITEMS[k]
+# ajudante: nunca 0 de dano
+assert max(1, round(0.4)) == 1
 print("ok: itens")

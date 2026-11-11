@@ -8,7 +8,7 @@ run = M.new_run("slime", {"hp": 20, "atk": 3}, 1); run["floor"] = 4
 assert run["consumed"] == []
 M.resolve_offer(run, {"key": "adaga", "rar": "raro"}, "pegar", {"lines": []})
 M.resolve_offer(run, {"key": "tampa", "rar": "comum"}, "consumir", {"lines": []})
-assert run["items"] == [{"key": "adaga", "rar": "raro", "floor": 4}]
+assert run["items"] == [{"key": "adaga", "rar": "raro", "floor": 4, "kills0": 0}]
 assert run["consumed"] == [{"key": "tampa", "rar": "comum", "floor": 4}]
 old = {"items": [{"key": "adaga", "rar": "comum"}], "hp": 5}
 M.migrate_run(old); assert old["items"][0]["floor"] is None and old["consumed"] == []
