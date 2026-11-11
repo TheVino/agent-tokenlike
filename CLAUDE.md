@@ -18,6 +18,7 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
   inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
+  Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
 - `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),

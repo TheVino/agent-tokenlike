@@ -537,7 +537,8 @@ def builtin_characters() -> list[CharacterDef]:
 
 DEFAULT_STATS = {"hp": 20, "atk": 3, "def": 0, "dodge": 0, "spd": 10.0}
 _FOLHAS = {}  # (caminho, mtime) -> (linhas de caixas, N): cada folha é cortada uma vez
-_IMGS = {}    # caminho -> (mtime, PhotoImage): spec_to_map não reabre o PNG a cada quadro
+_IMGS = {}    # ponytail: nunca esvaziado (poucas folhas por sessão); limpar ao trocar de herói se crescer
+# caminho -> (mtime, PhotoImage): spec_to_map não reabre o PNG a cada quadro
 
 
 def _img_folha(path: Path):
@@ -556,9 +557,23 @@ def ler_folha(path: Path):
         w, h = src.width(), src.height()
         grade = folha.detectar_grade(w, h)
         if grade:
-            linhas = folha.cortar(w, h, lambda x, y: not src.transparency_get(x, y), grade)
-            n = folha.fator_reducao(h // grade[1])
+            cols, lins = grade
+            cw, ch = w // cols, h // lins
+            a = folha.fator_reducao(ch)   # varredura amostrada: transparency_get do Tk é lento
+            ocup = [[(ox, oy) for ox in range(0, cw, a) for oy in range(0, ch, a)
+                     if not src.transparency_get(c * cw + ox, r * ch + oy)]
+                    for r in range(lins) for c in range(cols)]
+            pts = [p for cel in ocup for p in cel]
+            if not pts:
+                raise ValueError(f"folha sem quadros: {path.name}")
+            # uma caixa só (união do opaco de todas as células) para os quadros não tremerem
+            ox0, oy0 = min(x for x, _ in pts), min(y for _, y in pts)
+            ox1, oy1 = min(cw, max(x for x, _ in pts) + a), min(ch, max(y for _, y in pts) + a)
+            linhas = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols)]
+                      if any(ocup[r * cols + c] for c in range(cols)) else [] for r in range(lins)]
+            n = folha.fator_reducao(oy1 - oy0)
         else:
+            # ponytail: caixas com precisão de N px (amostra); corte exato custa ~5 s em folha grande
             n = folha.fator_reducao(h // 9)
             ws, hs = -(-w // n), -(-h // n)
             op = [[not src.transparency_get(x * n, y * n) for x in range(ws)] for y in range(hs)]

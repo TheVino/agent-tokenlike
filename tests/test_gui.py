@@ -323,9 +323,10 @@ chars = Path(tempfile.mkdtemp())
 folha_falsa(chars/"x"/"spritesheet.png", 512, 576)            # grade 8x9 de 64 px
 x = {c.key: c for c in tp.load_png_characters(chars)}["x"]
 assert set(x.stages[0]["estados"]) == set(tp.folha.ESTADOS) and all(len(v) == 8 for v in x.stages[0]["estados"].values())
-assert x.stages[0]["estados"]["failed"][0][2][1] == 5 * 64 and x.stages[0]["estados"]["failed"][0][3] == 2
+assert x.stages[0]["estados"]["failed"][0][2] == (16, 5 * 64 + 16, 48, 5 * 64 + 62) and x.stages[0]["estados"]["failed"][0][3] == 1
 pm = tp.spec_to_map(x.stages[0]["frames"][0])
-assert max(y for _, y in pm) == 31 and tp.spec_k(x.stages[0]["frames"][0]) == 2   # 64 px -> 32 px, base em 16k
+assert tp.spec_altura(x.stages[0]["frames"][0]) == 46 and tp.spec_k(x.stages[0]["frames"][0]) == 3   # célula aparada: 46 px
+assert max(y for _, y in pm) == 47 and min(y for _, y in pm) == 2    # base em 16k - 1
 # Petdex num HOME temporário: PNG vira herói da comunidade; só WebP é ignorado; pet.json inválido não derruba
 pets = Path(home)/".petdex"/"pets"
 folha_falsa(pets/"y"/"spritesheet.png", 512, 576); (pets/"y"/"pet.json").write_text('{"name": "Yzinho", "x": 1}')
