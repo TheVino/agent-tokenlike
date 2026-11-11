@@ -151,6 +151,56 @@ ITEMS = {
     "floco_eterno": {"name": "Floco Eterno",       "rarities": ["epico", "lendario"], "fx": {"congelar": 0.12, "maxhp": 6, "atk": 1},
                      "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "floco_eterno"},
                      "req": "chefe1"},
+    # leva B: defesa (bloqueio, espinhos), regeneração (cura por sala/andar) e sangue (custo de ataque, fúria)
+    "broquel":      {"name": "Broquel de Casca",   "rarities": _C, "fx": {"bloqueio": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "broquel"}},
+    "casco_tartaruga": {"name": "Casco de Jabuti Velho", "rarities": _R, "fx": {"bloqueio": 1, "spd": -2},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "esq", "art": "casco_tartaruga"},
+                     "req": "andar5"},
+    "manopla_rebite": {"name": "Manopla Rebitada", "rarities": _C, "fx": {"bloqueio": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "dir", "art": "manopla_rebite"}},
+    "sino_guarda":  {"name": "Sininho de Alerta",  "rarities": _C, "fx": {"bloqueio": 1, "maxhp": -3},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "sino_guarda"}},
+    "muralha_viva": {"name": "Muralha de Pedra Viva", "rarities": ["lendario"], "fx": {"bloqueio": 1, "maxhp": 2},
+                     "consume": {"shield": 14}, "look": {"type": "obj", "anchor": "esq", "art": "muralha_viva"},
+                     "req": "chefe1"},
+    "ourico":       {"name": "Casca de Castanha",  "rarities": _C, "fx": {"espinhos": 0.15, "def": 1},
+                     "consume": {"shield": 6}, "look": {"type": "espinhos", "color": "#b0763f"}},
+    "cacto_mal":    {"name": "Cacto Mal-humorado", "rarities": _C, "fx": {"espinhos": 0.2, "maxhp": 3},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "topo", "art": "cacto_mal"}},
+    "armadura_farpas": {"name": "Gibão de Farpas", "rarities": _R, "fx": {"espinhos": 0.15, "def": 1, "atk": 1},
+                     "consume": {"shield": 8}, "look": {"type": "espinhos", "color": "#c99a00"},
+                     "req": "andar5"},
+    "colar_presas": {"name": "Colar de Presas",    "rarities": _C, "fx": {"espinhos": 0.1, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "frente", "art": "colar_presas"}},
+    "espelho_rachado": {"name": "Espelho Rachado", "rarities": ["lendario"], "fx": {"espinhos": 0.2, "dodge": 0.05, "atk": 1},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "espelho_rachado"},
+                     "req": "chefe1"},
+    "chazinho":     {"name": "Bule Morno",         "rarities": _C, "fx": {"cura_sala": 1, "maxhp": 3},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "esq", "art": "chazinho"}},
+    "raiz_teimosa": {"name": "Raiz Teimosa",       "rarities": _C, "fx": {"cura_andar": 8, "maxhp": 3},
+                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "topo", "art": "raiz_teimosa"}},
+    "lamparina_lar": {"name": "Lareirinha de Bolso", "rarities": _C, "fx": {"cura_andar": 5, "def": 1},
+                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "frente", "art": "lamparina_lar"}},
+    "fonte_bolso":  {"name": "Gota de Fonte Presa", "rarities": ["raro", "epico"], "fx": {"cura_sala": 2, "maxhp": 5},
+                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "fonte_bolso"},
+                     "req": "andar5"},
+    "seiva_antiga": {"name": "Seiva Ancestral",    "rarities": ["epico", "lendario"], "fx": {"cura_sala": 1, "cura_andar": 8, "maxhp": 4},
+                     "consume": {"heal": 14}, "look": {"type": "tingir", "color": "#e0a030", "amount": 0.3},
+                     "req": "andar10"},
+    "adaga_sangria": {"name": "Lâmina Sedenta",    "rarities": _C, "fx": {"custo_ataque": 1, "atk": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "adaga_sangria"}},
+    "coracao_costurado": {"name": "Coração Remendado", "rarities": _C, "fx": {"furia": 1, "maxhp": 2},
+                     "consume": {"heal": 9}, "look": {"type": "adesivo", "art": "coracao_costurado", "at": [0.5, 0.6]}},
+    "mascara_furia": {"name": "Máscara Rangente",  "rarities": _R, "fx": {"furia": 1, "custo_ataque": 1, "atk": 2},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "frente", "art": "mascara_furia"},
+                     "req": "chefe1"},
+    "calice_rubro": {"name": "Cálice Rubro",       "rarities": ["raro", "epico"], "fx": {"custo_ataque": 1, "atk": 2, "lifesteal": 3},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "flutua", "art": "calice_rubro"},
+                     "req": "andar5"},
+    "pacto_carmesim": {"name": "Pacto Carmesim",   "rarities": ["epico", "lendario"], "fx": {"custo_ataque": 2, "furia": 1, "atk": 2},
+                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "pacto_carmesim"},
+                     "req": "chefe1"},
 }
 
 # sprite, nome, mult. de vida, mult. de ataque, andar mínimo, mult. de velocidade
@@ -171,7 +221,7 @@ MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.02, 0.03, 1.5
 PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
 MAX_CRIT = 0.6
 MAX_ELEM_CHANCE = 0.3
-MAX_BLOQUEIO, MAX_ESPINHOS = 3, 0.5
+MAX_BLOQUEIO, MAX_ESPINHOS = 2, 0.5   # bloqueio 3 deixava os chefes inofensivos (leva B)
 MAX_SORTE, MAX_DESCONTO = 1.0, 0.6   # tetos de sorte (raridade) e desconto da loja
 MAX_DUPLO = 0.5              # teto da chance de golpe duplo somada
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}

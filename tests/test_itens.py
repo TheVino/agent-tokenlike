@@ -90,6 +90,22 @@ assert len({it["name"] for it in M.ITEMS.values()}) == len(M.ITEMS)        # sem
 assert all(k in arte.ITEM_ART for k in M.ITEMS)
 looks = {it["look"]["type"] for it in M.ITEMS.values()}
 assert {"chamas", "faiscas", "gotas_veneno", "geada"} <= looks
+# leva B: defesa, regeneração e sangue
+assert len(M.ITEMS) >= 60
+assert len({it["name"] for it in M.ITEMS.values()}) == len(M.ITEMS)
+assert all(k in arte.ITEM_ART for k in M.ITEMS)
+assert len(fam("bloqueio")) >= 4 and len(fam("espinhos")) >= 4
+assert len(set(fam("cura_sala")) | set(fam("cura_andar"))) >= 4
+sangue = set(fam("custo_ataque")) | set(fam("furia"))
+assert len(sangue) >= 4
+for k in fam("custo_ataque"):                       # pagar vida sempre compra ataque
+    assert M.ITEMS[k]["fx"].get("atk", 0) > 0 or M.ITEMS[k]["fx"].get("furia", 0) > 0, k
+LEVA_B = ["broquel", "casco_tartaruga", "manopla_rebite", "sino_guarda", "muralha_viva",
+          "ourico", "cacto_mal", "armadura_farpas", "colar_presas", "espelho_rachado",
+          "chazinho", "raiz_teimosa", "lamparina_lar", "fonte_bolso", "seiva_antiga",
+          "adaga_sangria", "coracao_costurado", "mascara_furia", "calice_rubro", "pacto_carmesim"]
+assert all(k in M.ITEMS for k in LEVA_B) and len(set(LEVA_B)) == 20
+assert sum(M.ITEMS[k]["rarities"] == ["lendario"] for k in LEVA_B) >= 2
 # crescer / sorte / desconto (tarefa 8)
 M.ITEMS["_t_cresce"] = {"name": "t", "rarities": ["comum"], "fx": {"crescer": 5}, "consume": {"heal": 1}, "look": {"type": "contorno", "color": "#fff"}}
 assert M.item_fx("_t_cresce", "comum")["crescer"] == 5

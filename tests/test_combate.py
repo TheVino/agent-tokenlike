@@ -188,7 +188,7 @@ golpes = [x for x in steps if x["who"] == 0 and not x["dodge"]]
 assert [x["bloqueado"] for x in golpes[:3]] == [True, True, False]
 assert golpes[0]["dmg"] == golpes[1]["dmg"] == 0 and golpes[2]["dmg"] > 0
 assert sum(x["bloqueado"] for x in steps) == 2
-assert M.stats(pet(bloqueio=5))["bloqueio"] == 3 and M.stats(pet())["bloqueio"] == 0
+assert M.stats(pet(bloqueio=5))["bloqueio"] == M.MAX_BLOQUEIO == 2 and M.stats(pet())["bloqueio"] == 0
 # bloqueio com esquiva: a esquiva vem antes e não gasta carga
 r = pet(atk=1, bloqueio=1, dodge=0.5)
 won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=5, spd=15)], random.Random(3), 1)
