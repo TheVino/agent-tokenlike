@@ -54,7 +54,7 @@ assert old["shield"] == 0 and old["pending"] is None
 novo = {"items": [{"key": "adaga", "rar": "raro"}, {"key": "sumiu", "rar": "comum"}, "lixo"],
         "pending": {"key": "sumiu", "rar": "comum", "source": "chest"}}
 M.migrate_run(novo)
-assert novo["items"] == [{"key": "adaga", "rar": "raro"}] and novo["pending"] is None
+assert novo["items"] == [{"key": "adaga", "rar": "raro", "floor": None}] and novo["pending"] is None
 ok = {"items": [], "pending": {"key": "adaga", "rar": "comum", "source": "chest"}}
 assert M.migrate_run(ok)["pending"]["key"] == "adaga"                 # pendência válida fica
 sem = M.migrate_run({"hp": 3}); assert sem["items"] == [] and sem["pending"] is None
