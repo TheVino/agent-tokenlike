@@ -128,9 +128,9 @@ def _colocar(pm, art, box, anchor, ordem, glow, k=1):
     elif anchor == "base":
         tx, ty = cx, y1 + ordem * (ah - 2)
     elif anchor == "flutua":
-        k = ordem // 4 + 1   # ao acabar as 4 posições, repete mais longe
-        tx, ty = [(x0 - aw * k, y0 - ah * k), (x1 + aw * (k - 1), y0 - ah * k),
-                  (x0 - aw * k, cy), (x1 + aw * (k - 1), cy)][ordem % 4]
+        n = ordem // 4 + 1   # ao acabar as 4 posições, repete mais longe
+        tx, ty = [(x0 - aw * n, y0 - ah * n), (x1 + aw * (n - 1), y0 - ah * n),
+                  (x0 - aw * n, cy), (x1 + aw * (n - 1), cy)][ordem % 4]
     else:  # frente: ordem alterna direita/esquerda do centro, afastando
         lado = 1 if ordem % 2 else -1
         if ordem == 0:

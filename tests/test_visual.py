@@ -137,10 +137,17 @@ assert all(all(m.get(p) == c for p, c in V.compose(_big, _top, _arts, k=3).items
 # brilho do objeto escala com k: anel de 3 px em k=3, 1 px em k=1
 _gl = "#ffd700"
 for _k, _b in ((1, slime), (3, _big)):
-    _m = V.compose(_b, _top, _arts, k=_k)
     _o = {p: c for p, c in V.compose(_b, _top, _arts, k=_k).items() if p not in _b}
     _m2 = V.compose(_b, [(_top[0][0], _gl)], _arts, k=_k)
     _ring = {p for p, c in _m2.items() if c == _gl}
     _a = V.bbox({p for p in _o}); _a2 = V.bbox(_ring)
     assert _a2[1] == _a[1] - _k and _a2[0] == _a[0] - _k, (_k, _a, _a2)
+# flutua: o k do brilho não pode ser sobrescrito pela posição (ordem>=4 em k=1; ordem 0 em k=3)
+for _k, _b, _ord in ((1, slime, 4), (3, _big, 0)):
+    _art = V.escalar(_arts["chapeu"], _k)
+    _sem = V._colocar(dict(_b), _art, V.bbox(_b), "flutua", _ord, None, _k)
+    _com = V._colocar(dict(_b), _art, V.bbox(_b), "flutua", _ord, _gl, _k)
+    _nov = {p for p in _com if p not in _sem}
+    _ba, _bn = V.bbox({p for p in _sem if p not in _b}), V.bbox(_nov)
+    assert _bn[0] == _ba[0] - _k and _bn[3] == _ba[3] + _k, (_k, _ord, _ba, _bn)
 print("ok: visual")
