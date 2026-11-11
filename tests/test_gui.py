@@ -143,6 +143,21 @@ for size in ("Pequeno", "Grande"): app4.size_var.set(size); app4.change_size()
 lim_file.unlink(); app4.refresh_limits()
 assert app4.limit_rows == {} and app4.limits is None
 app4.quit()
+
+runs_file = tp.DATA_DIR / "runs.jsonl"; demo_file = tp.DATA_DIR / "runs-demo.jsonl"
+lines = [json.loads(l) for l in runs_file.read_text(encoding="utf-8").splitlines()]
+assert lines and all(l["version"] == M.BALANCE_VERSION for l in lines)
+assert any(l["gave_up"] for l in lines) and any(not l["gave_up"] for l in lines)
+assert demo_file.exists()                                        # o demo grava separado
+assert all(isinstance(l["achievements"], list) for l in lines)
+# falha ao gravar só loga
+real_dir = tp.DATA_DIR; tp.DATA_DIR = runs_file / "sub"          # "pasta" dentro de um arquivo: mkdir falha
+tp.append_run_record({"x": 1}, False); tp.DATA_DIR = real_dir
+# save antigo: run sem ach_start/consumed/floor termina sem exceção
+app5 = tp.PetApp(Args()); PENDING.clear(); app5.rng = random.Random(SEED)
+app5.run.pop("ach_start", None); app5.run.pop("consumed", None)
+app5.run["items"] = [{"key": "adaga", "rar": "comum"}]; M.migrate_run(app5.run)
+app5.give_up(); app5.quit()
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)

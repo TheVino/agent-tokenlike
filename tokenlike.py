@@ -91,6 +91,17 @@ def log(msg: str) -> None:
         pass
 
 
+def append_run_record(rec: dict, demo: bool) -> None:
+    """Acrescenta uma run terminada em runs.jsonl (só dados do jogo; falha só loga)."""
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        path = DATA_DIR / ("runs-demo.jsonl" if demo else "runs.jsonl")
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    except OSError as e:
+        log(f"não gravou runs.jsonl: {e}")
+
+
 # ------------------------------------------------------- leitura de tokens
 def claude_project_dirs() -> list[Path]:
     cands: list[Path] = []
@@ -616,6 +627,7 @@ class PetApp:
         energy = self.state["run"]["energy"] if self.state.get("run") else 0.0
         self.state["run"] = M.new_run(key, c.stats, self.meta["runs"] + 1)
         self.state["run"]["energy"] = energy
+        self.state["run"]["ach_start"] = list(self.meta["achievements"])
         self.respawn_at = None
         if announce:
             self.build()
@@ -870,6 +882,7 @@ class PetApp:
         self.close_choice()
         ev = {"lines": []}
         M.die(self.run, self.meta, ev, "Desistiu")
+        self.log_run("Desistiu", True)
         self.save()
         self.new_run()
 
@@ -1088,8 +1101,14 @@ class PetApp:
         self.floater("EVOLUIU!", GOLD, life=22)
         self.popup([f"{old} evoluiu para {self.stage_title}!", "+4 HP máx, +1 ATK"], 5000)
 
+    def log_run(self, killer, gave_up):
+        rec = M.run_record(self.run, killer, gave_up, self.state["mode"],
+                           self.run.get("ach_start", self.meta["achievements"]))
+        append_run_record(rec, self.demo)
+
     def on_death(self):
         g = self.meta["graveyard"][-1]
+        self.log_run(g["killer"], False)
         self.save()
         self.show_tomb()
         self.burst(self.pcx, self.base_y - self.T // 3, colors=("#8a94a8", "#d7dde9", HURT))
