@@ -83,8 +83,9 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   Um arquivo de lock impede duas instâncias abertas.
 - Balanceamento atual (via `tools/simular.py`, as duas linhas: 0 e todas as conquistas): 38–41% das runs passam do
   1º chefe, p90 = andar 15, máx = 25. Como os itens empilham, o herói fica forte rápido (baú sempre traz item,
-  `CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo: 1 / 1.2 / 1.4 / 1.6), e quem segura as runs são os chefes, com base
-  negativa e inclinação alta (`BOSS_HP` = (-35, 18), `BOSS_ATK` = (-9.5, 3.4)): fracos no andar 5, paredões nos 15–20.
+  `CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo: 1 / 1.2 / 1.4 / 1.6), e quem segura as runs são os chefes, com valor
+  baixo no 1º chefe e inclinação alta (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.4), ou seja
+  `valor + por_andar * (andar - BOSS_EVERY)`, com mínimo 1): fracos no andar 5, paredões nos 15–20.
   Quase toda morte acontece na sala do chefe. Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`),
   só então `MON_*`/`BOSS_*`.
 

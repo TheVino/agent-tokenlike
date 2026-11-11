@@ -20,8 +20,9 @@ BOSS_EVERY = 5
 # balanceamento (vida/ataque = base + por_andar * andar)
 MON_HP = (4, 2.2)
 MON_ATK = (1.5, 1.2)
-BOSS_HP = (-35, 18)         # base negativa: chefe cresce mais rápido que os itens
-BOSS_ATK = (-9.5, 3.4)
+# chefes: (valor no 1º chefe, por andar) = v + por_andar * (andar - BOSS_EVERY); crescem mais rápido que os itens
+BOSS_HP = (55, 18)
+BOSS_ATK = (7.5, 3.4)
 REGEN_PER_ROOM = 2
 FLOOR_BONUS_HP = 2           # HP máx ganho a cada andar
 CHEST_ITEM_CHANCE = 1.0      # chance de o baú trazer item (senão, ouro)
@@ -431,7 +432,8 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         if kind == "boss":
             m = rng.choice([m for m in MONSTERS if m[4] <= f])
             sprite, name = m[0], BOSS_NAMES[m[0]]
-            hp, atk = round(BOSS_HP[0] + BOSS_HP[1] * f), round(BOSS_ATK[0] + BOSS_ATK[1] * f)
+            hp = max(1, round(BOSS_HP[0] + BOSS_HP[1] * (f - BOSS_EVERY)))
+            atk = max(1, round(BOSS_ATK[0] + BOSS_ATK[1] * (f - BOSS_EVERY)))
         elif kind == "mimic":
             sprite, name = "mimico", "Mímico"
             hp, atk = round((MON_HP[0] + MON_HP[1] * f) * 1.4), round((MON_ATK[0] + MON_ATK[1] * f) * 1.1)
@@ -469,7 +471,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         ev.update(name="Baú", sprite="bau")
         if rng.random() < CHEST_ITEM_CHANCE:
             give()
-        else:
+        else:                                  # só acontece se CHEST_ITEM_CHANCE < 1
             gold = round((5 + 2 * f) * (1 + st["gold"]))
             run["gold"] += gold
             ev["gold"] = gold
