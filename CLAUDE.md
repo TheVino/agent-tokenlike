@@ -81,7 +81,9 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - Evolução dentro da run por **andar** (`stage_floors` do herói), com +4 HP máx e +1 ATK.
 - **Itens empilham:** `run["items"]` é uma lista de `{"key", "rar"}` sem limite (cada item no máximo uma vez por run).
   Raridade `comum|raro|epico|lendario` multiplica os valores positivos de `fx` e de `consume` por `RAR_MULT`
-  (negativos e `trap` não escalam); `_rarity_weights(andar)` sorteia a raridade e cada item lista as `rarities` possíveis.
+  (negativos, `trap`, `area` e `custo_ataque` não escalam; `crescer` escala para baixo: `ceil(N / RAR_MULT)`, piso 3);
+  `_rarity_weights(andar)` sorteia a raridade (a `sorte` dos itens multiplica os pesos de raro, épico e lendário) e
+  cada item lista as `rarities` possíveis. São 100 itens: ~74 em 3 raridades, ~16 em 2 e 10 só lendários.
   Cores (`RAR_COLOR`): raro azul, épico roxo, lendário dourado.
 - **Pegar ou consumir:** cada oferta (baú, mímico, chefe, loja) pode ser pega (entra na lista) ou consumida
   (`consume`: `heal` cura na hora, `shield` vira escudo, que absorve dano antes do HP em `apply_damage`).
@@ -89,7 +91,16 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   fica em `run["pending"]` (salva no state) e a GUI abre a janela de escolha; sem resposta em `CHOICE_WINDOW_S` (30 s),
   a regra automática decide quando a próxima sala estiver pronta. Nunca entra em sala com pendência aberta.
 - **Tetos:** `energy` somada ≤ +100% (`MAX_ENERGY_BONUS`), multiplicador de armadilha em `TRAP_LIMITS` (0,25 a 3),
-  esquiva ≤ `MAX_DODGE`. Saves antigos de 3 espaços viram itens comuns em `migrate_run`.
+  esquiva ≤ `MAX_DODGE`, crítico ≤ `MAX_CRIT` (0,35), chance de cada elemento ≤ `MAX_ELEM_CHANCE` (0,3),
+  `bloqueio` ≤ `MAX_BLOQUEIO` (2), `espinhos` ≤ `MAX_ESPINHOS` (0,5), `duplo` ≤ `MAX_DUPLO` (0,25),
+  `sorte` ≤ `MAX_SORTE` (1,0), `desconto` ≤ `MAX_DESCONTO` (0,6). Os tetos valem sobre o total somado em `stats()`.
+  Saves antigos de 3 espaços viram itens comuns em `migrate_run`.
+- **Campos de `fx` das famílias** (todos somam em `stats()`): `bloqueio` (golpes anulados no começo de cada luta),
+  `espinhos` (fração do dano recebido devolvida), `cura_sala`/`cura_andar` (HP ao entrar numa sala/descer a escada),
+  `custo_ataque` (HP perdido por ataque do pet, nunca mata), `furia` (+ATK a cada 10% de HP que falta), `duplo`
+  (chance de segundo golpe), `ajudante` (dano de um ajudante que ataca uma vez por rodada no inimigo de menor HP e
+  não pode ser alvo), `crescer` (+1 ATK a cada N kills feitos depois de pegar o item: `kills0` guardado na pegada),
+  `sorte` (raridade) e `desconto` (loja, `shop_price`). `fx_text` mostra todos; todo item precisa de texto.
 - **Combate por rodadas** (`masmorra.combate`, inimigos são dicts de `make_foe`/`make_mimic`): a cada rodada,
   1) dano de status (queimadura e veneno, ignoram escudo); 2) todos agem por `spd`, do maior para o menor (empate: pet
   primeiro, depois a ordem da lista). Pet: `PET_SPD` 10 (ou `stats.spd` do herói), `PET_CRIT`, `PET_CRITDMG`.
@@ -112,35 +123,47 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   `masmorra.run_record`, com `masmorra.BALANCE_VERSION` (hash de 8 caracteres só dos números de balanceamento).
   Mudou número, mudou a versão e o histórico real recomeça (`--todas-versoes` mostra tudo).
   O hash não vê fórmulas nem números escritos no código: ao mudar regra/fórmula de combate, suba `masmorra.REGRAS_REV`
-  (hoje 3). Mudar só constante já muda a versão sozinho.
-- Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 25).
+  (hoje 7). Mudar só constante já muda a versão sozinho.
+- Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 50).
   São julgadas na **calibração** (só slime, igual ao `simular.py`, sem e com conquistas); o "sim" com todos os
   heróis misturados é só informativo. Item verde/vermelho usa `vs_media` (vs esperado menos a média dos itens).
   Rode `python tools/estatisticas.py`, não decore números aqui.
-- Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 37-40% passam do
-  1º chefe, p90 = andar 15, máx = 25. Mortes (sem conquistas): chefe ~59%, monstro ~22%, horda ~10%, status ~5%,
-  mímico ~3%, armadilha ~1%. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo)
-  e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), ou seja
+- Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 40-43% passam do
+  1º chefe, p90 = andar 15, p99 = 20, máx = 35-45. Mortes (sem conquistas): chefe ~62%, monstro ~19%, horda ~9%,
+  status ~5%, mímico ~3%, armadilha ~1%. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0,
+  `RAR_MULT` baixo) e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), ou seja
   `valor + por_andar * (andar - BOSS_EVERY)`, mínimo 1); o 2º chefe (andar 10) é o muro. `MON_ATK` = (1.5, 1.2).
+  **Rampa dos chefes:** depois do andar `BOSS_RAMP_FROM` (10), HP e ATK do chefe ainda são multiplicados por
+  `1 + BOSS_RAMP * (andar - 10)` (`BOSS_RAMP` = 0.07). Não mexe no 1º e no 2º chefe; é ela que corta a cauda das runs
+  com muitos itens (sem ela, com 100 itens, o máx passava de 200). Para alongar ou encurtar as runs longas, mexa nela.
   Combate: `MON_SPD` = (6, 0.1), `BOSS_SPD_BONUS` = 1.1, `PET_CRIT` = 0.10, `BOSS_STATUS_CHANCE` = 0.15.
   Hordas: `HORDE_MULT` = {2: 0.75, 3: 0.6, 4: 0.5} é decisão do dono (não mexer); quem ajusta é o peso "horde"
   (hoje 9 em `ROOM_WEIGHTS`), `horde_max` e `HORDE_GOLD_MULT`. Crítico do pet: a base só guarda `crit`/`critdmg`
   se o herói definir; senão `stats()` usa `PET_CRIT`/`PET_CRITDMG`.
   Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`); no combate: status e crítico,
-  velocidades, horda (peso, `horde_max`, `HORDE_GOLD_MULT`); só então `MON_*`/`BOSS_*`. Hordas devem ficar entre 5% e 35% das mortes
+  velocidades, horda (peso, `horde_max`, `HORDE_GOLD_MULT`); só então `MON_*`/`BOSS_*`; para a cauda (máx), `BOSS_RAMP`. Hordas devem ficar entre 5% e 35% das mortes
   e status acima de 0 (sem ser a maioria).
 
 ## Para adicionar coisas
 
 - **Item novo:** desenho em `arte.ITEM_ART[chave]` (se o `look` usar arte) e entrada em `masmorra.ITEMS` com `name`,
   `rarities` (lista das raridades possíveis), `fx`, `consume` (`{"heal": n}` ou `{"shield": n}`), `look` e `req` opcional.
-  Não existe mais `slot` nem `tier`. `look` é um dos efeitos de `visual.py`: `{"type": "obj", "anchor": "dir|esq|topo|flutua", "art": ...}`,
-  `espinhos`/`gotas`/`contorno` (`color`), `tingir` (`color`, `amount`) ou `adesivo` (`art`, `at`). Rode `tools/simular.py` depois.
+  Não existe mais `slot` nem `tier`. `look` é um dos efeitos de `visual.py`: `{"type": "obj", "anchor": "dir|esq|topo|frente|flutua", "art": ...}`,
+  `espinhos`/`gotas`/`contorno` (`color`), `tingir` (`color`, `amount`), `adesivo` (`art`, `at`) ou um dos **animados**
+  dos elementais: `chamas`, `faiscas`, `gotas_veneno`, `geada` (`color` opcional; 3 fases calculadas uma vez em
+  `refresh_look` e trocadas no tick pelo relógio `FX_MS`). Ajudantes usam sempre `obj` `flutua`.
+  Famílias (cada uma com pelo menos 4 itens, conferido em `tests/test_itens.py`): elementais (5 por elemento, look
+  animado), defesa (`bloqueio`, `espinhos`, `dodge`), regeneração (`cura_sala`, `cura_andar`, `lifesteal`), sangue
+  (`custo_ataque` sempre com `atk` ou `furia`), golpes (`crit`, `critdmg`, `duplo`), área (`area`), ajudantes
+  (`ajudante`), crescimento (`crescer`) e sorte/ouro (`sorte`, `gold`, `desconto`). Todo item precisa de ícone e de
+  `fx_text` não vazio; nomes não se repetem. Rode `tools/simular.py` e `tools/estatisticas.py` depois.
 - **Monstro novo:** desenho em `arte.FOE_ART`, entrada em `masmorra.MONSTERS`
   `(sprite, nome, mult_hp, mult_atk, andar_min, spd_mult)` (+ nome de chefe em `BOSS_NAMES` e elemento em
   `BOSS_ELEMENT`: `fogo|raio|veneno|gelo`; sem elemento o chefe quebra `make_foe`).
 - **Campos de `fx` do combate:** `spd`, `crit`, `critdmg`, `area` (bool, não escala com raridade) e a chance por golpe
-  de cada elemento: `queimar`, `eletrizar`, `envenenar`, `congelar` (0..1, teto `MAX_ELEM_CHANCE`; `crit` teto `MAX_CRIT`).
+  de cada elemento: `queimar`, `eletrizar`, `envenenar`, `congelar` (0..1, teto `MAX_ELEM_CHANCE`; `crit` teto `MAX_CRIT`),
+  mais os das famílias (`bloqueio`, `espinhos`, `cura_sala`, `cura_andar`, `custo_ataque`, `furia`, `duplo`,
+  `ajudante`, `crescer`, `sorte`, `desconto`), descritos em "Como as peças se encaixam".
 - **Tipo de sala novo:** `ROOM_WEIGHTS` + um ramo em `enter_room` + a animação em `PetApp.play_room`.
 - **Conquista nova:** `masmorra.ACHIEVEMENTS` + regra em `_check_achievements`.
 - **Herói novo:** de preferência uma pasta em `characters/` com PNGs e `character.json` (`stats` com `spd` opcional, `unlock`, `stages[].floor`).

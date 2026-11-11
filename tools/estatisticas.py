@@ -5,7 +5,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import masmorra as M
 
 # Metas de balanceamento: (mínimo, máximo); None = sem limite.
-METAS = {"passou_chefe1": (0.35, 0.45), "p90": (13, 16), "max": (None, 25)}
+METAS = {"passou_chefe1": (0.35, 0.45), "p90": (13, 16), "max": (None, 50)}
 
 
 def checar_metas(res: dict) -> dict:

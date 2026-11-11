@@ -25,6 +25,9 @@ MON_ATK = (1.5, 1.2)
 # chefes: (valor no 1º chefe, por andar) = v + por_andar * (andar - BOSS_EVERY); crescem mais rápido que os itens
 BOSS_HP = (55, 18)
 BOSS_ATK = (7.5, 3.1)
+# rampa extra dos chefes depois do andar BOSS_RAMP_FROM: HP e ATK x (1 + BOSS_RAMP * (andar - BOSS_RAMP_FROM));
+# corta a cauda das runs com muitos itens empilhados sem mexer no 1º e no 2º chefe
+BOSS_RAMP, BOSS_RAMP_FROM = 0.07, 10
 REGEN_PER_ROOM = 2
 FLOOR_BONUS_HP = 2           # HP máx ganho a cada andar
 CHEST_ITEM_CHANCE = 1.0      # chance de o baú trazer item (senão, ouro)
@@ -60,7 +63,7 @@ ITEMS = {
                      "look": {"type": "obj", "anchor": "dir", "art": "adaga"}},
     "espada_osso":  {"name": "Espada de Osso",     "rarities": _C, "fx": {"atk": 4}, "consume": {"heal": 8},
                      "look": {"type": "obj", "anchor": "dir", "art": "espada_osso"}},
-    "cajado":       {"name": "Cajado Espectral",   "rarities": _R, "fx": {"atk": 4, "lifesteal": 2},
+    "cajado":       {"name": "Cajado Espectral",   "rarities": _R, "fx": {"atk": 3, "lifesteal": 2},
                      "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "dir", "art": "cajado"},
                      "req": "andar5"},
     "foice":        {"name": "Foice Sombria",      "rarities": ["epico", "lendario"], "fx": {"atk": 8, "maxhp": -4},
@@ -75,7 +78,7 @@ ITEMS = {
     "grimorio":     {"name": "Grimório Proibido",  "rarities": _R, "fx": {"atk": 2, "def": 2},
                      "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "esq", "art": "grimorio"},
                      "req": "andar10"},
-    "chapeu":       {"name": "Chapéu de Bruxa",    "rarities": _C, "fx": {"gold": 0.5}, "consume": {"heal": 6},
+    "chapeu":       {"name": "Chapéu de Bruxa",    "rarities": _C, "fx": {"gold": 0.5, "maxhp": 3}, "consume": {"heal": 6},
                      "look": {"type": "obj", "anchor": "topo", "art": "chapeu"}},
     "gorro":        {"name": "Gorro de Ladrão",    "rarities": _C, "fx": {"dodge": 0.15}, "consume": {"heal": 8},
                      "look": {"type": "obj", "anchor": "topo", "art": "gorro"}},
@@ -148,7 +151,7 @@ ITEMS = {
                      "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "cachecol"}},
     "casca_geada":  {"name": "Casca de Geada",     "rarities": _R, "fx": {"congelar": 0.08, "def": 1, "atk": 1},
                      "consume": {"shield": 9}, "look": {"type": "geada", "color": "#c8f4ff"}, "req": "andar10"},
-    "floco_eterno": {"name": "Floco Eterno",       "rarities": ["epico", "lendario"], "fx": {"congelar": 0.12, "maxhp": 6, "atk": 1},
+    "floco_eterno": {"name": "Floco Eterno",       "rarities": ["epico", "lendario"], "fx": {"congelar": 0.12, "maxhp": 4, "atk": 1},
                      "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "floco_eterno"},
                      "req": "chefe1"},
     # leva B: defesa (bloqueio, espinhos), regeneração (cura por sala/andar) e sangue (custo de ataque, fúria)
@@ -250,6 +253,54 @@ ITEMS = {
     "olho_gato":    {"name": "Olho de Gato Ônix",  "rarities": ["epico", "lendario"], "fx": {"crit": 0.12, "dodge": 0.08},
                      "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "topo", "art": "olho_gato"},
                      "req": "chefe1"},
+    # leva D: crescimento (crescer = kills por +1 ATK), sorte (raridade), ouro e desconto na loja
+    "dente_leite":  {"name": "Dente de Leite Afiado", "rarities": _C, "fx": {"crescer": 8, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dente_leite"}},
+    "casulo":       {"name": "Casulo Inquieto",    "rarities": _C, "fx": {"crescer": 10, "maxhp": 6, "def": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "casulo"}},
+    "coleira_trofeus": {"name": "Coleira de Troféus", "rarities": _C, "fx": {"crescer": 9, "def": 1, "atk": 1},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "frente", "art": "coleira_trofeus"}},
+    "semente_faminta": {"name": "Semente Faminta", "rarities": ["raro", "epico"], "fx": {"crescer": 8, "maxhp": 4, "atk": 1},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "topo", "art": "semente_faminta"},
+                     "req": "andar5"},
+    "chifre_aneis": {"name": "Chifre de Anéis",    "rarities": ["lendario"], "fx": {"crescer": 5, "atk": 3},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "topo", "art": "chifre_aneis"},
+                     "req": "chefe1"},
+    "fivela_cacador": {"name": "Fivela do Caçador", "rarities": ["raro", "epico"], "fx": {"crescer": 8, "crit": 0.05, "atk": 1},
+                     "consume": {"shield": 9}, "look": {"type": "contorno", "color": "#c99a00"}, "req": "andar10"},
+    "moedor_ossos": {"name": "Moedor de Ossos",    "rarities": _R, "fx": {"crescer": 6, "atk": 2, "maxhp": -2},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "dir", "art": "moedor_ossos"},
+                     "req": "chefe1"},
+    "dado_osso":    {"name": "Dado de Osso",       "rarities": _C, "fx": {"sorte": 0.3, "crit": 0.05, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dado_osso"}},
+    "moeda_coroas": {"name": "Moeda de Duas Coroas", "rarities": _C, "fx": {"sorte": 0.25, "gold": 0.15, "atk": 1, "maxhp": 3},
+                     "consume": {"shield": 5}, "look": {"type": "obj", "anchor": "esq", "art": "moeda_coroas"}},
+    "ferradura":    {"name": "Ferradura Enferrujada", "rarities": _C, "fx": {"sorte": 0.25, "def": 2},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "ferradura"}},
+    "mapa_rabiscado": {"name": "Mapa Rabiscado",   "rarities": _C, "fx": {"sorte": 0.2, "energy": 0.2, "maxhp": 5},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "mapa_rabiscado"}},
+    "talisma_fios": {"name": "Talismã de Três Fios", "rarities": _C, "fx": {"sorte": 0.2, "cura_andar": 4, "maxhp": 3},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "topo", "art": "talisma_fios"}},
+    "estrela_cadente": {"name": "Caco de Estrela Cadente", "rarities": ["raro", "epico"], "fx": {"sorte": 0.35, "maxhp": 5},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "flutua", "art": "estrela_cadente"},
+                     "req": "andar5"},
+    "bigode_gato":  {"name": "Bigode de Gato Preto", "rarities": ["lendario"], "fx": {"sorte": 0.5, "dodge": 0.1},
+                     "consume": {"shield": 12}, "look": {"type": "adesivo", "art": "bigode_gato", "at": [0.5, 0.65]},
+                     "req": "chefe1"},
+    "bolsa_sapo":   {"name": "Bolsa de Couro de Sapo", "rarities": _C, "fx": {"gold": 0.3, "desconto": 0.1, "def": 1, "maxhp": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "bolsa_sapo"}},
+    "cupom":        {"name": "Cupom Amassado",     "rarities": _C, "fx": {"desconto": 0.2, "maxhp": 5},
+                     "consume": {"shield": 5}, "look": {"type": "adesivo", "art": "cupom", "at": [0.7, 0.5]}},
+    "balanca":      {"name": "Balança Torta",      "rarities": _C, "fx": {"desconto": 0.15, "def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "dir", "art": "balanca"}},
+    "dente_ouro":   {"name": "Dente de Ouro",      "rarities": _R, "fx": {"gold": 0.4, "atk": 2},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "frente", "art": "dente_ouro"},
+                     "req": "andar5"},
+    "cofrinho":     {"name": "Cofrinho de Barro",  "rarities": ["lendario"], "fx": {"gold": 0.5, "desconto": 0.2, "maxhp": 8},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "flutua", "art": "cofrinho"},
+                     "req": "rico"},
+    "sanguessuga":  {"name": "Sanguessuga Mansa",  "rarities": _C, "fx": {"lifesteal": 2, "maxhp": 4, "atk": 1},
+                     "consume": {"heal": 7}, "look": {"type": "adesivo", "art": "sanguessuga", "at": [0.25, 0.7]}},
 }
 
 # sprite, nome, mult. de vida, mult. de ataque, andar mínimo, mult. de velocidade
@@ -291,6 +342,8 @@ def make_foe(m: tuple, f: int, boss: bool = False, mult: float = 1.0) -> dict:
     if boss:
         hp = BOSS_HP[0] + BOSS_HP[1] * (f - BOSS_EVERY)
         atk = BOSS_ATK[0] + BOSS_ATK[1] * (f - BOSS_EVERY)
+        rampa = 1 + BOSS_RAMP * max(0, f - BOSS_RAMP_FROM)
+        hp, atk = hp * rampa, atk * rampa
     else:
         hp = (MON_HP[0] + MON_HP[1] * f) * m[2]
         atk = (MON_ATK[0] + MON_ATK[1] * f) * m[3]
@@ -969,7 +1022,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 6
+REGRAS_REV = 7
 
 
 def _balance_version() -> str:
@@ -977,10 +1030,10 @@ def _balance_version() -> str:
     its = {k: {f: v.get(f) for f in ("fx", "consume", "rarities", "req")} for k, v in sorted(ITEMS.items())}
     mons = [(m[0],) + tuple(m[2:]) for m in MONSTERS]  # sem o nome de exibição
     blob = [REGRAS_REV, its, mons, ROOM_COST, ROOMS_PER_FLOOR, MAX_STORED_ROOMS, BOSS_EVERY, MON_HP, MON_ATK,
-            BOSS_HP, BOSS_ATK, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
+            BOSS_HP, BOSS_ATK, BOSS_RAMP, BOSS_RAMP_FROM, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
             [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
-            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOQUEIO, MAX_ESPINHOS, MAX_DUPLO, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
+            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOQUEIO, MAX_ESPINHOS, MAX_DUPLO, MAX_SORTE, MAX_DESCONTO, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
             QUEIMA_TURNOS, ELETRO_CHANCE, ELETRO_TURNOS, VENENO_TURNOS, VENENO_MAX_PILHAS, GELO_CHANCE, GELO_TURNOS,
             MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]

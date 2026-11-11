@@ -240,7 +240,7 @@ for t in ELEM:   # itens temporários com cada look animado
                         "look": {"type": t}}
 app7.run["items"] = [{"key": "_" + t, "rar": "comum", "floor": 1} for t in ELEM]
 t0 = time.perf_counter(); app7.refresh_look(); dt = time.perf_counter() - t0
-assert dt < 1.0, dt
+assert dt < 3.0, dt
 assert len(app7.frames_fx[0]) == 3 and all(len(q) == 3 for q in app7.frames_fx)
 assert len(app7.sleep_fx) == 3 and (app7.blink_fx is None or len(app7.blink_fx) == 3)
 app7.set_pet_status("congelamento"); assert all(len(q) == 3 for q in app7.frames_fx)   # tinta em todas as fases

@@ -179,4 +179,33 @@ esgot.sort(); assert esgot[150] >= 10, esgot[150]
 for k in [k for k in M.ITEMS if k.startswith("_fill")]: del M.ITEMS[k]
 # ajudante: nunca 0 de dano
 assert max(1, round(0.4)) == 1
+# leva D: crescimento, sorte e ouro; fecha os 100 itens
+assert len(M.ITEMS) == 100
+assert len({it["name"] for it in M.ITEMS.values()}) == 100
+assert all(k in arte.ITEM_ART for k in M.ITEMS) and all(M.fx_text(it["fx"]) for it in M.ITEMS.values())
+LEVA_D = ["dente_leite", "casulo", "coleira_trofeus", "semente_faminta", "chifre_aneis",
+          "fivela_cacador", "moedor_ossos", "dado_osso", "moeda_coroas", "ferradura",
+          "mapa_rabiscado", "talisma_fios", "estrela_cadente", "bigode_gato", "bolsa_sapo",
+          "cupom", "balanca", "dente_ouro", "cofrinho", "sanguessuga"]
+assert all(k in M.ITEMS for k in LEVA_D) and len(set(LEVA_D)) == 20
+assert len(fam("crescer")) >= 4 and len(fam("sorte")) >= 4
+assert len(set(fam("gold")) | set(fam("desconto"))) >= 4
+# cada família do spec com pelo menos 4 itens
+familias = {
+    "elementais": set(fam("queimar")) | set(fam("eletrizar")) | set(fam("envenenar")) | set(fam("congelar")),
+    "defesa": set(fam("bloqueio")) | set(fam("espinhos")) | set(fam("dodge")),
+    "regeneração": set(fam("cura_sala")) | set(fam("cura_andar")) | set(fam("lifesteal")),
+    "sangue": set(fam("custo_ataque")) | set(fam("furia")),
+    "golpes": set(fam("crit")) | set(fam("critdmg")) | set(fam("duplo")),
+    "área": {k for k, it in M.ITEMS.items() if it["fx"].get("area")},
+    "ajudantes": set(fam("ajudante")),
+    "crescimento": set(fam("crescer")),
+    "sorte e ouro": set(fam("sorte")) | set(fam("gold")) | set(fam("desconto")),
+}
+for nome, ks in familias.items():
+    assert len(ks) >= 4, nome
+# raridades: ~70% em 3, ~20% em 2, ~10% só lendários (±10 pontos); pelo menos 8 só lendários
+nrar = [len(it["rarities"]) for it in M.ITEMS.values()]
+assert abs(nrar.count(3) - 70) <= 10 and abs(nrar.count(2) - 20) <= 10 and abs(nrar.count(1) - 10) <= 10
+assert sum(it["rarities"] == ["lendario"] for it in M.ITEMS.values()) >= 8
 print("ok: itens")

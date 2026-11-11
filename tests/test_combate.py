@@ -29,6 +29,14 @@ assert M.make_foe(bat, 5)["element"] is None and M.make_foe(bat, 5, boss=True)["
 # mult é aplicado ANTES do arredondamento (um round só)
 assert M.make_foe(bat, 5, mult=0.5)["hp"] == max(1, round((M.MON_HP[0] + M.MON_HP[1] * 5) * bat[2] * 0.5))
 assert M.make_mimic(3)["element"] is None and M.make_mimic(3)["hp"] == M.make_mimic(3)["hp_max"]
+# rampa dos chefes: nada até BOSS_RAMP_FROM; depois HP e ATK x (1 + BOSS_RAMP * andares a mais); monstros não
+linear = lambda v, f: v[0] + v[1] * (f - M.BOSS_EVERY)
+for f in (5, M.BOSS_RAMP_FROM):
+    assert M.make_foe(bat, f, boss=True)["hp"] == round(linear(M.BOSS_HP, f))
+rampa = 1 + M.BOSS_RAMP * (20 - M.BOSS_RAMP_FROM)
+assert M.make_foe(bat, 20, boss=True)["hp"] == round(linear(M.BOSS_HP, 20) * rampa)
+assert M.make_foe(bat, 20, boss=True)["atk"] == round(linear(M.BOSS_ATK, 20) * rampa)
+assert M.make_foe(bat, 20)["hp"] == max(1, round((M.MON_HP[0] + M.MON_HP[1] * 20) * bat[2]))
 # --- Task 2: combate por rodadas ---
 import random
 assert isinstance(M.new_run("x", {"spd": 14}, 2)["base"]["spd"], float)
@@ -141,7 +149,7 @@ for _ in range(200):
         assert all(set(x) == CHAVES for x in ev["hits"])
     else:
         assert "foes" not in ev
-assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 6
+assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 7
 # empate via enter_room (chefe): passa a sala, mas sem ouro, kills, bônus de chefe nem item
 rounds = M.MAX_ROUNDS; M.MAX_ROUNDS = 1
 meta = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 1}, 1)

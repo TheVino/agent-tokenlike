@@ -44,9 +44,22 @@ chefes, desbloqueios e **permadeath**.
   tem um elemento e pode deixar o pet com um **status**: queimadura e veneno tiram HP no começo da rodada,
   eletricidade e congelamento podem fazer perder a vez. Na horda o pet bate no inimigo com menos vida. Uma luta
   que passa de 60 rodadas termina empatada: o pet segue, mas sem prêmio.
-- **Itens:** não há limite de espaços, os itens **se empilham** (cada um aparece no máximo uma vez por run) e todos
-  aparecem **no pet**: objetos na mão, na cabeça ou flutuando, espinhos, gotas, contorno, cor. Cada item muda as regras,
-  por exemplo a Vela Amaldiçoada dá +50% de energia, mas as armadilhas doem o dobro.
+- **Itens:** são **100 itens**. Não há limite de espaços, os itens **se empilham** (cada um aparece no máximo uma vez
+  por run) e todos aparecem **no pet**: objetos na mão, na cabeça, na frente ou flutuando, espinhos, gotas, contorno,
+  cor, adesivos. Cada item muda as regras, por exemplo a Vela Amaldiçoada dá +50% de energia, mas as armadilhas doem o dobro.
+  As famílias:
+  - **elementais** (fogo, raio, veneno e gelo, 5 de cada): o golpe pode queimar, eletrizar, envenenar ou congelar,
+    e o pet ganha um efeito **animado** no corpo: chamas que tremulam, faíscas que piscam, gotas de veneno que
+    escorrem ou geada que brilha;
+  - **defesa:** bloquear os primeiros golpes da luta, devolver parte do dano, esquiva;
+  - **regeneração:** curar ao entrar numa sala, ao descer a escada ou a cada vitória;
+  - **pacto de sangue:** perder vida a cada ataque em troca de mais ataque, ou ficar mais forte quanto menos vida tiver;
+  - **golpes:** crítico e golpe duplo;
+  - **área:** acertar todos os inimigos de uma horda;
+  - **ajudantes:** bichinhos que flutuam em volta do pet e atacam junto;
+  - **crescimento:** +1 de ataque a cada tantos monstros vencidos depois de pegar o item;
+  - **sorte e ouro:** mais chance de item raro, mais ouro e desconto na lojinha.
+
   Cada item vem com uma **raridade**: comum, **raro** (azul), **épico** (roxo) ou **lendário** (dourado); quanto mais raro,
   mais forte o bônus (os efeitos ruins não aumentam). Ao achar um item dá para **pegar** (entra na pilha) ou **consumir**
   (cura na hora ou vira **escudo**, que absorve dano antes do HP).

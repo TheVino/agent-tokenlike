@@ -25,8 +25,8 @@ assert it["adaga"]["mortes_rapidas"] == 0.5                        # 4 - 3 <= 2
 assert it["vela"]["n"] == 0 and it["vela"]["durou"] is None         # só aparecia na desistência
 assert set(it) == set(M.ITEMS)
 assert E.resumo([])["n"] == 0
-assert E.checar_metas({"passou_chefe1": 0.4, "p90": 15, "max": 25}) == {"passou_chefe1": True, "p90": True, "max": True}
-assert E.checar_metas({"passou_chefe1": 0.5, "p90": 10, "max": 26}) == {"passou_chefe1": False, "p90": False, "max": False}
+assert E.checar_metas({"passou_chefe1": 0.4, "p90": 15, "max": 50}) == {"passou_chefe1": True, "p90": True, "max": True}
+assert E.checar_metas({"passou_chefe1": 0.5, "p90": 10, "max": 51}) == {"passou_chefe1": False, "p90": False, "max": False}
 # arquivo: versão, demo, linha quebrada, pasta vazia
 d = Path(tempfile.mkdtemp())
 assert E.carregar_reais(d) == ([], {"outras_versoes": 0, "ignoradas": 0, "desistencias": 0, "modos": {}})

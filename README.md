@@ -84,11 +84,22 @@ elsewhere the pet sits on a dark background.
   an element and can inflict a **status**: burn and poison deal damage at the start of the round, shock and freeze
   can make you lose a turn. Against a horde the pet hits the foe with the least HP. A fight that lasts
   past 60 rounds ends in a draw: the pet moves on, with no reward.
-- **Items:** no slots, items **stack** (each one at most once per run) and every one of them shows **on the pet**:
-  objects in hand, on the head or floating, spikes, drips, an outline, a tint. Each item bends the rules; the
-  Cursed Candle gives +50% energy but traps hurt twice as much. Items come in a **rarity**: common, **rare** (blue),
-  **epic** (purple) or **legendary** (gold); rarer means bigger bonuses (downsides don't grow). When you find an item
-  you can **take** it (it joins the stack) or **consume** it (instant healing, or a **shield** that soaks damage before HP).
+- **Items:** there are **100 items**. No slots, items **stack** (each one at most once per run) and every one of them
+  shows **on the pet**: objects in hand, on the head, in front or floating, spikes, drips, an outline, a tint, stickers.
+  Each item bends the rules; the Cursed Candle gives +50% energy but traps hurt twice as much. The families:
+  - **elemental** (fire, lightning, poison and ice, 5 each): hits can burn, shock, poison or freeze, and the pet gets an
+    **animated** effect on its body: flickering flames, blinking sparks, dripping poison or glittering frost;
+  - **defense:** block the first hits of a fight, reflect part of the damage, dodge;
+  - **regeneration:** heal when entering a room, going down the stairs or after each win;
+  - **blood pact:** lose HP on every attack for more attack, or grow stronger the less HP you have;
+  - **strikes:** critical hits and double strikes;
+  - **area:** hit every foe in a horde;
+  - **helpers:** little critters that float around the pet and attack too;
+  - **growth:** +1 attack for every so many monsters beaten after picking the item;
+  - **luck and gold:** better odds of rare items, more gold and shop discounts.
+
+  Items come in a **rarity**: common, **rare** (blue), **epic** (purple) or **legendary** (gold); rarer means bigger
+  bonuses (downsides don't grow). When you find an item you can **take** it (it joins the stack) or **consume** it (instant healing, or a **shield** that soaks damage before HP).
 - **Modes:** in **Auto** the pet decides by itself (consumes when low on HP, otherwise takes). In **Interactive** a small
   window offers Take/Consume (*Pegar*/*Consumir*) and the pet waits; if nobody picks within **30 seconds**, the automatic rule decides
   as soon as the next room is ready.
