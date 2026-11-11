@@ -38,7 +38,7 @@ To start it with Windows: `Win + R` → `shell:startup` → create a shortcut to
 | Drag | Move the pet |
 | Click | Pet it ❤ |
 | Double-click | Stats: HP, ATK, DEF, items, stored energy, best run |
-| Right-click | Menu: Graveyard, Achievements, next run's hero, size, give up the run, quit |
+| Right-click | Menu: Graveyard, Achievements, next run's hero, size, Mode (Auto or Interactive), give up the run, quit |
 
 Command-line options:
 
@@ -59,8 +59,14 @@ elsewhere the pet sits on a dark background.
 - **Floors:** 5 rooms per floor, then the stairs. Every **5th floor** ends in a **boss** (wearing a crown).
 - **Random rooms:** monsters, chests (sometimes a **mimic**), traps, healing fountains, a little shop and
   a dark altar (pacts with a price: lose max HP for ATK, trade gold for healing...).
-- **Items:** 3 slots (hand, shield, head). Each item is **drawn on the pet** and bends the rules; the
-  Cursed Candle gives +50% energy but traps hurt twice as much. Worse items are sold automatically.
+- **Items:** no slots, items **stack** (each one at most once per run) and every one of them shows **on the pet**:
+  objects in hand, on the head or floating, spikes, drips, an outline, a tint. Each item bends the rules; the
+  Cursed Candle gives +50% energy but traps hurt twice as much. Items come in a **rarity**: common, **rare** (blue),
+  **epic** (purple) or **legendary** (gold); rarer means bigger bonuses (downsides don't grow). When you find an item
+  you can **take** it (it joins the stack) or **consume** it (instant healing, or a **shield** that soaks damage before HP).
+- **Modes:** in **Auto** the pet decides by itself (consumes when low on HP, otherwise takes). In **Interactive** a small
+  window offers Take/Consume (*Pegar*/*Consumir*) and the pet waits; if nobody picks within **30 seconds**, the automatic rule decides
+  as soon as the next room is ready.
 - **Evolution within a run:** heroes evolve when they reach certain floors (+4 max HP, +1 ATK).
 - **Permadeath:** dying in combat or to a trap leaves a tombstone in the **Graveyard** (floor, killer, items)
   and a new run starts. Stored energy carries over.
@@ -69,8 +75,8 @@ elsewhere the pet sits on a dark background.
 - **Achievements and unlocks:** reaching floors 5/10/20, beating a boss, beating a mimic... each one adds new
   items to the loot pool and unlocks **new heroes**. The Ghost unlocks after the first boss.
 
-In simulation about 40% of runs get past the first boss and the best reach floors 15–20.
-Balance numbers live at the top of `masmorra.py` (`MON_HP`, `BOSS_HP`, `ROOM_COST`...).
+In simulation about 40% of runs get past the first boss and the best reach floors 15–25.
+Balance numbers live at the top of `masmorra.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...).
 
 ## Making your own heroes
 

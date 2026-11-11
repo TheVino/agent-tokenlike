@@ -4,7 +4,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 import masmorra as M
 
-assert M.item_fx("adaga", "raro")["atk"] == 3 and M.item_fx("adaga", "lendario")["atk"] == 6
+assert M.item_fx("espada_osso", "raro")["atk"] == 5 and M.item_fx("espada_osso", "lendario")["atk"] == 6  # 4.8 e 6.4 arredondados
 assert M.item_fx("foice", "epico")["maxhp"] == -4                     # negativo não escala
 assert M.item_fx("vela", "lendario")["trap"] == 2.0                    # trap não escala
 run = M.new_run("slime", {"hp": 20, "atk": 3}, 1); meta = M.new_meta()
@@ -38,7 +38,7 @@ assert all(M.roll_offer(r, meta_all, random.Random(s), best=True)["rar"] != "com
 r = M.new_run("slime", {"hp": 20}, 7)
 r["pending"] = {"key": "tampa", "rar": "raro", "source": "chest"}
 ev = M.choose_pending(r, meta, "consumir")
-assert r["pending"] is None and r["shield"] == 8 and ev["consumed"] == {"key": "tampa", "rar": "raro", "shield": 8}
+assert r["pending"] is None and r["shield"] == 6 and ev["consumed"] == {"key": "tampa", "rar": "raro", "shield": 6}
 r["pending"] = {"key": "adaga", "rar": "comum", "source": "chest"}
 ev = M.resolve_pending(r, meta)
 assert r["pending"] is None and ev["item"] == {"key": "adaga", "rar": "comum"} and r["items"][-1]["key"] == "adaga"

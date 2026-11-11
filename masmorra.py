@@ -19,11 +19,13 @@ BOSS_EVERY = 5
 
 # balanceamento (vida/ataque = base + por_andar * andar)
 MON_HP = (4, 2.2)
-MON_ATK = (1, 0.6)
-BOSS_HP = (20, 5)
-BOSS_ATK = (2, 0.9)
+MON_ATK = (1.5, 1.2)
+BOSS_HP = (-35, 18)         # base negativa: chefe cresce mais rápido que os itens
+BOSS_ATK = (-9.5, 3.4)
 REGEN_PER_ROOM = 2
 FLOOR_BONUS_HP = 2           # HP máx ganho a cada andar
+CHEST_ITEM_CHANCE = 1.0      # chance de o baú trazer item (senão, ouro)
+SHOP_PRICE = (8, 2)          # preço do item na loja = base + por_andar * andar
 
 ACHIEVEMENTS = {
     "andar5": "Chegar ao andar 5",
@@ -36,12 +38,13 @@ ACHIEVEMENTS = {
 }
 
 RARITIES = ("comum", "raro", "epico", "lendario")
-RAR_MULT = {"comum": 1, "raro": 1.5, "epico": 2, "lendario": 3}
+RAR_MULT = {"comum": 1, "raro": 1.2, "epico": 1.4, "lendario": 1.6}
 RAR_NAMES = {"comum": "Comum", "raro": "Raro", "epico": "Épico", "lendario": "Lendário"}
 RAR_COLOR = {"comum": None, "raro": "#6fd6ff", "epico": "#b48cff", "lendario": "#ffd23f"}
 CHOICE_WINDOW_S = 30         # janela de escolha do modo interativo (a GUI conta o tempo)
 MAX_ENERGY_BONUS = 1.0       # soma de "energy" limitada a +100%
 TRAP_LIMITS = (0.25, 3.0)    # piso e teto do multiplicador de armadilha somado
+MAX_DODGE = 0.5              # teto da esquiva somada
 
 _C = ["comum", "raro", "epico"]
 _R = ["raro", "epico", "lendario"]
@@ -200,7 +203,7 @@ def stats(run: dict) -> dict:
                 st[k] += v
     st["maxhp"] = max(5, st["maxhp"])
     st["atk"] = max(1, st["atk"])
-    st["dodge"] = min(0.5, st["dodge"])
+    st["dodge"] = min(MAX_DODGE, st["dodge"])
     st["energy"] = min(MAX_ENERGY_BONUS, st["energy"])
     st["trap"] = min(TRAP_LIMITS[1], max(TRAP_LIMITS[0], st["trap"]))
     run["hp"] = min(run["hp"], st["maxhp"])
@@ -233,7 +236,6 @@ def unlocked_items(meta: dict) -> list[str]:
 
 
 def _rarity_weights(f: int) -> list[float]:
-    # ponto de partida; a Task 6 ajusta no simulador
     return [max(10, 70 - 4 * f), 25 + f, 4 + 1.5 * f, 0.5 + 0.5 * f]
 
 
@@ -465,7 +467,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
     elif kind == "chest":
         ev.update(name="Baú", sprite="bau")
-        if rng.random() < 0.75:
+        if rng.random() < CHEST_ITEM_CHANCE:
             give()
         else:
             gold = round((5 + 2 * f) * (1 + st["gold"]))
@@ -493,7 +495,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
     elif kind == "shop":
         ev.update(name="Lojinha", sprite="loja")
-        potion, item_price = 6 + f, 12 + 3 * f
+        potion, item_price = 6 + f, SHOP_PRICE[0] + SHOP_PRICE[1] * f
         if run["hp"] < st["maxhp"] * 0.5 and run["gold"] >= potion:
             run["gold"] -= potion
             heal = min(st["maxhp"] - run["hp"], round(st["maxhp"] * 0.5))

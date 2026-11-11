@@ -27,7 +27,7 @@ chefes, desbloqueios e **permadeath**.
 | Arrastar | Move o pet |
 | Clique | Carinho ❤ |
 | Duplo clique | Status: HP, ATK, DEF, itens, energia guardada, recorde |
-| Botão direito | Menu: Cemitério, Conquistas, herói da próxima run, tamanho, desistir da run, sair |
+| Botão direito | Menu: Cemitério, Conquistas, herói da próxima run, tamanho, Modo (Auto ou Interativo), desistir da run, sair |
 
 ## Como a masmorra funciona
 
@@ -36,9 +36,15 @@ chefes, desbloqueios e **permadeath**.
 - **Andares:** 5 salas por andar, depois a escada. A cada **5 andares** a última sala é um **chefe** (com coroa).
 - **Salas aleatórias:** monstro, baú (que às vezes é um **mímico**), armadilha, fonte de cura, lojinha e altar sombrio
   (pactos com preço: perde HP máximo e ganha ATK, troca ouro por cura...).
-- **Itens:** 3 espaços (mão, escudo, cabeça). Cada item aparece **desenhado no pet** e muda as regras,
+- **Itens:** não há limite de espaços, os itens **se empilham** (cada um aparece no máximo uma vez por run) e todos
+  aparecem **no pet**: objetos na mão, na cabeça ou flutuando, espinhos, gotas, contorno, cor. Cada item muda as regras,
   por exemplo a Vela Amaldiçoada dá +50% de energia, mas as armadilhas doem o dobro.
-  Se o item novo for pior que o atual, ele é vendido automaticamente.
+  Cada item vem com uma **raridade**: comum, **raro** (azul), **épico** (roxo) ou **lendário** (dourado); quanto mais raro,
+  mais forte o bônus (os efeitos ruins não aumentam). Ao achar um item dá para **pegar** (entra na pilha) ou **consumir**
+  (cura na hora ou vira **escudo**, que absorve dano antes do HP).
+- **Modos:** no **Auto** o pet decide sozinho (consome se estiver com pouca vida, senão pega). No **Interativo** abre uma
+  janelinha com Pegar/Consumir e o pet espera; se ninguém escolher em **30 segundos**, a regra automática decide
+  assim que a próxima sala estiver pronta.
 - **Evolução dentro da run:** o Slime evolui ao chegar nos andares 3, 8 e 15 (+4 HP máx, +1 ATK).
 - **Permadeath:** se morrer em combate ou numa armadilha, vira lápide no **Cemitério** (andar, assassino, itens)
   e uma nova run começa. A energia guardada passa para a run nova.
@@ -47,8 +53,8 @@ chefes, desbloqueios e **permadeath**.
 - **Conquistas e desbloqueios:** chegar ao andar 5 ou 10, derrotar um chefe, derrotar um mímico... cada conquista libera
   itens novos no sorteio e **heróis novos**. O Fantasma é liberado ao derrotar o primeiro chefe.
 
-Em simulação, cerca de 40% das runs passam do primeiro chefe, e as melhores chegam ao andar 15–20.
-Os números ficam no topo do `masmorra.py` (`MON_HP`, `BOSS_HP`, `ROOM_COST`...) e podem ser ajustados.
+Em simulação, cerca de 40% das runs passam do primeiro chefe, e as melhores chegam ao andar 15–25.
+Os números ficam no topo do `masmorra.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...) e podem ser ajustados.
 
 ## Criando novos heróis
 
