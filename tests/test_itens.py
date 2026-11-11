@@ -81,4 +81,13 @@ assert any(it["rarities"] == ["lendario"] for it in M.ITEMS.values())
 assert any(it["look"].get("anchor") == "flutua" for it in M.ITEMS.values())
 assert all(k in arte.ITEM_ART for k in M.ITEMS)
 assert all(it["look"]["art"] in arte.ITEM_ART for it in M.ITEMS.values() if "art" in it["look"])
+# leva A: 5 itens por elemento, com os looks animados
+fam = lambda campo: [k for k, it in M.ITEMS.items() if it["fx"].get(campo, 0) > 0]
+for campo in ("queimar", "eletrizar", "envenenar", "congelar"):
+    assert len(fam(campo)) >= 5, campo
+assert len(M.ITEMS) >= 40
+assert len({it["name"] for it in M.ITEMS.values()}) == len(M.ITEMS)        # sem nome repetido
+assert all(k in arte.ITEM_ART for k in M.ITEMS)
+looks = {it["look"]["type"] for it in M.ITEMS.values()}
+assert {"chamas", "faiscas", "gotas_veneno", "geada"} <= looks
 print("ok: itens")

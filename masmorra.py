@@ -106,6 +106,51 @@ ITEMS = {
     "coroa_cinzas": {"name": "Coroa de Cinzas",    "rarities": ["lendario"], "fx": {"atk": 2, "maxhp": 5},
                      "consume": {"heal": 15}, "look": {"type": "obj", "anchor": "topo", "art": "coroa_cinzas"},
                      "req": "andar10"},
+    # leva A: elementais (fogo, raio, veneno, gelo); fx = chance por golpe de aplicar o status
+    "brasa":        {"name": "Brasa Viva",         "rarities": _C, "fx": {"queimar": 0.12, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "chamas"}},
+    "pelagem_chamuscada": {"name": "Pelagem Chamuscada", "rarities": _R, "fx": {"queimar": 0.1, "atk": 2},
+                     "consume": {"heal": 8}, "look": {"type": "chamas", "color": "#ff6b3d"}, "req": "andar5"},
+    "tocha":        {"name": "Tocha de Sebo",      "rarities": _C, "fx": {"queimar": 0.1, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "tocha"}},
+    "fogo_fatuo":   {"name": "Fogo-fátuo Rubro",   "rarities": ["raro", "epico"], "fx": {"queimar": 0.15, "atk": 1},
+                     "consume": {"shield": 7}, "look": {"type": "obj", "anchor": "flutua", "art": "fogo_fatuo"}},
+    "coracao_magma": {"name": "Coração de Magma",  "rarities": ["lendario"], "fx": {"queimar": 0.2, "atk": 3},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "frente", "art": "coracao_magma"},
+                     "req": "chefe1"},
+    "pelo_estatico": {"name": "Pelo Estático",     "rarities": _C, "fx": {"eletrizar": 0.08, "atk": 1},
+                     "consume": {"shield": 5}, "look": {"type": "faiscas"}},
+    "limao_eletrico": {"name": "Limão Elétrico",   "rarities": _C, "fx": {"eletrizar": 0.1, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "limao_eletrico"}},
+    "para_raios":   {"name": "Para-raios Torto",   "rarities": _C, "fx": {"eletrizar": 0.08, "def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "topo", "art": "para_raios"}},
+    "nuvem_raivosa": {"name": "Nuvenzinha Raivosa", "rarities": ["raro", "epico"], "fx": {"eletrizar": 0.12, "atk": 1},
+                     "consume": {"shield": 7}, "look": {"type": "faiscas", "color": "#9fd8ff"}, "req": "andar5"},
+    "antena":       {"name": "Antena de Tempestade", "rarities": _R, "fx": {"eletrizar": 0.1, "atk": 1},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "topo", "art": "antena"},
+                     "req": "andar10"},
+    "musgo":        {"name": "Musgo Tóxico",       "rarities": _C, "fx": {"envenenar": 0.12, "maxhp": 3, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "gotas_veneno"}},
+    "dente_sapo":   {"name": "Dente de Sapo-lodo", "rarities": _C, "fx": {"envenenar": 0.12, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dente_sapo"}},
+    "cogumelo":     {"name": "Cogumelo Suspeito",  "rarities": _C, "fx": {"envenenar": 0.1, "lifesteal": 1, "atk": 1},
+                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "topo", "art": "cogumelo"}},
+    "lodo":         {"name": "Lodo Fervente",      "rarities": ["raro", "epico"], "fx": {"envenenar": 0.15, "atk": 1},
+                     "consume": {"heal": 9}, "look": {"type": "gotas_veneno", "color": "#7be36b"}, "req": "andar5"},
+    "incensario":   {"name": "Incensário da Peste", "rarities": ["lendario"], "fx": {"envenenar": 0.15, "area": True},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "incensario"},
+                     "req": "chefe1"},
+    "bafo_gelido":  {"name": "Bafo Gélido",        "rarities": _C, "fx": {"congelar": 0.06, "def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "geada"}},
+    "estilhaco":    {"name": "Estilhaço de Gelo",  "rarities": _C, "fx": {"congelar": 0.06, "atk": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "estilhaco"}},
+    "cachecol":     {"name": "Cachecol de Neve",   "rarities": _C, "fx": {"congelar": 0.06, "def": 1, "maxhp": 3, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "cachecol"}},
+    "casca_geada":  {"name": "Casca de Geada",     "rarities": _R, "fx": {"congelar": 0.08, "def": 1, "atk": 1},
+                     "consume": {"shield": 9}, "look": {"type": "geada", "color": "#c8f4ff"}, "req": "andar10"},
+    "floco_eterno": {"name": "Floco Eterno",       "rarities": ["epico", "lendario"], "fx": {"congelar": 0.12, "maxhp": 6, "atk": 1},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "floco_eterno"},
+                     "req": "chefe1"},
 }
 
 # sprite, nome, mult. de vida, mult. de ataque, andar mínimo, mult. de velocidade
@@ -125,7 +170,7 @@ BOSS_SPD_BONUS = 1.1
 MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.02, 0.03, 1.5
 PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
 MAX_CRIT = 0.6
-MAX_ELEM_CHANCE = 0.6
+MAX_ELEM_CHANCE = 0.3
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
 BOSS_STATUS_CHANCE = 0.15
