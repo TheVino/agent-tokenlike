@@ -1151,6 +1151,11 @@ class PetApp:
             self.floater(str(h["dmg"]), STATUS_COR.get(h["status"], HURT), x=x, life=8)
         elif h["dodge"]:
             self.floater("esquivou!", CYAN, life=10)
+        elif h.get("bloqueado"):
+            self.foe_attack(who)
+            self.floater("bloqueou!", CYAN, life=10)
+        elif h.get("espinhos"):                           # espinhos: o dano volta para o atacante, sem bote
+            self.floater(f"-{h['dmg']}", GOOD, x=x, life=10)
         elif who == "pet":
             self.lunge = [5, 10, 5, 0]
             self.floater(txt, GOLD if h["crit"] else TEXT, x=x, life=10)

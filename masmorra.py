@@ -171,6 +171,7 @@ MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.02, 0.03, 1.5
 PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
 MAX_CRIT = 0.6
 MAX_ELEM_CHANCE = 0.3
+MAX_BLOQUEIO, MAX_ESPINHOS = 3, 0.5
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
 BOSS_STATUS_CHANCE = 0.15
@@ -237,6 +238,29 @@ def fx_text(fx: dict) -> str:
         parts.append(f"+{fx['lifesteal']} HP por vitória")
     if fx.get("trap"):
         parts.append("armadilhas x" + (f"{fx['trap']:g}"))
+    if fx.get("spd"):
+        parts.append(f"{fx['spd']:+g} velocidade")
+    if fx.get("crit"):
+        parts.append(f"{fx['crit'] * 100:+.0f}% crítico")
+    if fx.get("critdmg"):
+        parts.append(f"{fx['critdmg']:+g}x dano crítico")
+    if fx.get("area"):
+        parts.append("ataque em área")
+    for el, nome in STATUS_NOME.items():
+        if fx.get(el):
+            parts.append(f"{round(fx[el] * 100)}% {nome}")
+    if fx.get("bloqueio"):
+        parts.append(f"bloqueia {fx['bloqueio']} golpe" + ("s" if fx["bloqueio"] != 1 else ""))
+    if fx.get("espinhos"):
+        parts.append(f"devolve {round(fx['espinhos'] * 100)}% do dano")
+    if fx.get("cura_sala"):
+        parts.append(f"+{fx['cura_sala']} HP por sala")
+    if fx.get("cura_andar"):
+        parts.append(f"+{fx['cura_andar']} HP por andar")
+    if fx.get("custo_ataque"):
+        parts.append(f"-{fx['custo_ataque']} HP por ataque")
+    if fx.get("furia"):
+        parts.append(f"fúria +{fx['furia']:g} ATK/10% HP perdido")
     return ", ".join(parts)
 
 
@@ -262,11 +286,11 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
 
 
 def _scale(fx: dict, rar: str) -> dict:
-    """Multiplica os valores positivos pela raridade; negativos e trap ficam iguais."""
+    """Multiplica os valores positivos pela raridade; negativos, trap, area e custo_ataque ficam iguais."""
     m = RAR_MULT[rar]
     out = {}
     for k, v in fx.items():
-        if k in ("trap", "area") or v <= 0:
+        if k in ("trap", "area", "custo_ataque") or v <= 0:
             out[k] = v
         elif isinstance(v, int):
             out[k] = math.floor(v * m + 0.5)      # arredonda .5 para cima
@@ -312,7 +336,8 @@ def stats(run: dict) -> dict:
     st = {"maxhp": b["maxhp"], "atk": b["atk"], "def": b["def"], "dodge": b["dodge"],
           "gold": 0.0, "trap": 1.0, "energy": 0.0, "lifesteal": 0,
           "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
-          "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0}
+          "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
+          "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0}
     for it in run["items"]:
         for k, v in item_fx(it["key"], it["rar"]).items():
             if k == "trap":
@@ -330,6 +355,8 @@ def stats(run: dict) -> dict:
     for el in ELEMENTOS.values():
         st[el] = min(MAX_ELEM_CHANCE, st[el])
     st["trap"] = min(TRAP_LIMITS[1], max(TRAP_LIMITS[0], st["trap"]))
+    st["bloqueio"] = min(MAX_BLOQUEIO, int(st["bloqueio"]))
+    st["espinhos"] = min(MAX_ESPINHOS, st["espinhos"])
     run["hp"] = min(run["hp"], st["maxhp"])
     return st
 
@@ -471,9 +498,12 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     passos = []
     pst: dict = {}                                       # status do pet (só durante a luta)
 
-    def passo(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False):
+    cargas = st["bloqueio"]                              # golpes inimigos que o pet anula nesta luta
+
+    def passo(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False,
+              bloqueado=False, espinhos=False):
         passos.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status,
-                       "skip": skip, "dot": dot, "dodge": dodge})
+                       "skip": skip, "dot": dot, "dodge": dodge, "bloqueado": bloqueado, "espinhos": espinhos})
 
     def vivos():
         return [i for i, x in enumerate(foes) if x["hp"] > 0]
@@ -520,10 +550,14 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
             if who == "pet":
                 vs = vivos()
                 alvos = vs if st["area"] else [min(vs, key=lambda i: foes[i]["hp"])]
+                # fúria: +furia de ATK a cada 10% de HP que falta (conta inteira, sem erro de float)
+                atk = st["atk"] + st["furia"] * ((st["maxhp"] - run["hp"]) * 10 // st["maxhp"])
+                if st["custo_ataque"]:                     # sangue: o ataque custa HP, mas nunca abaixo de 1
+                    run["hp"] = max(1, run["hp"] - st["custo_ataque"])
                 for i in alvos:
                     x = foes[i]
                     e_crit, mult = critico(st["crit"], st["critdmg"], st["spd"], x["spd"])
-                    d = round(max(1, st["atk"] + rng.randint(-1, 1)) * mult)
+                    d = round(max(1, atk + rng.randint(-1, 1)) * mult)
                     x["hp"] -= d
                     aplicado = None
                     if x["hp"] > 0:
@@ -539,8 +573,13 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 if rng.random() < st["dodge"]:
                     passo(who, "pet", dodge=True)
                     continue
+                if cargas:                                 # bloqueio: depois da esquiva, gasta uma carga
+                    cargas -= 1
+                    passo(who, "pet", bloqueado=True)
+                    continue
                 e_crit, mult = critico(x["crit"], x["critdmg"], x["spd"], st["spd"])
-                d = apply_damage(run, round(max(1, x["atk"] - st["def"] + rng.randint(-1, 1)) * mult))
+                bruto = round(max(1, x["atk"] - st["def"] + rng.randint(-1, 1)) * mult)
+                d = apply_damage(run, bruto)
                 aplicado = None
                 if x["boss"] and x.get("element") and rng.random() < BOSS_STATUS_CHANCE:
                     aplicado = STATUS_NOME[ELEMENTOS[x["element"]]]
@@ -549,6 +588,12 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 if run["hp"] <= 0:
                     run["hp"] = 0
                     return False, passos, x["name"], False
+                volta = round(bruto * st["espinhos"])      # espinhos: fração do dano antes do escudo
+                if volta:
+                    x["hp"] -= volta
+                    passo("pet", who, volta, espinhos=True)
+                    if not vivos():
+                        return True, passos, "", False
     return True, passos, "", True                        # limite de segurança: empate, sem prêmio
 
 
@@ -621,11 +666,12 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             run["hp"] += 4
             ev["evolved"] = True
         _check_achievements(run, meta, ev)
-        stats(run)
+        st = stats(run)
+        run["hp"] = min(st["maxhp"], run["hp"] + st["cura_andar"])
         return ev
 
     run["room"] += 1
-    run["hp"] = min(st["maxhp"], run["hp"] + REGEN_PER_ROOM)   # regenera um pouquinho a cada sala
+    run["hp"] = min(st["maxhp"], run["hp"] + REGEN_PER_ROOM + st["cura_sala"])   # regenera a cada sala (+ cura_sala)
 
     if run["room"] == ROOMS_PER_FLOOR and f % BOSS_EVERY == 0:
         kind = "boss"
@@ -778,7 +824,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 3
+REGRAS_REV = 4
 
 
 def _balance_version() -> str:
@@ -789,7 +835,7 @@ def _balance_version() -> str:
             BOSS_HP, BOSS_ATK, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
             [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
-            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
+            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOQUEIO, MAX_ESPINHOS, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
             QUEIMA_TURNOS, ELETRO_CHANCE, ELETRO_TURNOS, VENENO_TURNOS, VENENO_MAX_PILHAS, GELO_CHANCE, GELO_TURNOS,
             MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]

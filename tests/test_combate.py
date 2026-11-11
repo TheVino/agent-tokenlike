@@ -52,7 +52,7 @@ def pet(spd=10, atk=3, crit=0.0, **fx):
     return r
 
 
-CHAVES = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge"}
+CHAVES = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge", "bloqueado", "espinhos"}
 # ordem: inimigo mais rápido age antes; empate -> pet antes
 r = pet(spd=5); won, steps, _, _ = M.combate(r, M.stats(r), [foe(spd=9)], random.Random(1), 1)
 assert steps[0]["who"] == 0 and all(set(x) == CHAVES for x in steps)
@@ -139,7 +139,7 @@ for _ in range(200):
         assert all(set(x) == CHAVES for x in ev["hits"])
     else:
         assert "foes" not in ev
-assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 3
+assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 4
 # empate via enter_room (chefe): passa a sala, mas sem ouro, kills, bônus de chefe nem item
 rounds = M.MAX_ROUNDS; M.MAX_ROUNDS = 1
 meta = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 1}, 1)
@@ -180,5 +180,63 @@ for _ in range(400):
     if ev.get("kind") in ouro and run["floor"] == 6:
         ouro[ev["kind"]].append(ev["gold"])
 assert seen and ouro["horde"] and ouro["monster"] and min(ouro["horde"]) > max(ouro["monster"])
+# --- Task 4: bloqueio, espinhos, curas, custo de ataque e fúria ---
+# bloqueio 2: exatamente os 2 primeiros golpes que acertariam viram dano 0
+r = pet(atk=1, bloqueio=2); r["shield"] = 0
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=5, spd=15)], random.Random(1), 1)
+golpes = [x for x in steps if x["who"] == 0 and not x["dodge"]]
+assert [x["bloqueado"] for x in golpes[:3]] == [True, True, False]
+assert golpes[0]["dmg"] == golpes[1]["dmg"] == 0 and golpes[2]["dmg"] > 0
+assert sum(x["bloqueado"] for x in steps) == 2
+assert M.stats(pet(bloqueio=5))["bloqueio"] == 3 and M.stats(pet())["bloqueio"] == 0
+# bloqueio com esquiva: a esquiva vem antes e não gasta carga
+r = pet(atk=1, bloqueio=1, dodge=0.5)
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=5, spd=15)], random.Random(3), 1)
+ataques = [x for x in steps if x["who"] == 0]
+assert any(x["dodge"] for x in ataques) and sum(x["bloqueado"] for x in ataques) == 1
+assert not any(x["dodge"] and x["bloqueado"] for x in ataques)
+# espinhos 0,5: devolve metade do dano (antes do escudo) e pode matar o último inimigo
+assert M.stats(pet(espinhos=0.9))["espinhos"] == 0.5
+r = pet(atk=1, espinhos=0.5)
+won, steps, _, empate = M.combate(r, M.stats(r), [foe(hp=3, atk=10, spd=15)], random.Random(4), 1)
+assert won and not empate and steps[-1]["espinhos"] and steps[-1]["who"] == "pet" and steps[-1]["target"] == 0
+assert steps[-1]["dmg"] == round(steps[-2]["dmg"] * 0.5) and not any(x["espinhos"] for x in steps[:-1])
+r = pet(atk=1, espinhos=0.5); r["shield"] = 1000
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=3, atk=10, spd=15)], random.Random(4), 1)
+assert won and steps[-2]["dmg"] == 0 and steps[-1]["espinhos"] and steps[-1]["dmg"] >= 4
+r = pet(atk=50); won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=60, atk=3)], random.Random(4), 1)
+assert not any(x["espinhos"] or x["bloqueado"] for x in steps)
+# custo_ataque: tira HP a cada ataque do pet, mas nunca abaixo de 1 (nem mata)
+assert M._scale({"custo_ataque": 2, "atk": 2}, "lendario")["custo_ataque"] == 2   # custo não escala
+r = pet(atk=1, custo_ataque=50); r["hp"] = 1; r["shield"] = 10**6
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=20, atk=1, spd=1)], random.Random(5), 1)
+assert won and r["hp"] == 1
+r = pet(atk=50, custo_ataque=2); r["shield"] = 10**6
+won, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=40, atk=1, spd=1)], random.Random(5), 1)
+assert won and r["hp"] == 30 - 2 * sum(1 for x in steps if x["who"] == "pet")
+# fúria: mais dano com o pet a 20% do HP do que a 100%
+def primeiro_golpe(hp):
+    r = pet(atk=3, furia=1); r["hp"] = hp; r["shield"] = 10**6
+    _, steps, _, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=1, spd=1)], random.Random(6), 1)
+    return next(x["dmg"] for x in steps if x["who"] == "pet")
+assert primeiro_golpe(30) <= 4 and primeiro_golpe(6) >= 3 + 8 - 1
+# cura_sala ao entrar numa sala (junto com REGEN_PER_ROOM) e cura_andar na escada, até o HP máximo
+pesos = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("shop", 1)]                 # loja sem ouro: sala sem efeito no HP
+r = pet(cura_sala=5); r["hp"], r["energy"] = 10, 1e9
+ev = M.enter_room(r, M.new_meta(), random.Random(7)); assert ev["kind"] == "shop" and r["hp"] == 10 + M.REGEN_PER_ROOM + 5
+r = pet(cura_sala=50); r["hp"], r["energy"] = 10, 1e9
+M.enter_room(r, M.new_meta(), random.Random(7)); assert r["hp"] == M.stats(r)["maxhp"]
+M.ROOM_WEIGHTS = pesos
+r = pet(cura_andar=5); r["hp"], r["energy"], r["room"] = 10, 1e9, M.ROOMS_PER_FLOOR
+ev = M.enter_room(r, M.new_meta(), random.Random(7)); assert ev["kind"] == "stairs" and r["hp"] == 10 + M.FLOOR_BONUS_HP + 5
+r = pet(cura_andar=99); r["hp"], r["energy"], r["room"] = 10, 1e9, M.ROOMS_PER_FLOOR
+M.enter_room(r, M.new_meta(), random.Random(7)); assert r["hp"] == M.stats(r)["maxhp"]
+# fx_text: todo item tem texto e os campos novos aparecem
 M.ITEMS.pop("_t", None)
+assert all(M.fx_text(it["fx"]) for it in M.ITEMS.values())
+assert M.fx_text({"bloqueio": 2}) == "bloqueia 2 golpes" and M.fx_text({"espinhos": 0.3}) == "devolve 30% do dano"
+assert M.fx_text({"cura_sala": 3, "cura_andar": 5}) == "+3 HP por sala, +5 HP por andar"
+assert M.fx_text({"custo_ataque": 2, "furia": 1}) == "-2 HP por ataque, fúria +1 ATK/10% HP perdido"
+assert M.fx_text({"queimar": 0.2, "area": True}) == "ataque em área, 20% queimadura"
+assert M.fx_text({"congelar": 0.29}) == "29% congelamento"
 print("ok: combate")
