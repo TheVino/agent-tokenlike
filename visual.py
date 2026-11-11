@@ -144,21 +144,23 @@ def chamas(pm, nivel=1, fase=0, cor="#ff9f43", ponta="#ffd23f"):
 
 
 def faiscas(pm, nivel=1, fase=0, cor="#fff27a"):
-    """Faíscas acima do corpo; quais colunas acendem gira com a fase."""
+    """Faíscas no contorno (pixels logo fora da silhueta); a fase muda o subconjunto aceso."""
+    fora = sorted({q for (x, y) in pm for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q not in pm},
+                  key=lambda q: (q[1], q[0]))
     out = dict(pm)
-    for i, (x, ymin, _) in enumerate(_cols(pm, 2, 0)):
-        if (i + fase) % 3 != 2:
-            for k in range(nivel):
-                out[(x, ymin - 1 - 2 * k)] = cor
+    for j, q in enumerate(fora):
+        if (j + fase) % 4 < nivel:
+            out[q] = cor
     return out
 
 
 def gotas_veneno(pm, nivel=1, fase=0, cor="#4fbf5a"):
-    """Gotas escorrendo por baixo; o comprimento gira com a fase."""
+    """Gotas que caem: comprimento fixo, começam 1 px mais abaixo a cada fase (e voltam ao topo)."""
     out = dict(pm)
     for i, (x, _, ymax) in enumerate(_cols(pm, 2, 0)):
-        for k in range(1, 2 + (i + fase) % 3 + nivel - 1):
-            out[(x, ymax + k)] = cor
+        off = (i + fase) % 3
+        for k in range(1 + nivel):
+            out[(x, ymax + 1 + off + k)] = cor
     return out
 
 
@@ -187,24 +189,27 @@ def compose(base, looks, arts, fase=0):
     feito = set()
     for l, glow in looks:
         t = l["type"]
+        if t in ELEMENTAIS:
+            continue   # animados entram depois da caixa dos objetos, para ela não mudar com a fase
         if t in ("espinhos", "gotas"):
             # aplica uma vez só, no nível = nº de looks do tipo, com a cor do PRIMEIRO look do tipo
             if t not in feito:
                 feito.add(t)
                 out = (espinhos if t == "espinhos" else gotas)(out, l["color"], tipos.count(t))
-        elif t in ELEMENTAIS:
-            # como espinhos: uma vez só, nível = nº de looks do tipo, cor do primeiro (padrão se não houver)
-            if t not in feito:
-                feito.add(t)
-                kw = {"cor": l["color"]} if "color" in l else {}
-                out = ELEMENTAIS[t](out, tipos.count(t), fase, **kw)
         elif t == "contorno":
             out = contorno(out, l["color"])
         elif t == "tingir":
             out = tingir(out, l["color"], l["amount"])
         elif t == "adesivo":
             out = adesivo(out, arts[l["art"]], l["at"], glow)
-    box = bbox(out)   # os objetos usam a caixa do corpo já mutado
+    box = bbox(out)   # os objetos usam a caixa do corpo já mutado (sem os looks animados: igual em todas as fases)
+    for l, _ in looks:
+        t = l["type"]
+        if t in ELEMENTAIS and t not in feito:
+            # como espinhos: uma vez só, nível = nº de looks do tipo, cor do primeiro (padrão se não houver)
+            feito.add(t)
+            kw = {"cor": l["color"]} if "color" in l else {}
+            out = ELEMENTAIS[t](out, tipos.count(t), fase, **kw)
     por_ponto = {}
     for l, glow in looks:
         if l["type"] == "obj":

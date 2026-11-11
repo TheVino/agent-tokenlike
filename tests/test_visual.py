@@ -94,4 +94,16 @@ lk = [({"type": "chamas"}, None)]
 assert V.tem_animacao(lk) and not V.tem_animacao([({"type": "obj", "anchor": "topo", "art": "chifres"}, None)])
 c0, c1 = V.crop(V.compose(slime, lk, {}, fase=0), V.LOOK_BOX), V.crop(V.compose(slime, lk, {}, fase=1), V.LOOK_BOX)
 assert c0 != c1 and V.compose(slime, [], {}, fase=2) == slime
+# objetos não dependem da fase (caixa de âncora fixa)
+_arts = {k: V.grid_to_map(g, arte.PAL) for k, g in arte.ITEM_ART.items()}
+_lk = [({"type": "chamas"}, None), ({"type": "gotas_veneno"}, None),
+       ({"type": "obj", "anchor": "topo", "art": "chapeu"}, None), ({"type": "obj", "anchor": "base", "art": "adaga"}, None)]
+_obj = [l for l in _lk if l[0]["type"] == "obj"]
+_sem = V.compose(slime, _obj, _arts)
+for f in range(V.FASES):
+    _c = V.compose(slime, _lk, _arts, fase=f)
+    assert all(_c.get(p) == c for p, c in _sem.items() if p not in slime), f   # objetos nos mesmos pixels e cores
+# gotas caem 1 px por fase: o quadro 1 é o 0 deslocado (exceto o retorno ao topo)
+_g = [{p for p in V.gotas_veneno(slime, 1, f) if p not in slime} for f in range(3)]
+assert _g[0] != _g[1] != _g[2] and any((x, y + 1) in _g[1] for x, y in _g[0])
 print("ok: visual")
