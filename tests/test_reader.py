@@ -49,3 +49,22 @@ chars = tp.all_characters(); print({k:[s["title"] for s in c.stages] for k,c in 
 assert chars["slime"].stage_floors == [1, 3, 8, 15] and chars["fantasma"].unlock == "chefe1"
 import arte; arte.validate()
 print("reader tests ok")
+
+# horário das respostas: histórico de uso por baldes de 5 min (só o timestamp, nada de conteúdo)
+import time as _t
+from datetime import datetime as _dt, timezone as _tz
+def iso(ts): return _dt.fromtimestamp(ts, _tz.utc).strftime("%Y-%m-%dT%H:%M:%S.123Z")
+def asst_ts(mid, rid, i, ts):
+    d = json.loads(asst(mid, rid, i, 0, 0, 0)); d["timestamp"] = iso(ts); return json.dumps(d)
+tmp2 = Path(tempfile.mkdtemp()); (tmp2/"p").mkdir(); g = tmp2/"p"/"b.jsonl"
+now = _t.time()
+g.write_text("\n".join([asst_ts("t1","r",100,now), asst_ts("t1","r",100,now),        # duplicada
+                        asst_ts("t2","r",50,now - 9*86400),                          # velha: podada
+                        asst("t3","r",7,0,0,0)]) + "\n")                             # sem horário
+st = {}; rd = tp.TokenReader(st, dirs=[tmp2])
+assert rd.poll() == (157.0, 157)                         # energia conta tudo, sem duplicar
+assert sum(st["usage_hist"].values()) == 100, st["usage_hist"]   # sem horário fica fora; >8 dias podado
+assert tp.parse_ts("2026-01-01T00:00:00Z") == _dt(2026,1,1,tzinfo=_tz.utc).timestamp()
+assert tp.parse_ts(None) is None and tp.parse_ts("lixo") is None
+assert abs(tp.usage_between(st, now - 600, now + 1) - 100) < 1e-9 and tp.usage_between(st, now - 9e6, now - 3600) == 0
+print("reader timestamp ok")

@@ -32,7 +32,7 @@ import sys
 import time
 import traceback
 from collections import deque
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -188,6 +188,9 @@ class TokenReader:
                 if got:
                     xp += got[0]
                     raw += got[1]
+                    if got[2] is not None:      # sem horário: conta como energia, mas não nas barras
+                        add_usage(self.state, got[2], got[0])
+        prune_usage(self.state, time.time())
         return xp, raw
 
     def parse_line(self, line: bytes):
@@ -222,10 +225,82 @@ class TokenReader:
         raw = int(inp + out + cc + cr)
         if raw <= 0:
             return None
-        return inp + out + cc + cr * CACHE_READ_WEIGHT, raw
+        return inp + out + cc + cr * CACHE_READ_WEIGHT, raw, parse_ts(obj.get("timestamp"))
 
     def export(self) -> None:
         self.state["seen"] = list(self.seen)
+
+
+def parse_ts(v) -> float | None:
+    """Horário ISO (UTC) da resposta -> epoch. Só o horário, nada de conteúdo."""
+    if not isinstance(v, str):
+        return None
+    try:
+        t = datetime.fromisoformat(v.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if t.tzinfo is None:
+        t = t.replace(tzinfo=timezone.utc)
+    return t.timestamp()
+
+
+# ------------------------------------------------- histórico e estimativa dos limites
+BUCKET_S = 300                      # baldes de 5 min com o XP ponderado
+HIST_KEEP_S = 8 * 86400             # guarda só os últimos 8 dias
+WINDOWS = {"sessao": 5 * 3600, "semana": 7 * 86400}
+OFFICIAL_FRESH_S = 600              # leitura oficial vale por ~10 min sem "~"
+MIN_CALIB_XP = 1000                 # com quase nada de tokens locais, o fator não presta
+
+
+def add_usage(state: dict, ts: float, xp: float) -> None:
+    hist = state.setdefault("usage_hist", {})
+    k = str(int(ts // BUCKET_S * BUCKET_S))
+    hist[k] = hist.get(k, 0) + xp
+
+
+def prune_usage(state: dict, now: float) -> None:
+    hist = state.get("usage_hist") or {}
+    for k in [k for k in hist if int(k) < now - HIST_KEEP_S]:
+        del hist[k]
+
+
+def usage_between(state: dict, start: float, end: float) -> float:
+    return sum(v for k, v in (state.get("usage_hist") or {}).items() if int(k) + BUCKET_S > start and int(k) < end)
+
+
+def calibrate(state: dict, limits: dict | None, now: float) -> None:
+    """Leitura oficial nova -> fator = % oficial / tokens locais na janela, por janela."""
+    upd = (limits or {}).get("updated")
+    cal = state.setdefault("calib", {})
+    if not upd or upd == cal.get("updated"):
+        return
+    cal["updated"] = upd
+    for key, win in WINDOWS.items():
+        pct, reset = limits.get(key, (None, None))
+        if pct is None or not reset:
+            continue
+        tok = usage_between(state, reset - win, now)
+        if tok >= MIN_CALIB_XP:
+            cal[key] = {"f": pct / tok, "reset": reset}
+
+
+def limit_view(key: str, limits: dict | None, state: dict, now: float):
+    """(pct|None, reset|None, estimado, tokens|None) para a linha da janela `key`."""
+    win = WINDOWS[key]
+    pct, reset = (limits or {}).get(key, (None, None))
+    upd = (limits or {}).get("updated") or 0
+    if pct is not None and now - upd < OFFICIAL_FRESH_S:
+        return pct, reset, False, None
+    cal = (state.get("calib") or {}).get(key)
+    if cal:
+        reset = cal["reset"]
+    if reset and reset <= now:              # o reset passou: avança a janela em múltiplos dela
+        reset += ((now - reset) // win + 1) * win
+    start = reset - win if reset else now - win
+    tok = usage_between(state, start, now)
+    if cal:
+        return tok * cal["f"], reset, True, None
+    return None, reset, False, tok
 
 
 # ------------------------------------------------------------- progresso
@@ -279,6 +354,8 @@ def read_limits(path: Path, now: float) -> dict | None:
         if not isinstance(pct, (int, float)) or (isinstance(reset, (int, float)) and reset <= now):
             pct = None
         out[name] = (pct, reset if isinstance(reset, (int, float)) else None)
+    if out and isinstance(data.get("updated"), (int, float)):
+        out["updated"] = data["updated"]
     return out or None
 
 
@@ -674,8 +751,8 @@ class PetApp:
         self.top = 52 - by0 * px            # espaço para o que sai acima do quadro
         self.base_y = self.top + self.T
         self.below = (by1 - 16) * px        # o que pode descer abaixo da base (gotas)
-        # barras de sessão/semana só aparecem se o statusline.py estiver gravando os limites
-        self.limit_h = 30 if self.limits else 0
+        # barras de sessão/semana: oficial (statusline), estimada (~) ou só tokens
+        self.limit_h = 30
         self.H = self.base_y + self.below + 64 + self.limit_h
 
         self.art = {}
@@ -705,6 +782,7 @@ class PetApp:
         self.foe_look = []
 
         py = self.base_y + self.below + 6
+        self.panel_y = py
         c.create_rectangle(6, py, self.W - 6, py + 52 + self.limit_h, fill=PANEL_BG,
                            outline=PANEL_EDGE, width=2)
         self.title_txt = c.create_text(14, py + 11, anchor="w", fill=TEXT, font=self.font)
@@ -717,17 +795,23 @@ class PetApp:
         self.bar = c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x0, self.bar_y + 6,
                                       fill=ENERGY, outline="")
         self.limit_rows = {}
-        if self.limits:
-            lx0, lx1 = 92, self.W - 72          # rótulo à esquerda, horário do reset à direita
-            for i, (key, label) in enumerate((("sessao", "Sessão"), ("semana", "Semana"))):
-                y = py + 52 + 4 + i * 13
-                c.create_rectangle(lx0, y - 3, lx1, y + 3, fill=BAR_BG, outline="")
-                self.limit_rows[key] = (
-                    label,
-                    c.create_text(14, y, anchor="w", fill=MUTED, font=self.font_small),
-                    c.create_rectangle(lx0, y - 3, lx0, y + 3, fill=GOOD, outline=""),
-                    c.create_text(self.W - 14, y, anchor="e", fill=MUTED, font=self.font_small),
-                    lx0, lx1, y)
+        # colunas fixas medidas com o texto mais largo: rótulo | barra | reset
+        y = py + 56
+        probe = c.create_text(14, y, anchor="w", text="Semana ~100%", font=self.font_small)
+        lx0 = c.bbox(probe)[2] + 8
+        c.itemconfigure(probe, anchor="e", text="reseta sáb 00:00")
+        c.coords(probe, self.W - 14, y)
+        lx1 = max(lx0 + 4, c.bbox(probe)[0] - 8)
+        c.delete(probe)
+        for i, (key, label) in enumerate((("sessao", "Sessão"), ("semana", "Semana"))):
+            y = py + 52 + 4 + i * 13
+            back = c.create_rectangle(lx0, y - 3, lx1, y + 3, fill=BAR_BG, outline="")
+            self.limit_rows[key] = (
+                label,
+                c.create_text(14, y, anchor="w", fill=MUTED, font=self.font_small),
+                c.create_rectangle(lx0, y - 3, lx0, y + 3, fill=GOOD, outline=""),
+                c.create_text(self.W - 14, y, anchor="e", fill=MUTED, font=self.font_small),
+                lx0, lx1, y, back)
         self.refresh_look()
         self.update_panel()
 
@@ -813,30 +897,26 @@ class PetApp:
 
     def update_limits(self):
         now = time.time()
-        for key, (label, txt, fill, rtxt, lx0, lx1, y) in self.limit_rows.items():
-            pct, reset = (self.limits or {}).get(key, (None, None))
-            if pct is None:
-                self.canvas.itemconfigure(txt, text=f"{label}  —")
+        for key, (label, txt, fill, rtxt, lx0, lx1, y, back) in self.limit_rows.items():
+            pct, reset, est, tok = limit_view(key, self.limits, self.state, now)
+            self.canvas.itemconfigure(rtxt, text=f"reseta {fmt_reset(reset, now)}" if reset else "")
+            if pct is None:                 # sem fator: só os tokens da janela, sem barra de %
+                self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
                 self.canvas.coords(fill, lx0, y - 3, lx0, y + 3)
-                self.canvas.itemconfigure(rtxt, text="")
+                self.canvas.itemconfigure(back, state="hidden")
                 continue
-            self.canvas.itemconfigure(txt, text=f"{label}  {round(pct)}%")
+            self.canvas.itemconfigure(back, state="normal")
+            self.canvas.itemconfigure(txt, text=f"{label}  {'~' if est else ''}{round(pct)}%")
             frac = max(0.0, min(1.0, pct / 100))
             self.canvas.coords(fill, lx0, y - 3, lx0 + (lx1 - lx0) * frac, y + 3)
             self.canvas.itemconfigure(fill, fill=limit_color(pct))
-            self.canvas.itemconfigure(rtxt, text=f"reseta {fmt_reset(reset, now)}" if reset else "")
 
     def refresh_limits(self):
-        """Relê limites.json; se as barras aparecem ou somem, refaz a janela."""
-        new = read_limits(DATA_DIR / "limites.json", time.time())
-        had = bool(self.limits)
-        self.limits = new
-        if bool(new) != had:
-            self.build()
-            if self.run["dead"]:
-                self.show_tomb()
-        else:
-            self.update_limits()
+        """Relê limites.json (opcional), calibra a estimativa com leitura oficial nova e redesenha."""
+        now = time.time()
+        self.limits = read_limits(DATA_DIR / "limites.json", now)
+        calibrate(self.state, self.limits, now)
+        self.update_limits()
 
     def build_menu(self):
         self.menu = tk.Menu(self.root, tearoff=0)
@@ -973,6 +1053,7 @@ class PetApp:
     def fake_tokens(self):
         if self.rng.random() < 0.6:
             raw = self.rng.randint(100_000, 1_500_000)
+            add_usage(self.state, time.time(), raw * 0.35)
             return raw * 0.35, raw
         return 0.0, 0
 
@@ -1030,7 +1111,7 @@ class PetApp:
             at(0, lambda: self.show_foes(foes))
         else:
             at(0, lambda: self.show_foe(ev.get("sprite"), ev.get("boss", False)))
-        at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22))
+        at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22, top=True))
         if ev.get("cura_item"):                        # cura_sala / cura_andar dos itens
             at(250, lambda: self.floater(f"+{ev['cura_item']} ♥", GOOD))
         t = 500
@@ -1296,17 +1377,36 @@ class PetApp:
         return items + chars
 
     # ------------------------------------------------------------- animação
-    def floater(self, text, color=TEXT, life=16, x=None):
+    def floater(self, text, color=TEXT, life=16, x=None, top=False):
+        """Texto que sobe. Escolhe um lugar livre (sem cobrir floaters vivos nem o painel);
+        com top=True (nome do monstro) fica sempre por cima."""
         c = self.canvas
-        x = (self.pcx if x is None else x) + self.rng.randint(-10, 10)
-        t = c.create_text(x, self.base_y - self.T + 10, text=text, fill=color, font=self.font_small)
-        x0, y0, x1, y1 = c.bbox(t)
-        shift = max(0, 4 - (x0 - 5)) - max(0, (x1 + 5) - (self.W - 4))
-        if shift:
-            c.move(t, shift, 0)
-            x0, x1 = x0 + shift, x1 + shift
-        r = c.create_rectangle(x0 - 5, y0 - 2, x1 + 5, y1 + 2, fill=PANEL_BG, outline=PANEL_EDGE)
+        bx = (self.pcx if x is None else x) + self.rng.randint(-10, 10)
+        by = self.base_y - self.T + 10
+        tags = ("nome",) if top else ()
+        t = c.create_text(bx, by, text=text, fill=color, font=self.font_small, tags=tags)
+        vivos = [c.bbox(f[0][0]) for f in self.floaters]
+        opcoes = []
+        for dy in (0, -16, 16, -32, 32, -48):
+            for dx in (0, -34, 34):
+                c.coords(t, bx + dx, by + dy)
+                x0, y0, x1, y1 = c.bbox(t)
+                shift = max(0, 4 - (x0 - 5)) - max(0, (x1 + 5) - (self.W - 4))
+                box = (x0 + shift - 5, y0 - 2, x1 + shift + 5, y1 + 2)
+                if box[1] >= 0 and box[3] < self.panel_y:      # nunca por cima do painel
+                    opcoes.append((bx + dx + shift, by + dy, box))
+        livres = [o for o in opcoes if not any(
+            v and o[2][0] < v[2] and v[0] < o[2][2] and o[2][1] < v[3] and v[1] < o[2][3] for v in vivos)]
+        if livres or opcoes:
+            fx, fy, box = (livres or opcoes)[0]
+        else:
+            fx, fy = bx, by
+            x0, y0, x1, y1 = c.bbox(t)
+            box = (x0 - 5, y0 - 2, x1 + 5, y1 + 2)
+        c.coords(t, fx, fy)
+        r = c.create_rectangle(*box, fill=PANEL_BG, outline=PANEL_EDGE, tags=tags)
         c.tag_raise(t)
+        c.tag_raise("nome")
         self.floaters.append([(r, t), life])
 
     def burst(self, x, y, colors=(GOLD, "#ffffff", GOOD)):

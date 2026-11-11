@@ -18,10 +18,31 @@ class Tk(Noop):
     def winfo_screenwidth(self): return 1920
     def winfo_screenheight(self): return 1080
 class Canvas(Noop):
+    """Guarda posição e texto de cada item para bbox realista (6 px por letra, 10 de altura)."""
     n=0
-    def _new(self,*a,**k): Canvas.n+=1; return Canvas.n
-    create_image=create_rectangle=create_text=_new
-    def bbox(self,i): return (100,0,140,10)
+    def __init__(self,*a,**k): self.it={}
+    def _new(self,kind,a,k): Canvas.n+=1; self.it[Canvas.n]=[kind,list(a[:4]),dict(k)]; return Canvas.n
+    def create_image(self,*a,**k): return self._new("img",a,k)
+    def create_rectangle(self,*a,**k): return self._new("rect",a,k)
+    def create_text(self,*a,**k): return self._new("text",a,k)
+    def coords(self,i,*a):
+        if i in self.it and a: self.it[i][1]=list(a)
+    def move(self,i,dx,dy):
+        if i in self.it: c=self.it[i][1]; self.it[i][1]=[v+(dx if j%2==0 else dy) for j,v in enumerate(c)]
+    def itemconfigure(self,i,**k):
+        if i in self.it: self.it[i][2].update(k)
+    def delete(self,i):
+        if i=="all": self.it.clear()
+        else: self.it.pop(i,None)
+    def bbox(self,i):
+        if i not in self.it: return (100,0,140,10)
+        kind,c,k=self.it[i]
+        if kind=="rect": return tuple(c[:4])
+        if kind=="text":
+            w=6*len(str(k.get("text",""))); a=k.get("anchor","center")
+            x0=c[0] if a=="w" else c[0]-w if a=="e" else c[0]-w/2
+            return (x0,c[1]-5,x0+w,c[1]+5)
+        return (c[0]-8,c[1]-16,c[0]+8,c[1])
 class PhotoImage(Noop):
     def __init__(self, width=16, height=16, file=None):
         if file: assert Path(file).is_file(), file
@@ -132,17 +153,39 @@ for demo in (False, True):
 
 # barras de sessão/semana (statusline opcional): aparecem, mostram "—" se velho, somem sem o arquivo
 app4 = tp.PetApp(Args()); PENDING.clear(); app4.rng = random.Random(SEED)
-h0 = app4.H; assert app4.limit_rows == {}
+h0 = app4.H; assert set(app4.limit_rows) == {"sessao", "semana"}   # sem terminal: modo só-tokens
+cv = app4.canvas
+def row_text(k): return cv.it[app4.limit_rows[k][1]][2]["text"]
+tp.add_usage(app4.state, time.time() - 60, 1_200_000); app4.refresh_limits()
+assert row_text("sessao") == "Sessão  1.2M", row_text("sessao")
 lim_file = tp.DATA_DIR / "limites.json"
 lim_file.write_text(json.dumps({"five_hour": {"used_percentage": 42, "resets_at": time.time() + 3600},
-                                "seven_day": {"used_percentage": 95, "resets_at": time.time() - 5}}))
+                                "seven_day": {"used_percentage": 95, "resets_at": time.time() - 5},
+                                "updated": time.time()}))
 app4.refresh_limits()
-assert app4.H > h0 and set(app4.limit_rows) == {"sessao", "semana"}
-assert app4.limits["sessao"][0] == 42 and app4.limits["semana"][0] is None
+assert app4.H == h0 and app4.limits["sessao"][0] == 42 and app4.limits["semana"][0] is None
+assert row_text("sessao") == "Sessão  42%"
+app4.limits["updated"] = time.time() - 3600; app4.update_limits()
+assert row_text("sessao") == "Sessão  ~42%", row_text("sessao")          # estimado com o fator
 app4.refresh_limits(); app4.update_panel(); pump(app4, 20)
-for size in ("Pequeno", "Grande"): app4.size_var.set(size); app4.change_size()
+for size in ("Pequeno", "Médio", "Grande"):
+    app4.size_var.set(size); app4.change_size(); app4.update_limits()
+    for k, row in app4.limit_rows.items():
+        lx0, lx1, back = row[4], row[5], row[7]
+        assert cv.bbox(row[1])[2] < lx0 < lx1 < cv.bbox(row[3])[0], (size, k, cv.bbox(row[1]), lx0, lx1, cv.bbox(row[3]))
+        assert cv.bbox(back)[2] < cv.bbox(row[3])[0]
+# floaters simultâneos não dividem lugar, nem cobrem o painel
+for f in app4.floaters[:]:
+    for i in f[0]: cv.delete(i)
+app4.floaters.clear()
+for i in range(6): app4.floater(f"-{i}", x=app4.fcx)
+caixas = [cv.bbox(f[0][0]) for f in app4.floaters]
+for i, a in enumerate(caixas):
+    assert a[3] < app4.panel_y
+    for b in caixas[i+1:]:
+        assert not (a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]), (a, b)
 lim_file.unlink(); app4.refresh_limits()
-assert app4.limit_rows == {} and app4.limits is None
+assert app4.limits is None and set(app4.limit_rows) == {"sessao", "semana"}
 app4.quit()
 
 runs_file = tp.DATA_DIR / "runs.jsonl"; demo_file = tp.DATA_DIR / "runs-demo.jsonl"

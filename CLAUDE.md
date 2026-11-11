@@ -30,8 +30,9 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `README.md` (inglês, para o GitHub) e `LEIA-ME.md` (pt-BR). Licença MIT.
 - `statusline.py`: statusline opcional do Claude Code (o usuário liga). Lê o JSON do stdin e grava só os limites oficiais
   de sessão (5h) e semana em `~/.tokenlike/limites.json`. O pet lê com `read_limits` a cada poll e desenha as barras
-  Sessão/Semana no painel (verde ≤50%, amarelo ≤80%, vermelho acima; `—` quando o reset já passou). Sem o arquivo,
-  as barras não aparecem e a janela fica do tamanho de antes.
+  Sessão/Semana no painel (verde ≤50%, amarelo ≤80%, vermelho acima). Leitura oficial nova calibra um fator por janela
+  (`calibrate`, `state["calib"]`); sem leitura recente (<10 min) mostra `~N%` estimado (`limit_view`); sem fator, só os tokens
+  da janela. As barras aparecem sempre.
 - `.claude/skills/balancear/`: skill `/balancear` (lê as estatísticas e propõe mudanças de números, só edita com aprovação do dono).
 - `iniciar.bat` (pythonw, sem console), `testar-demo.bat` (`--demo`: tokens falsos, estado separado).
 
@@ -58,7 +59,7 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 ## Regras do projeto (não quebrar)
 
 1. **Privacidade:** dos `.jsonl` do Claude Code (`~/.claude/projects/**`, ou `CLAUDE_CONFIG_DIR`) só se usa
-   `message.usage`. Nunca guardar, mostrar ou logar conteúdo de prompts e respostas. Sem rede, sem telemetria,
+   `message.usage` e o `timestamp` de cada resposta (histórico em baldes de 5 min, 8 dias, em `state["usage_hist"]`). Nunca guardar, mostrar ou logar conteúdo de prompts e respostas. Sem rede, sem telemetria,
    sem hooks, sem alterar configs do Claude Code. Exceção opcional e manual: `statusline.py` é uma statusline que o
    **próprio usuário** liga no `settings.json` dele; ela grava só `rate_limits` (porcentagem e reset de 5h/semana) em
    `~/.tokenlike/limites.json`. O app só lê esse arquivo e nunca instala nem edita a statusline.

@@ -54,3 +54,35 @@ base = datetime(2026, 11, 11, 10, 0).timestamp()             # quarta, 10:00 loc
 assert tp.fmt_reset(datetime(2026, 11, 11, 14, 30).timestamp(), base) == "14:30"
 assert tp.fmt_reset(datetime(2026, 11, 13, 9, 0).timestamp(), base) == "sex 09:00"
 print("ok: limites")
+
+# estimativa calibrada: fator = % oficial / tokens locais da janela
+now = time.time()
+st = {}
+tp.add_usage(st, now - 3600, 10_000)                       # dentro da sessão e da semana
+tp.add_usage(st, now - 3 * 86400, 30_000)                  # só na semana
+lim = {"sessao": (20.0, now + 3600), "semana": (40.0, now + 86400), "updated": now}
+tp.calibrate(st, lim, now)
+assert abs(st["calib"]["sessao"]["f"] - 20 / 10_000) < 1e-12
+assert abs(st["calib"]["semana"]["f"] - 40 / 40_000) < 1e-12
+# oficial recente: sem "~"
+assert tp.limit_view("sessao", lim, st, now) == (20.0, now + 3600, False, None)
+# oficial velho (>10 min): estimado com "~"
+later = now + 1200
+tp.add_usage(st, later - 60, 5_000)
+pct, reset, est, tok = tp.limit_view("sessao", lim, st, later)
+assert est and abs(pct - 15_000 * 20 / 10_000) < 1e-9 and reset == now + 3600
+# reset passou: janela avança 5h a partir do último reset conhecido
+after = now + 3600 + 600
+tp.add_usage(st, after - 60, 2_000)
+pct, reset, est, _ = tp.limit_view("sessao", None, st, after)
+assert est and reset == now + 3600 + 5 * 3600 and abs(pct - 2_000 * 20 / 10_000) < 1e-9
+# mesma leitura não recalibra; tokens ~0 não calibram
+st["calib"]["sessao"]["f"] = 9; tp.calibrate(st, lim, now); assert st["calib"]["sessao"]["f"] == 9
+vazio = {}; tp.calibrate(vazio, dict(lim, updated=now + 1), now); assert "sessao" not in vazio["calib"]
+# sem leitura oficial nem fator: só tokens da janela
+pct, reset, est, tok = tp.limit_view("sessao", None, vazio, now)
+assert pct is None and not est and tok == 0
+so = {}; tp.add_usage(so, now - 60, 1_200_000)
+assert tp.limit_view("sessao", None, so, now)[3] == 1_200_000
+r = tp.read_limits(d / "limites.json", now); assert r["updated"] == saved["updated"]
+print("ok: estimativa")

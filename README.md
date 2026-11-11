@@ -17,7 +17,7 @@ The in-game text is in Brazilian Portuguese. A Portuguese readme is in [LEIA-ME.
 ## Privacy
 
 - Reads the logs Claude Code already writes on your machine (`%USERPROFILE%\.claude\projects\**\*.jsonl`,
-  or `CLAUDE_CONFIG_DIR`) and uses **only the token counts** (`message.usage`) of each response.
+  or `CLAUDE_CONFIG_DIR`) and uses **only the token counts** (`message.usage`) and the **time** (`timestamp`) of each response.
 - **Never** stores, shows or logs your prompts or responses.
 - **No network** access, no login, no telemetry. **No hooks**, and it never touches Claude Code's settings.
 - Progress lives in `%USERPROFILE%\.tokenlike\state.json`, a plain JSON file you can open and inspect.
@@ -51,7 +51,11 @@ python tokenlike.py --import-history  # first run only: start with energy from y
 python tokenlike.py --reset           # wipe all progress (runs, graveyard, achievements)
 ```
 
-### Optional: session and weekly usage bars
+### Session and weekly usage bars
+
+Without any setup, the bars show the tokens you spent in the current 5-hour session and week
+(from the timestamps above). Once the optional statusline below has sent one official reading, the pet calibrates
+itself and shows an estimate like `~42%` even after you close the terminal; a fresh official reading shows without `~`.
 
 The pet can show your **official** usage of the current 5-hour session and of the week (the same numbers as
 `/usage`), with when each one resets. Claude Code only hands these numbers to a *statusline* script, so you have to

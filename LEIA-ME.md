@@ -7,7 +7,7 @@ chefes, desbloqueios e **permadeath**.
 ## Privacidade (o que ele faz e o que NÃO faz)
 
 - Lê os logs que o próprio Claude Code já grava no seu PC (`%USERPROFILE%\.claude\projects\*.jsonl`)
-  e aproveita **só os números de tokens** de cada resposta.
+  e aproveita **só os números de tokens** e o **horário** (`timestamp`) de cada resposta.
 - **Não** guarda nem mostra prompts ou respostas.
 - **Não** usa internet, **não** tem login e **não** instala hooks nem mexe nas configurações do Claude Code.
 - O progresso fica em `%USERPROFILE%\.tokenlike\state.json`, que você pode abrir e conferir.
@@ -109,7 +109,11 @@ Veja o exemplo `characters\fantasma\`:
 Depois, use **botão direito → Recarregar personagens**. Se algo der errado, o motivo fica em
 `%USERPROFILE%\.tokenlike\tokenlike.log`.
 
-## Barras de sessão e semana (opcional)
+## Barras de sessão e semana
+
+Sem configurar nada, as barras mostram os tokens gastos na sessão de 5 horas e na semana (pelo horário
+de cada resposta). Depois que a statusline opcional abaixo mandar uma leitura oficial, o pet se calibra e mostra
+uma estimativa como `~42%` mesmo com o terminal fechado; leitura oficial recente aparece sem `~`.
 
 O pet pode mostrar o seu uso **oficial** da sessão de 5 horas e da semana (os mesmos números do `/usage`), com o
 horário em que cada um zera. O Claude Code só entrega esses números para um script de *statusline*, então é você
