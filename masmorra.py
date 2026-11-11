@@ -129,6 +129,14 @@ MAX_ELEM_CHANCE = 0.6
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
 BOSS_STATUS_CHANCE = 0.35
+DOBRO_CRIT = 0.5              # bônus de crítico de quem tem o dobro da velocidade do alvo (e critdmg x2)
+STATUS_NOME = {"queimar": "queimadura", "eletrizar": "eletricidade", "envenenar": "veneno", "congelar": "congelamento"}
+QUEIMA = (2, 0.3)             # dano por turno: base + por andar
+QUEIMA_TURNOS = 3
+ELETRO_CHANCE, ELETRO_TURNOS = 0.3, 2
+VENENO_TURNOS, VENENO_MAX_PILHAS = 4, 3
+GELO_CHANCE, GELO_TURNOS = 0.6, 2
+MAX_ROUNDS = 60
 
 
 def make_foe(m: tuple, f: int, boss: bool = False, mult: float = 1.0) -> dict:
@@ -190,7 +198,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
         "hp": hp,
         "base": {"maxhp": hp, "atk": int(base_stats.get("atk", 3)),
                  "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0)),
-                 "spd": base_stats.get("spd", PET_SPD), "crit": PET_CRIT, "critdmg": PET_CRITDMG},
+                 "spd": float(base_stats.get("spd", PET_SPD)), "crit": PET_CRIT, "critdmg": PET_CRITDMG},
         "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
@@ -368,23 +376,115 @@ def apply_damage(run: dict, d: int) -> int:
     return d - absorbed
 
 
-def fight(run: dict, st: dict, foe_hp: int, foe_atk: int, rng: random.Random):
-    """Combate automático. Retorna (venceu, golpes) — golpes servem para a animação."""
-    hits = []
-    while True:
-        dmg = max(1, st["atk"] + rng.randint(-1, 1))
-        foe_hp -= dmg
-        hits.append(("pet", dmg))
-        if foe_hp <= 0:
-            return True, hits
-        if rng.random() < st["dodge"]:
-            hits.append(("dodge", 0))
-            continue
-        d = apply_damage(run, max(1, foe_atk - st["def"] + rng.randint(-1, 1)))
-        hits.append(("foe", d))
-        if run["hp"] <= 0:
-            run["hp"] = 0
-            return False, hits
+def _aplicar_status(s: dict, nome: str) -> None:
+    """Coloca o status em s. Queimadura renova; veneno ganha uma pilha (no teto, renova a mais velha)."""
+    if nome == "veneno":
+        v = s.setdefault("veneno", [])
+        if len(v) < VENENO_MAX_PILHAS:
+            v.append(0)
+        else:
+            v[v.index(max(v))] = 0
+    else:
+        s[nome] = {"queimadura": QUEIMA_TURNOS, "eletricidade": ELETRO_TURNOS, "congelamento": GELO_TURNOS}[nome]
+
+
+def _dano_status(s: dict, f: int) -> list[tuple[str, int]]:
+    """Tique do começo da rodada: [(nome, dano)] e já desconta a duração."""
+    out = []
+    if s.get("queimadura"):
+        s["queimadura"] -= 1
+        out.append(("queimadura", round(QUEIMA[0] + QUEIMA[1] * f)))
+    if s.get("veneno"):
+        v = [t + 1 for t in s["veneno"]]                # cada pilha dá 1, 2, 3, 4 de dano
+        out.append(("veneno", sum(v)))
+        s["veneno"] = [t for t in v if t < VENENO_TURNOS]
+    return out
+
+
+def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
+    """Luta por rodadas. Devolve (venceu, passos, assassino); muta run["hp"] e hp/status dos inimigos."""
+    passos = []
+    pst: dict = {}                                       # status do pet (só durante a luta)
+
+    def passo(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False):
+        passos.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status,
+                       "skip": skip, "dot": dot, "dodge": dodge})
+
+    def vivos():
+        return [i for i, x in enumerate(foes) if x["hp"] > 0]
+
+    def perde_vez(s):
+        perdeu = False
+        if s.get("congelamento"):
+            s["congelamento"] -= 1
+            if rng.random() < GELO_CHANCE:
+                perdeu, s["congelamento"] = True, 0
+        if s.get("eletricidade"):
+            s["eletricidade"] -= 1
+            perdeu = rng.random() < ELETRO_CHANCE or perdeu
+        return perdeu
+
+    def critico(crit, critdmg, spd, spd_alvo):
+        """(é crítico, multiplicador); o dobro da velocidade dá +DOBRO_CRIT e critdmg x2."""
+        dobro = spd >= 2 * spd_alvo
+        e_crit = rng.random() < crit + (DOBRO_CRIT if dobro else 0)
+        return e_crit, (critdmg * (2 if dobro else 1) if e_crit else 1)
+
+    for _ in range(MAX_ROUNDS):
+        # 1. dano de status no começo da rodada (ignora o escudo)
+        for nome, d in _dano_status(pst, f):
+            run["hp"] -= d
+            passo("pet", "pet", d, status=nome, dot=True)
+            if run["hp"] <= 0:
+                run["hp"] = 0
+                return False, passos, nome.capitalize()
+        for i in vivos():
+            for nome, d in _dano_status(foes[i]["status"], f):
+                foes[i]["hp"] -= d
+                passo(i, i, d, status=nome, dot=True)
+        if not vivos():
+            return True, passos, ""
+        # 2. ordem por velocidade; empate: pet primeiro, depois a ordem da lista (sort estável)
+        ordem = sorted([("pet", st["spd"])] + [(i, foes[i]["spd"]) for i in vivos()], key=lambda x: -x[1])
+        for who, _spd in ordem:
+            if who != "pet" and foes[who]["hp"] <= 0:
+                continue
+            if perde_vez(pst if who == "pet" else foes[who]["status"]):
+                passo(who, who, skip=True)
+                continue
+            if who == "pet":
+                vs = vivos()
+                alvos = vs if st["area"] else [min(vs, key=lambda i: foes[i]["hp"])]
+                for i in alvos:
+                    x = foes[i]
+                    e_crit, mult = critico(st["crit"], st["critdmg"], st["spd"], x["spd"])
+                    d = round(max(1, st["atk"] + rng.randint(-1, 1)) * mult)
+                    x["hp"] -= d
+                    aplicado = None
+                    if x["hp"] > 0:
+                        for el, nome in STATUS_NOME.items():      # cada elemento rola separado
+                            if st[el] and rng.random() < st[el]:
+                                _aplicar_status(x["status"], nome)
+                                aplicado = aplicado or nome
+                    passo("pet", i, d, e_crit, aplicado)
+                if not vivos():
+                    return True, passos, ""
+            else:
+                x = foes[who]
+                if rng.random() < st["dodge"]:
+                    passo(who, "pet", dodge=True)
+                    continue
+                e_crit, mult = critico(x["crit"], x["critdmg"], x["spd"], st["spd"])
+                d = apply_damage(run, round(max(1, x["atk"] - st["def"] + rng.randint(-1, 1)) * mult))
+                aplicado = None
+                if x["boss"] and x.get("element") and rng.random() < BOSS_STATUS_CHANCE:
+                    aplicado = STATUS_NOME[ELEMENTOS[x["element"]]]
+                    _aplicar_status(pst, aplicado)
+                passo(who, "pet", d, e_crit, aplicado)
+                if run["hp"] <= 0:
+                    run["hp"] = 0
+                    return False, passos, x["name"]
+    return True, passos, ""                              # limite de segurança: vitória sem prêmio extra
 
 
 def die(run: dict, meta: dict, ev: dict, killer: str) -> None:
@@ -488,14 +588,14 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             foe = make_mimic(f)
         else:
             foe = make_foe(rng.choice([m for m in MONSTERS if m[4] <= f]), f, boss=(kind == "boss"))
-        sprite, name, hp, atk = foe["sprite"], foe["name"], foe["hp"], foe["atk"]
-        ev.update(name=name, sprite=sprite, boss=(kind == "boss"))
+        foes = [foe]
+        ev["name"] = foe["name"]
+        ev["foes"] = [{k: x[k] for k in ("sprite", "name", "boss", "element", "hp_max")} for x in foes]
         hp_before = run["hp"]
-        won, hits = fight(run, st, hp, atk, rng)
-        ev["hits"] = hits
+        won, ev["hits"], killer = combate(run, st, foes, rng, f)
         ev["dmg"] = hp_before - run["hp"]
         if not won:
-            die(run, meta, ev, name)
+            die(run, meta, ev, killer)
             return ev
         ev["won"] = True
         run["kills"] += 1
@@ -599,7 +699,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 1
+REGRAS_REV = 2
 
 
 def _balance_version() -> str:
@@ -609,7 +709,10 @@ def _balance_version() -> str:
     blob = [REGRAS_REV, its, mons, ROOM_COST, ROOMS_PER_FLOOR, MAX_STORED_ROOMS, BOSS_EVERY, MON_HP, MON_ATK,
             BOSS_HP, BOSS_ATK, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
             [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
-            CHEST_ITEM_CHANCE, SHOP_PRICE]
+            CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
+            PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
+            QUEIMA_TURNOS, ELETRO_CHANCE, ELETRO_TURNOS, VENENO_TURNOS, VENENO_MAX_PILHAS, GELO_CHANCE, GELO_TURNOS,
+            MAX_ROUNDS]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
 

@@ -23,4 +23,109 @@ assert M.make_foe(bat, 5)["element"] is None and M.make_foe(bat, 5, boss=True)["
 # mult é aplicado ANTES do arredondamento (um round só)
 assert M.make_foe(bat, 5, mult=0.5)["hp"] == max(1, round((M.MON_HP[0] + M.MON_HP[1] * 5) * bat[2] * 0.5))
 assert M.make_mimic(3)["element"] is None and M.make_mimic(3)["hp"] == M.make_mimic(3)["hp_max"]
+# --- Task 2: combate por rodadas ---
+import random
+assert isinstance(M.new_run("x", {"spd": 14}, 2)["base"]["spd"], float)
+M.ITEMS["_a"] = {"name": "a", "fx": {"area": True, "atk": 1}, "rarities": ["lendario"], "consume": {"heal": 1},
+                 "look": {"type": "obj", "anchor": "topo", "art": "adaga"}}
+assert M.item_fx("_a", "lendario")["area"] is True and M.item_fx("_a", "lendario")["atk"] > 1   # area não escala
+del M.ITEMS["_a"]
+
+
+def foe(hp=10, atk=1, spd=5, boss=False, element=None, crit=0.0):
+    return {"sprite": "rato", "name": "Rato", "boss": boss, "element": element, "hp": hp, "hp_max": hp,
+            "atk": atk, "spd": spd, "crit": crit, "critdmg": 1.5, "status": {}}
+
+
+def pet(spd=10, atk=3, crit=0.0, **fx):
+    r = M.new_run("slime", {"hp": 30, "atk": atk, "spd": spd}, 1); r["base"]["crit"] = crit
+    if fx:
+        M.ITEMS["_t"] = {"name": "t", "fx": fx, "rarities": ["comum"], "consume": {"heal": 1},
+                         "look": {"type": "obj", "anchor": "topo", "art": "adaga"}}
+        r["items"] = [{"key": "_t", "rar": "comum", "floor": 1}]
+    return r
+
+
+CHAVES = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge"}
+# ordem: inimigo mais rápido age antes; empate -> pet antes
+r = pet(spd=5); won, steps, _ = M.combate(r, M.stats(r), [foe(spd=9)], random.Random(1), 1)
+assert steps[0]["who"] == 0 and all(set(x) == CHAVES for x in steps)
+r = pet(spd=9); won, steps, _ = M.combate(r, M.stats(r), [foe(spd=9)], random.Random(1), 1)
+assert steps[0]["who"] == "pet"
+# dobro da velocidade: crítico com dano x (critdmg*2); com crit base 0.5 + 0.5 = 1.0 sempre crita
+r = pet(spd=20, atk=4, crit=0.5); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=100, spd=10)], random.Random(2), 1)
+s = next(x for x in steps if x["who"] == "pet"); assert s["crit"] and s["dmg"] >= 3 * 3     # (4±1) * 1.5 * 2
+# sem o dobro e com crit 0, nunca crita
+r = pet(spd=19, atk=4); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=100, spd=10)], random.Random(2), 1)
+assert not any(x["who"] == "pet" and x["crit"] for x in steps)
+# inimigo com o dobro também ganha (crit 0.5 + 0.5)
+r = pet(spd=5); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=100, spd=10, crit=0.5, atk=2)], random.Random(3), 1)
+assert any(x["who"] == 0 and x["crit"] for x in steps)
+# queimadura (chance no teto de 0.6): dano por turno no começo da rodada, 3 turnos, depois para
+r = pet(queimar=1.0); assert M.stats(r)["queimar"] == M.MAX_ELEM_CHANCE
+won, steps, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=0, spd=1)], random.Random(4), 10)
+dots = [x for x in steps if x["dot"] and x["target"] == 0]
+assert dots and all(x["dmg"] == round(2 + 0.3 * 10) and x["status"] == "queimadura" for x in dots)
+f0 = foe(hp=1000, atk=0, spd=1); f0["status"]["queimadura"] = M.QUEIMA_TURNOS
+r = pet(); won, steps, _ = M.combate(r, M.stats(r), [f0], random.Random(4), 10)
+assert sum(1 for x in steps if x["dot"]) == M.QUEIMA_TURNOS        # sem renovar, para depois de 3
+# veneno cresce: 1, 2, 3 ...
+r = pet(envenenar=0.6); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=0, spd=1)], random.Random(5), 1)
+v = [x["dmg"] for x in steps if x["dot"] and x["target"] == 0][:3]
+assert len(v) == 3 and v == sorted(v) and v[-1] > v[0] and v[0] == 1
+# congelamento: perde o turno e sai
+r = pet(congelar=0.6); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=1, spd=1)], random.Random(6), 1)
+assert any(x["who"] == 0 and x["skip"] for x in steps)
+f0 = foe(hp=1000, atk=1, spd=1); f0["status"]["congelamento"] = M.GELO_TURNOS
+r = pet(); won, steps, _ = M.combate(r, M.stats(r), [f0], random.Random(6), 1)
+assert sum(1 for x in steps if x["skip"]) <= 1                     # perdeu um turno e saiu
+# eletricidade: pode perder a vez
+r = pet(eletrizar=0.6); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=1000, atk=1, spd=1)], random.Random(11), 1)
+assert any(x["who"] == 0 and x["skip"] for x in steps)
+# monstro comum nunca aplica status; chefe aplica o seu elemento no pet
+r = pet(); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=40, atk=1)], random.Random(7), 1)
+assert not any(x["who"] == 0 and x["status"] for x in steps)
+r = pet(); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=200, atk=1, boss=True, element="fogo")], random.Random(8), 5)
+assert any(x["who"] == 0 and x["status"] == "queimadura" for x in steps)
+assert any(x["dot"] and x["target"] == "pet" for x in steps)
+# morte por status de chefe tem assassino "Queimadura" ou "Veneno"
+r = pet(); r["hp"] = 3
+won, steps, killer = M.combate(r, M.stats(r), [foe(hp=999, atk=0, spd=99, boss=True, element="fogo")], random.Random(9), 20)
+assert not won and killer in ("Queimadura", "Rato") and r["hp"] == 0
+# o escudo segura os golpes, mas não o dano de status: o veneno do chefe mata
+r = pet(); r["hp"] = 1; r["shield"] = 10**6
+won, steps, killer = M.combate(r, M.stats(r), [foe(hp=999, atk=0, spd=1, boss=True, element="veneno")], random.Random(9), 1)
+assert not won and killer == "Veneno" and steps[-1]["dot"] and steps[-1]["target"] == "pet"
+# área acerta todos; sem área, o alvo é o de menor HP
+r = pet(atk=50, area=True); fs = [foe(hp=40), foe(hp=40), foe(hp=40)]
+won, steps, _ = M.combate(r, M.stats(r), fs, random.Random(12), 1)
+assert won and all(x["hp"] <= 0 for x in fs) and sum(1 for x in steps if x["who"] == "pet") == 3
+r = pet(atk=50); fs = [foe(hp=40), foe(hp=5), foe(hp=40)]
+won, steps, _ = M.combate(r, M.stats(r), fs, random.Random(12), 1)
+assert won and next(x for x in steps if x["who"] == "pet")["target"] == 1
+# escudo bloqueia o golpe (dano 0 no pet); esquiva marca dodge
+r = pet(); r["shield"] = 1000; won, steps, _ = M.combate(r, M.stats(r), [foe(hp=30)], random.Random(13), 1)
+assert won and r["hp"] == 30 and all(x["dmg"] == 0 for x in steps if x["target"] == "pet")
+r = pet(dodge=0.5); won, steps, _ = M.combate(r, M.stats(r), [foe(hp=60)], random.Random(14), 1)
+assert any(x["dodge"] for x in steps)
+# luta impossível termina no limite de 60 rodadas como vitória
+r = pet(atk=0); r["shield"] = 10**6
+won, steps, _ = M.combate(r, M.stats(r), [foe(hp=10**6, atk=0, spd=1)], random.Random(10), 1)
+assert won and sum(1 for x in steps if x["who"] == "pet") == M.MAX_ROUNDS
+M.ITEMS.pop("_t", None)
+# enter_room: ev["foes"] e passos em dict
+meta = M.new_meta(); r = M.new_run("slime", {"hp": 30, "atk": 3}, 1); rng = random.Random(15)
+vistos = 0
+for _ in range(200):
+    if r["dead"]:
+        break
+    r["energy"] = M.ROOM_COST * 2
+    ev = M.enter_room(r, meta, rng)
+    if ev["kind"] in ("monster", "boss", "mimic"):
+        vistos += 1
+        assert set(ev["foes"][0]) == {"sprite", "name", "boss", "element", "hp_max"}
+        assert all(set(x) == CHAVES for x in ev["hits"])
+    else:
+        assert "foes" not in ev
+assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 2
 print("ok: combate")

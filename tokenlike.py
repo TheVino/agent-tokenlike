@@ -962,8 +962,9 @@ class PetApp:
             steps.append((ms, fn))
 
         kind = ev["kind"]
-        boss = ev.get("boss", False)
-        sprite = ev.get("sprite")
+        foe0 = (ev.get("foes") or [{}])[0]           # por enquanto só o inimigo 0 aparece na tela
+        boss = foe0.get("boss", ev.get("boss", False))
+        sprite = foe0.get("sprite", ev.get("sprite"))
         name_color = {"boss": HURT, "monster": TEXT, "mimic": HURT, "stairs": CYAN}.get(kind, GOLD)
         at(0, lambda: self.show_foe(sprite, boss))
         at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22))
@@ -972,16 +973,24 @@ class PetApp:
         if kind in ("monster", "boss", "mimic"):
             hits = ev["hits"]
             shown = hits if len(hits) <= 8 else hits[:7] + [hits[-1]]
-            for who, d in shown:
-                if who == "pet":
-                    at(t, lambda d=d: (self._set("lunge", [5, 10, 5, 0]),
-                                       self.floater(f"-{d}", TEXT, x=self.fcx, life=10)))
-                elif who == "foe":
-                    at(t, lambda d=d: (self._set("foe_lunge", [-5, -10, -5, 0]),
-                                       self.floater(f"-{d}", HURT, life=10) if d
-                                       else self.floater("bloqueou!", CYAN, life=10)))
-                else:
+            for h in shown:
+                no_pet = h["target"] == "pet"
+                x, cor = (None, HURT) if no_pet else (self.fcx, TEXT)
+                if h["skip"]:
+                    at(t, lambda h=h: self.floater("perdeu a vez", MUTED,
+                                                   x=self.pcx if h["who"] == "pet" else self.fcx, life=10))
+                elif h["dot"]:
+                    at(t, lambda h=h, x=x, cor=cor: self.floater(str(h["dmg"]), cor, x=x, life=8))
+                elif h["dodge"]:
                     at(t, lambda: self.floater("esquivou!", CYAN, life=10))
+                elif h["who"] == "pet":
+                    at(t, lambda h=h: (self._set("lunge", [5, 10, 5, 0]),
+                                       self.floater(f"-{h['dmg']}" + ("!" if h["crit"] else ""),
+                                                    GOLD if h["crit"] else TEXT, x=self.fcx, life=10)))
+                else:
+                    at(t, lambda h=h: (self._set("foe_lunge", [-5, -10, -5, 0]),
+                                       self.floater(f"-{h['dmg']}" + ("!" if h["crit"] else ""), HURT, life=10)
+                                       if h["dmg"] else self.floater("bloqueou!", CYAN, life=10)))
                 t += 380
             if ev["won"]:
                 at(t, lambda: (self.burst(self.fcx, self.base_y - 4 * self.px), self.hide_foe()))
