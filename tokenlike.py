@@ -193,7 +193,30 @@ class TokenReader:
         prune_usage(self.state, time.time())
         return xp, raw
 
-    def parse_line(self, line: bytes):
+    def backfill(self) -> None:
+        """Uma vez: preenche o histórico por horário com o que já foi lido (até o offset de cada arquivo,
+        dos últimos 8 dias). Não dá energia nem mexe no `seen`."""
+        hist = self.state.setdefault("usage_hist", {})
+        seen = set()
+        self._files_at = 0
+        cutoff = time.time() - HIST_KEEP_S
+        for f in self.files():
+            off = self.offsets.get(str(f), 0)
+            try:
+                if not off or f.stat().st_mtime < cutoff:
+                    continue
+                with open(f, "rb") as fh:
+                    data = fh.read(off)
+            except OSError:
+                continue
+            for line in data.splitlines():
+                got = self.parse_line(line, seen)
+                if got and got[2] is not None:
+                    add_usage(self.state, got[2], got[0])
+        prune_usage(self.state, time.time())
+        self.state["usage_hist"] = hist
+
+    def parse_line(self, line: bytes, seen: set | None = None):
         if b'"usage"' not in line:
             return None
         try:
@@ -206,7 +229,12 @@ class TokenReader:
         if not isinstance(msg, dict) or not isinstance(msg.get("usage"), dict):
             return None
         # o Claude Code grava a mesma resposta em várias linhas: conta só uma vez
-        if msg.get("id"):
+        if msg.get("id") and seen is not None:      # backfill: dedup local, sem tocar no `seen`
+            key = f'{msg.get("id")}:{obj.get("requestId")}'
+            if key in seen:
+                return None
+            seen.add(key)
+        elif msg.get("id"):
             key = f'{msg.get("id")}:{obj.get("requestId")}'
             if key in self.seen_set:
                 return None
@@ -279,6 +307,9 @@ def calibrate(state: dict, limits: dict | None, now: float) -> None:
         pct, reset = limits.get(key, (None, None))
         if pct is None or not reset:
             continue
+        hist = state.get("usage_hist") or {}
+        if not hist or min(int(k) for k in hist) > reset - win:
+            continue                        # histórico não cobre a janela toda: mantém o fator anterior
         tok = usage_between(state, reset - win, now)
         if tok >= MIN_CALIB_XP:
             cal[key] = {"f": pct / tok, "reset": reset}
@@ -638,6 +669,8 @@ class PetApp:
             self.state["last_fed"] = time.time()
             if not self.demo and not args.import_history:
                 self.reader.skip_existing()
+        if not self.demo and "usage_hist" not in self.state:
+            self.reader.backfill()
         self.chars = all_characters()
         if self.state["size"] not in SIZES:
             self.state["size"] = "Médio"
@@ -797,7 +830,7 @@ class PetApp:
         self.limit_rows = {}
         # colunas fixas medidas com o texto mais largo: rótulo | barra | reset
         y = py + 56
-        probe = c.create_text(14, y, anchor="w", text="Semana ~100%", font=self.font_small)
+        probe = c.create_text(14, y, anchor="w", text="Semana  ~100%", font=self.font_small)
         lx0 = c.bbox(probe)[2] + 8
         c.itemconfigure(probe, anchor="e", text="reseta sáb 00:00")
         c.coords(probe, self.W - 14, y)

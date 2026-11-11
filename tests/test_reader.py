@@ -68,3 +68,11 @@ assert tp.parse_ts("2026-01-01T00:00:00Z") == _dt(2026,1,1,tzinfo=_tz.utc).times
 assert tp.parse_ts(None) is None and tp.parse_ts("lixo") is None
 assert abs(tp.usage_between(st, now - 600, now + 1) - 100) < 1e-9 and tp.usage_between(st, now - 9e6, now - 3600) == 0
 print("reader timestamp ok")
+
+# backfill: linhas já existentes enchem o histórico, mas não dão energia nem entram no `seen`
+tmp3 = Path(tempfile.mkdtemp()); (tmp3/"p").mkdir(); h = tmp3/"p"/"c.jsonl"
+h.write_text("\n".join([asst_ts("b1","r",300,now), asst_ts("b1","r",300,now), asst_ts("b2","r",20,now)]) + "\n")
+sb = {}; rb = tp.TokenReader(sb, dirs=[tmp3]); rb.skip_existing(); rb.backfill()
+assert sum(sb["usage_hist"].values()) == 320, sb["usage_hist"]
+assert rb.poll() == (0.0, 0) and not rb.seen
+print("reader backfill ok")

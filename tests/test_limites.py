@@ -60,6 +60,7 @@ now = time.time()
 st = {}
 tp.add_usage(st, now - 3600, 10_000)                       # dentro da sessão e da semana
 tp.add_usage(st, now - 3 * 86400, 30_000)                  # só na semana
+tp.add_usage(st, now - 7.5 * 86400, 0)                    # histórico cobre a semana toda
 lim = {"sessao": (20.0, now + 3600), "semana": (40.0, now + 86400), "updated": now}
 tp.calibrate(st, lim, now)
 assert abs(st["calib"]["sessao"]["f"] - 20 / 10_000) < 1e-12
@@ -85,4 +86,8 @@ assert pct is None and not est and tok == 0
 so = {}; tp.add_usage(so, now - 60, 1_200_000)
 assert tp.limit_view("sessao", None, so, now)[3] == 1_200_000
 r = tp.read_limits(d / "limites.json", now); assert r["updated"] == saved["updated"]
+# histórico mais novo que o início da janela: não calibra e mantém o fator anterior
+curto = {"calib": {"semana": {"f": 7, "reset": 1}}}; tp.add_usage(curto, now - 5 * 3600, 0); tp.add_usage(curto, now - 60, 50_000)
+tp.calibrate(curto, dict(lim, updated=now + 2), now)
+assert curto["calib"]["semana"]["f"] == 7 and "sessao" in curto["calib"]
 print("ok: estimativa")

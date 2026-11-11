@@ -156,7 +156,7 @@ app4 = tp.PetApp(Args()); PENDING.clear(); app4.rng = random.Random(SEED)
 h0 = app4.H; assert set(app4.limit_rows) == {"sessao", "semana"}   # sem terminal: modo só-tokens
 cv = app4.canvas
 def row_text(k): return cv.it[app4.limit_rows[k][1]][2]["text"]
-tp.add_usage(app4.state, time.time() - 60, 1_200_000); app4.refresh_limits()
+tp.add_usage(app4.state, time.time() - 60, 1_200_000); tp.add_usage(app4.state, time.time() - 6 * 3600, 0); app4.refresh_limits()
 assert row_text("sessao") == "Sessão  1.2M", row_text("sessao")
 lim_file = tp.DATA_DIR / "limites.json"
 lim_file.write_text(json.dumps({"five_hour": {"used_percentage": 42, "resets_at": time.time() + 3600},
