@@ -117,14 +117,17 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   São julgadas na **calibração** (só slime, igual ao `simular.py`, sem e com conquistas); o "sim" com todos os
   heróis misturados é só informativo. Item verde/vermelho usa `vs_media` (vs esperado menos a média dos itens).
   Rode `python tools/estatisticas.py`, não decore números aqui.
-- Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 38-41% passam do
-  1º chefe, p90 = andar 15, máx = 25. Mortes (sem conquistas): chefe ~60%, monstro ~22%, horda ~7%, status ~6%,
+- Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 37-40% passam do
+  1º chefe, p90 = andar 15, máx = 25. Mortes (sem conquistas): chefe ~59%, monstro ~22%, horda ~10%, status ~5%,
   mímico ~3%, armadilha ~1%. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo)
   e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), ou seja
   `valor + por_andar * (andar - BOSS_EVERY)`, mínimo 1); o 2º chefe (andar 10) é o muro. `MON_ATK` = (1.5, 1.2).
   Combate: `MON_SPD` = (6, 0.1), `BOSS_SPD_BONUS` = 1.1, `PET_CRIT` = 0.10, `BOSS_STATUS_CHANCE` = 0.15.
+  Hordas: `HORDE_MULT` = {2: 0.75, 3: 0.6, 4: 0.5} é decisão do dono (não mexer); quem ajusta é o peso "horde"
+  (hoje 9 em `ROOM_WEIGHTS`), `horde_max` e `HORDE_GOLD_MULT`. Crítico do pet: a base só guarda `crit`/`critdmg`
+  se o herói definir; senão `stats()` usa `PET_CRIT`/`PET_CRITDMG`.
   Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`); no combate: status e crítico,
-  velocidades, horda (peso, `HORDE_MULT`); só então `MON_*`/`BOSS_*`. Hordas devem ficar entre 5% e 35% das mortes
+  velocidades, horda (peso, `horde_max`, `HORDE_GOLD_MULT`); só então `MON_*`/`BOSS_*`. Hordas devem ficar entre 5% e 35% das mortes
   e status acima de 0 (sem ser a maioria).
 
 ## Para adicionar coisas

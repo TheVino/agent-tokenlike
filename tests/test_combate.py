@@ -11,6 +11,12 @@ assert st["queimar"] == 0 and st["congelar"] == 0
 assert M.new_run("x", {"spd": 14}, 2)["base"]["spd"] == 14
 old = {"items": [], "hp": 10, "base": {"maxhp": 20, "atk": 3, "def": 0, "dodge": 0}}
 M.migrate_run(old); assert old["base"]["spd"] == 10 and M.stats(old)["spd"] == 10
+# crit/critdmg: só os do herói vão para a base; sem eles, stats() usa as constantes (e o save antigo também)
+assert "crit" not in run["base"] and "critdmg" not in run["base"]
+assert M.stats(M.new_run("x", {"crit": 0.3, "critdmg": 2}, 2))["crit"] == 0.3
+old = {"items": [], "hp": 10, "base": {"maxhp": 20, "atk": 3, "def": 0, "dodge": 0, "spd": 10, "crit": 0.1, "critdmg": 1.5}}
+M.migrate_run(old); crit0 = M.PET_CRIT; M.PET_CRIT = 0.2
+assert M.stats(old)["crit"] == 0.2 and M.stats(run)["crit"] == 0.2; M.PET_CRIT = crit0
 M.ITEMS["_t"] = {"name": "t", "fx": {"crit": 0.9, "queimar": 0.9, "spd": -50, "area": True},
                  "rarities": ["comum"], "consume": {"heal": 1}, "look": {"type": "obj", "anchor": "topo", "art": "adaga"}}
 run["items"] = [{"key": "_t", "rar": "comum", "floor": 1}]
@@ -32,8 +38,8 @@ assert M.item_fx("_a", "lendario")["area"] is True and M.item_fx("_a", "lendario
 del M.ITEMS["_a"]
 
 
-def foe(hp=10, atk=1, spd=5, boss=False, element=None, crit=0.0):
-    return {"sprite": "rato", "name": "Rato", "boss": boss, "element": element, "hp": hp, "hp_max": hp,
+def foe(hp=10, atk=1, spd=5, boss=False, element=None, crit=0.0, name="Rato"):
+    return {"sprite": "rato", "name": name, "boss": boss, "element": element, "hp": hp, "hp_max": hp,
             "atk": atk, "spd": spd, "crit": crit, "critdmg": 1.5, "status": {}}
 
 
@@ -145,10 +151,11 @@ assert ev["kind"] == "boss" and ev.get("empate") and not ev["won"] and not ev["d
 assert r["gold"] == 0 and r["kills"] == 0 and r["bosses"] == 0 and r["base"]["maxhp"] == maxhp
 assert not ev.get("gold") and not r.get("pending") and not r["items"] and r["room"] == M.ROOMS_PER_FLOOR
 # --- Task 3: hordas ---
-assert M.HORDE_MIN_FLOOR == 3 and M.HORDE_MULT == {2: 0.7, 3: 0.55, 4: 0.45} and M.HORDE_GOLD_MULT == 1.25
-assert ("horde", 10) in M.ROOM_WEIGHTS
+assert M.HORDE_MIN_FLOOR == 3 and M.HORDE_MULT == {2: 0.75, 3: 0.6, 4: 0.5} and M.HORDE_GOLD_MULT == 1.25
+assert ("horde", 9) in M.ROOM_WEIGHTS
 assert [M.horde_max(f) for f in (3, 4, 5, 7, 8, 20)] == [2, 2, 3, 3, 4, 4]
 assert M.make_foe(bat, 6, mult=M.HORDE_MULT[4])["hp"] < M.make_foe(bat, 6)["hp"]
+assert M.make_foe(bat, 6, mult=M.HORDE_MULT[4])["atk"] == max(1, round((M.MON_ATK[0] + M.MON_ATK[1] * 6) * bat[3] * 0.5))
 # alvo de menor HP; com área acerta todos (formato: um passo por alvo, nunca "todos")
 r = pet(atk=3); fs = [foe(hp=50), foe(hp=4), foe(hp=30)]
 won, steps, _, _ = M.combate(r, M.stats(r), fs, random.Random(1), 3)
@@ -158,10 +165,11 @@ won, steps, _, _ = M.combate(r, M.stats(r), fs, random.Random(1), 3)
 first = [x for x in steps if x["who"] == "pet"][:3]; assert {x["target"] for x in first} >= {0, 1, 2} or first[0]["target"] == "todos"
 # pet morre no meio da rodada: inimigos seguintes não agem depois da morte
 r = pet(); r["hp"] = 1
-won, steps, killer, _ = M.combate(r, M.stats(r), [foe(hp=99, atk=5, spd=20), foe(hp=99, atk=5, spd=19)], random.Random(2), 3)
-assert not won and steps[-1]["target"] == "pet" and killer == "Rato"
+fs = [foe(hp=99, atk=5, spd=20, name="Rato A"), foe(hp=99, atk=5, spd=19, name="Rato B")]
+won, steps, killer, _ = M.combate(r, M.stats(r), fs, random.Random(2), 3)
+assert not won and steps[-1]["target"] == "pet" and killer == fs[steps[-1]["who"]]["name"] == "Rato A"
 # horda via enter_room: nunca antes do andar 3; kills e ouro maior
-rng = random.Random(3); meta = M.new_meta(); seen = False
+rng = random.Random(3); meta = M.new_meta(); seen = False; ouro = {"horde": [], "monster": []}
 for _ in range(400):
     run = M.new_run("slime", {"hp": 999, "atk": 50}, 1); run["floor"] = rng.choice([1, 2, 6]); run["energy"] = 1e9
     ev = M.enter_room(run, meta, rng)
@@ -169,6 +177,8 @@ for _ in range(400):
         seen = True; assert run["floor"] >= 3 and 2 <= len(ev["foes"]) <= M.horde_max(run["floor"])
         assert run["kills"] == len(ev["foes"]) and ev["gold"] > 0
         assert ev["name"] == f"Horda ({len(ev['foes'])})" and not any(x["boss"] for x in ev["foes"])
-assert seen
+    if ev.get("kind") in ouro and run["floor"] == 6:
+        ouro[ev["kind"]].append(ev["gold"])
+assert seen and ouro["horde"] and ouro["monster"] and min(ouro["horde"]) > max(ouro["monster"])
 M.ITEMS.pop("_t", None)
 print("ok: combate")

@@ -163,10 +163,10 @@ def make_mimic(f: int) -> dict:
 
 
 ROOM_WEIGHTS = [("monster", 46), ("chest", 16), ("trap", 12), ("fountain", 11),
-                ("shop", 8), ("altar", 7), ("horde", 10)]
+                ("shop", 8), ("altar", 7), ("horde", 9)]
 # hordas: 2 a 4 inimigos mais fracos (HP e ATK x HORDE_MULT[n]); só a partir do andar HORDE_MIN_FLOOR
 HORDE_MIN_FLOOR = 3
-HORDE_MULT = {2: 0.7, 3: 0.55, 4: 0.45}
+HORDE_MULT = {2: 0.75, 3: 0.6, 4: 0.5}
 HORDE_GOLD_MULT = 1.25
 
 
@@ -207,7 +207,9 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
         "hp": hp,
         "base": {"maxhp": hp, "atk": int(base_stats.get("atk", 3)),
                  "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0)),
-                 "spd": float(base_stats.get("spd", PET_SPD)), "crit": PET_CRIT, "critdmg": PET_CRITDMG},
+                 "spd": float(base_stats.get("spd", PET_SPD)),
+                 # crit/critdmg só se o herói definir; sem eles, stats() usa PET_CRIT/PET_CRITDMG atuais
+                 **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
         "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
@@ -249,7 +251,12 @@ def migrate_run(run: dict) -> dict:
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
     b = run.setdefault("base", {})
-    b.setdefault("spd", PET_SPD); b.setdefault("crit", PET_CRIT); b.setdefault("critdmg", PET_CRITDMG)
+    b.setdefault("spd", PET_SPD)
+    # saves antigos congelavam os padrões do pet (0.10 e 1.5) na base: sem eles, valem as constantes atuais
+    if b.get("crit") == 0.10:
+        del b["crit"]
+    if b.get("critdmg") == 1.5:
+        del b["critdmg"]
     if (run.get("pending") or {}).get("key") not in ITEMS:
         run["pending"] = None
     return run
