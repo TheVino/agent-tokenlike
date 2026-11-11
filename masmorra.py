@@ -163,7 +163,16 @@ def make_mimic(f: int) -> dict:
 
 
 ROOM_WEIGHTS = [("monster", 46), ("chest", 16), ("trap", 12), ("fountain", 11),
-                ("shop", 8), ("altar", 7)]
+                ("shop", 8), ("altar", 7), ("horde", 12)]
+# hordas: 2 a 4 inimigos mais fracos (HP e ATK x HORDE_MULT[n]); só a partir do andar HORDE_MIN_FLOOR
+HORDE_MIN_FLOOR = 3
+HORDE_MULT = {2: 0.75, 3: 0.6, 4: 0.5}
+HORDE_GOLD_MULT = 1.25
+
+
+def horde_max(f: int) -> int:
+    """Tamanho máximo da horda no andar f."""
+    return 2 if f < 5 else 3 if f < 8 else 4
 
 DEFAULT_STAGE_FLOORS = [1, 3, 8, 15, 25, 40]
 
@@ -402,7 +411,11 @@ def _dano_status(s: dict, f: int) -> list[tuple[str, int]]:
 
 
 def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
-    """Luta por rodadas. Devolve (venceu, passos, assassino); muta run["hp"] e hp/status dos inimigos."""
+    """Luta por rodadas. Devolve (venceu, passos, assassino, empate); muta run["hp"] e hp/status dos inimigos.
+
+    Sem `area` o pet bate no inimigo vivo de menor HP; com `area`, um passo por alvo vivo.
+    empate: a luta bateu no limite de MAX_ROUNDS (o pet sobrevive, mas a sala não dá prêmio).
+    """
     passos = []
     pst: dict = {}                                       # status do pet (só durante a luta)
 
@@ -437,13 +450,13 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
             passo("pet", "pet", d, status=nome, dot=True)
             if run["hp"] <= 0:
                 run["hp"] = 0
-                return False, passos, nome.capitalize()
+                return False, passos, nome.capitalize(), False
         for i in vivos():
             for nome, d in _dano_status(foes[i]["status"], f):
                 foes[i]["hp"] -= d
                 passo(i, i, d, status=nome, dot=True)
         if not vivos():
-            return True, passos, ""
+            return True, passos, "", False
         # 2. ordem por velocidade; empate: pet primeiro, depois a ordem da lista (sort estável)
         ordem = sorted([("pet", st["spd"])] + [(i, foes[i]["spd"]) for i in vivos()], key=lambda x: -x[1])
         for who, _spd in ordem:
@@ -468,7 +481,7 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                                 aplicado = aplicado or nome
                     passo("pet", i, d, e_crit, aplicado)
                 if not vivos():
-                    return True, passos, ""
+                    return True, passos, "", False
             else:
                 x = foes[who]
                 if rng.random() < st["dodge"]:
@@ -483,8 +496,8 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 passo(who, "pet", d, e_crit, aplicado)
                 if run["hp"] <= 0:
                     run["hp"] = 0
-                    return False, passos, x["name"]
-    return True, passos, ""                              # limite de segurança: vitória sem prêmio extra
+                    return False, passos, x["name"], False
+    return True, passos, "", True                        # limite de segurança: empate, sem prêmio
 
 
 def die(run: dict, meta: dict, ev: dict, killer: str) -> None:
@@ -562,7 +575,8 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     if run["room"] == ROOMS_PER_FLOOR and f % BOSS_EVERY == 0:
         kind = "boss"
     else:
-        kind = rng.choices([k for k, _ in ROOM_WEIGHTS], [w for _, w in ROOM_WEIGHTS])[0]
+        pesos = [(k, w) for k, w in ROOM_WEIGHTS if k != "horde" or f >= HORDE_MIN_FLOOR]
+        kind = rng.choices([k for k, _ in pesos], [w for _, w in pesos])[0]
         if kind == "chest" and f >= 2 and rng.random() < 0.12:
             kind = "mimic"
     ev["kind"] = kind
@@ -583,23 +597,33 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             run["gold"] += gold
             ev["gold"] = ev.get("gold", 0) + gold
 
-    if kind in ("monster", "boss", "mimic"):
+    if kind in ("monster", "boss", "mimic", "horde"):
+        pool = [m for m in MONSTERS if m[4] <= f]
         if kind == "mimic":
-            foe = make_mimic(f)
+            foes = [make_mimic(f)]
+        elif kind == "horde":                 # chefe nunca vem em horda
+            n = rng.randint(2, horde_max(f))
+            foes = [make_foe(rng.choice(pool), f, mult=HORDE_MULT[n]) for _ in range(n)]
         else:
-            foe = make_foe(rng.choice([m for m in MONSTERS if m[4] <= f]), f, boss=(kind == "boss"))
-        foes = [foe]
-        ev["name"] = foe["name"]
+            foes = [make_foe(rng.choice(pool), f, boss=(kind == "boss"))]
+        ev["name"] = f"Horda ({len(foes)})" if kind == "horde" else foes[0]["name"]
         ev["foes"] = [{k: x[k] for k in ("sprite", "name", "boss", "element", "hp_max")} for x in foes]
         hp_before = run["hp"]
-        won, ev["hits"], killer = combate(run, st, foes, rng, f)
+        won, ev["hits"], killer, empate = combate(run, st, foes, rng, f)
         ev["dmg"] = hp_before - run["hp"]
         if not won:
             die(run, meta, ev, killer)
             return ev
+        if empate:                            # passou da sala, mas sem ouro, kills, bônus de chefe ou item
+            ev["empate"] = True
+            _check_achievements(run, meta, ev)
+            return ev
         ev["won"] = True
-        run["kills"] += 1
-        gold = round((rng.randint(1, 3) + f // 2) * (1 + st["gold"]))
+        run["kills"] += len(foes)
+
+        def gold_monstro():
+            return round((rng.randint(1, 3) + f // 2) * (1 + st["gold"]))
+        gold = round(sum(gold_monstro() for _ in foes) * HORDE_GOLD_MULT) if kind == "horde" else gold_monstro()
         if st["lifesteal"]:
             run["hp"] = min(st["maxhp"], run["hp"] + st["lifesteal"])
         if kind == "boss":
@@ -699,7 +723,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 2
+REGRAS_REV = 3
 
 
 def _balance_version() -> str:
@@ -712,7 +736,7 @@ def _balance_version() -> str:
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
             PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOBRO_CRIT, QUEIMA,
             QUEIMA_TURNOS, ELETRO_CHANCE, ELETRO_TURNOS, VENENO_TURNOS, VENENO_MAX_PILHAS, GELO_CHANCE, GELO_TURNOS,
-            MAX_ROUNDS]
+            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
 

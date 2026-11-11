@@ -965,12 +965,12 @@ class PetApp:
         foe0 = (ev.get("foes") or [{}])[0]           # por enquanto só o inimigo 0 aparece na tela
         boss = foe0.get("boss", ev.get("boss", False))
         sprite = foe0.get("sprite", ev.get("sprite"))
-        name_color = {"boss": HURT, "monster": TEXT, "mimic": HURT, "stairs": CYAN}.get(kind, GOLD)
+        name_color = {"boss": HURT, "monster": TEXT, "horde": TEXT, "mimic": HURT, "stairs": CYAN}.get(kind, GOLD)
         at(0, lambda: self.show_foe(sprite, boss))
         at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22))
         t = 500
 
-        if kind in ("monster", "boss", "mimic"):
+        if kind in ("monster", "boss", "mimic", "horde"):
             hits = ev["hits"]
             shown = hits if len(hits) <= 8 else hits[:7] + [hits[-1]]
             for h in shown:
@@ -1015,7 +1015,7 @@ class PetApp:
             if ev.get("evolved"):
                 at(t, self.evolve)
                 t += 1200
-        if ev.get("gold") and kind not in ("monster", "boss", "mimic"):
+        if ev.get("gold") and kind not in ("monster", "boss", "mimic", "horde"):
             at(t, lambda: self.floater(f"+{ev['gold']} $", GOLD, x=self.fcx))
             t += 450
         t = self._offer_steps(ev, at, t)
