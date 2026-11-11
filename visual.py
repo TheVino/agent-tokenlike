@@ -130,7 +130,57 @@ def objeto(pm, art, anchor, ordem, glow=None):
     return _colocar(pm, art, bbox(pm), anchor, ordem, glow)
 
 
-def compose(base, looks, arts):
+FASES = 3   # quadros da animação dos looks elementais
+
+
+def chamas(pm, nivel=1, fase=0, cor="#ff9f43", ponta="#ffd23f"):
+    """Chamas no topo de cada 2ª coluna; a altura gira com a fase."""
+    out = dict(pm)
+    for i, (x, ymin, _) in enumerate(_cols(pm, 2, 0)):
+        h = 1 + (i + fase) % 3 + (nivel - 1)
+        for k in range(1, h + 1):
+            out[(x, ymin - k)] = ponta if k == h else cor
+    return out
+
+
+def faiscas(pm, nivel=1, fase=0, cor="#fff27a"):
+    """Faíscas acima do corpo; quais colunas acendem gira com a fase."""
+    out = dict(pm)
+    for i, (x, ymin, _) in enumerate(_cols(pm, 2, 0)):
+        if (i + fase) % 3 != 2:
+            for k in range(nivel):
+                out[(x, ymin - 1 - 2 * k)] = cor
+    return out
+
+
+def gotas_veneno(pm, nivel=1, fase=0, cor="#4fbf5a"):
+    """Gotas escorrendo por baixo; o comprimento gira com a fase."""
+    out = dict(pm)
+    for i, (x, _, ymax) in enumerate(_cols(pm, 2, 0)):
+        for k in range(1, 2 + (i + fase) % 3 + nivel - 1):
+            out[(x, ymax + k)] = cor
+    return out
+
+
+def geada(pm, nivel=1, fase=0, cor="#9fe8ff", branco="#ffffff"):
+    """Recolore a borda do corpo com gelo (silhueta igual); a fase muda quais pixels."""
+    out = dict(pm)
+    for (x, y) in pm:
+        if any(p not in pm for p in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))):
+            r = (x + y + fase) % 3
+            if r < nivel:
+                out[(x, y)] = branco if r == 0 else cor
+    return out
+
+
+ELEMENTAIS = {"chamas": chamas, "faiscas": faiscas, "gotas_veneno": gotas_veneno, "geada": geada}
+
+
+def tem_animacao(looks):
+    return any(l["type"] in ELEMENTAIS for l, _ in looks)
+
+
+def compose(base, looks, arts, fase=0):
     """looks = [(look, glow_color), ...] na ordem em que os itens foram pegos."""
     tipos = [l["type"] for l, _ in looks]
     out = dict(base)
@@ -142,6 +192,12 @@ def compose(base, looks, arts):
             if t not in feito:
                 feito.add(t)
                 out = (espinhos if t == "espinhos" else gotas)(out, l["color"], tipos.count(t))
+        elif t in ELEMENTAIS:
+            # como espinhos: uma vez só, nível = nº de looks do tipo, cor do primeiro (padrão se não houver)
+            if t not in feito:
+                feito.add(t)
+                kw = {"cor": l["color"]} if "color" in l else {}
+                out = ELEMENTAIS[t](out, tipos.count(t), fase, **kw)
         elif t == "contorno":
             out = contorno(out, l["color"])
         elif t == "tingir":

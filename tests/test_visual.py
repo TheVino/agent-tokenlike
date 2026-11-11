@@ -81,4 +81,17 @@ adaga = ({"type": "obj", "anchor": "dir", "art": "adaga"}, None)
 bx = V.bbox(slime)
 assert V.compose(slime, [adaga] * 2, arts) == V._colocar(V._colocar(slime, arts["adaga"], bx, "dir", 0, None),
                                                          arts["adaga"], bx, "dir", 1, None)
+# looks elementais animados: 3 quadros diferentes, corpo preservado (geada recolore a borda), puros
+for fn in (V.chamas, V.faiscas, V.gotas_veneno, V.geada):
+    for pm in (slime, outro):
+        copia = dict(pm)
+        frames = [fn(pm, 1, f) for f in range(V.FASES)]
+        assert len({tuple(sorted(f.items())) for f in frames}) == V.FASES, fn.__name__
+        assert all(set(pm) <= set(f) or fn is V.geada for f in frames), fn.__name__
+        assert pm == copia, fn.__name__
+        assert fn(pm, 2, 0) != fn(pm, 1, 0), fn.__name__
+lk = [({"type": "chamas"}, None)]
+assert V.tem_animacao(lk) and not V.tem_animacao([({"type": "obj", "anchor": "topo", "art": "chifres"}, None)])
+c0, c1 = V.crop(V.compose(slime, lk, {}, fase=0), V.LOOK_BOX), V.crop(V.compose(slime, lk, {}, fase=1), V.LOOK_BOX)
+assert c0 != c1 and V.compose(slime, [], {}, fase=2) == slime
 print("ok: visual")
