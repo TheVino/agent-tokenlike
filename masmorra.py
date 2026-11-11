@@ -8,6 +8,8 @@ Morreu em combate ou em armadilha -> lápide no cemitério e run nova.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 import random
 from datetime import date
@@ -153,7 +155,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
         "hp": hp,
         "base": {"maxhp": hp, "atk": int(base_stats.get("atk", 3)),
                  "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0))},
-        "items": [], "shield": 0, "pending": None,
+        "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
     }
@@ -189,6 +191,9 @@ def migrate_run(run: dict) -> dict:
                         if items.get(s) in ITEMS]
     else:
         run["items"] = [i for i in (items or []) if isinstance(i, dict) and i.get("key") in ITEMS]
+    for i in run["items"]:
+        i.setdefault("floor", None)
+    run.setdefault("consumed", [])
     run.setdefault("shield", 0)
     if (run.get("pending") or {}).get("key") not in ITEMS:
         run["pending"] = None
@@ -272,15 +277,16 @@ def auto_choice(run: dict, offer: dict) -> str:
 
 def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
     """Aplica a escolha. As conquistas ficam com quem chama (enter_room / *_pending)."""
-    item = {"key": offer["key"], "rar": offer["rar"]}
+    item = {"key": offer["key"], "rar": offer["rar"]}      # sem andar: é o que o evento (GUI) recebe
     if choice == "pegar":
-        run["items"].append(item)
+        run["items"].append({**item, "floor": run["floor"]})
         hp_bonus = item_fx(item["key"], item["rar"]).get("maxhp", 0)
         if hp_bonus > 0:
             run["hp"] += hp_bonus
         ev["item"] = item
         stats(run)
         return
+    run["consumed"].append({**item, "floor": run["floor"]})
     cf = consume_fx(item["key"], item["rar"])
     if "heal" in cf:
         n = max(0, min(cf["heal"], stats(run)["maxhp"] - run["hp"]))
@@ -551,3 +557,28 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
     _check_achievements(run, meta, ev)
     return ev
+
+
+def _balance_version() -> str:
+    """Hash dos números de balanceamento (não do visual): identifica a versão das regras nos registros."""
+    its = {k: {f: v.get(f) for f in ("fx", "consume", "rarities", "req")} for k, v in sorted(ITEMS.items())}
+    blob = [its, MONSTERS, ROOM_COST, ROOMS_PER_FLOOR, MAX_STORED_ROOMS, BOSS_EVERY, MON_HP, MON_ATK,
+            BOSS_HP, BOSS_ATK, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
+            [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
+            CHEST_ITEM_CHANCE, SHOP_PRICE]
+    return hashlib.sha256(json.dumps(blob, sort_keys=True, default=str).encode()).hexdigest()[:8]
+
+
+BALANCE_VERSION = _balance_version()
+
+
+def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: list) -> dict:
+    """Linha de registro de uma run terminada (mesmo formato no jogo e no simulador)."""
+    return {
+        "run": run["id"], "char": run["char"], "floor": run["floor"], "room": run["room"],
+        "killer": killer, "gave_up": gave_up,
+        "items": [dict(i) for i in run["items"]], "consumed": [dict(i) for i in run["consumed"]],
+        "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
+        "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,
+        "achievements": list(achievements),
+    }

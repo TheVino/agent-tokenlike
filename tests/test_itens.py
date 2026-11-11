@@ -49,7 +49,7 @@ assert r["pending"] is None and ev["item"] == {"key": "adaga", "rar": "comum"} a
 # modo interativo cria pendência; enter_room não entra com pendência (responsabilidade da GUI) mas resolve_pending funciona
 # migração de save antigo
 old = {"items": {"mao": "adaga", "escudo": None, "cabeca": "chapeu"}, "hp": 10}
-M.migrate_run(old); assert old["items"] == [{"key": "adaga", "rar": "comum"}, {"key": "chapeu", "rar": "comum"}]
+M.migrate_run(old); assert old["items"] == [{"key": "adaga", "rar": "comum", "floor": None}, {"key": "chapeu", "rar": "comum", "floor": None}]
 assert old["shield"] == 0 and old["pending"] is None
 novo = {"items": [{"key": "adaga", "rar": "raro"}, {"key": "sumiu", "rar": "comum"}, "lixo"],
         "pending": {"key": "sumiu", "rar": "comum", "source": "chest"}}
