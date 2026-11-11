@@ -20,16 +20,19 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
 - `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
+  `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
   `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso
   que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói e testa o modo interativo;
   usa `random.Random(SEED)` para ser determinístico).
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
+  `tools/estatisticas.py`: gera `tools/saida/estatisticas.html` e `.json` (gitignored) com simulado x real, itens, pares, mortes e heróis; `METAS` (metas de balanceamento) mora aí.
   `tools/preview_arte.py`: gera um PNG com todos os desenhos (precisa do Pillow, só para desenvolvimento).
 - `README.md` (inglês, para o GitHub) e `LEIA-ME.md` (pt-BR). Licença MIT.
 - `statusline.py`: statusline opcional do Claude Code (o usuário liga). Lê o JSON do stdin e grava só os limites oficiais
   de sessão (5h) e semana em `~/.tokenlike/limites.json`. O pet lê com `read_limits` a cada poll e desenha as barras
   Sessão/Semana no painel (verde ≤50%, amarelo ≤80%, vermelho acima; `—` quando o reset já passou). Sem o arquivo,
   as barras não aparecem e a janela fica do tamanho de antes.
+- `.claude/skills/balancear/`: skill `/balancear` (lê as estatísticas e propõe mudanças de números, só edita com aprovação do dono).
 - `iniciar.bat` (pythonw, sem console), `testar-demo.bat` (`--demo`: tokens falsos, estado separado).
 
 ## Comandos
@@ -41,6 +44,9 @@ python tests/test_visual.py
 python tests/test_gui.py
 python tests/test_migracao.py
 python tests/test_limites.py
+python tests/test_registro.py
+python tests/test_estatisticas.py
+python tools/estatisticas.py    # página de estatísticas (sim x real); --sem-abrir não abre o navegador
 python tools/simular.py          # depois de mexer em balanceamento/itens/salas
 python tools/preview_arte.py     # depois de mexer em arte.py
 python tokenlike.py --demo        # ver na tela de verdade
@@ -89,12 +95,15 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - Estado em `~/.tokenlike/state.json` (ou `state-demo.json`). Na 1ª execução, se `~/.tokenlike` não existe e
   `~/.tokenpet` (nome antigo) existe, `migrate_old_data()` copia os `state*.json` sem apagar o antigo. Gravação atômica (tmp + replace).
   Um arquivo de lock impede duas instâncias abertas.
-- Balanceamento atual (via `tools/simular.py`, as duas linhas: 0 e todas as conquistas): 38–41% das runs passam do
-  1º chefe, p90 = andar 15, máx = 25. Como os itens empilham, o herói fica forte rápido (baú sempre traz item,
-  `CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo: 1 / 1.2 / 1.4 / 1.6), e quem segura as runs são os chefes, com valor
-  baixo no 1º chefe e inclinação alta (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.4), ou seja
-  `valor + por_andar * (andar - BOSS_EVERY)`, com mínimo 1): fracos no andar 5, paredões nos 15–20.
-  Os monstros comuns também subiram: `MON_ATK` = (1, 0.6) -> (1.5, 1.2).
+- Registro de runs: toda run encerrada vira uma linha em `~/.tokenlike/runs.jsonl` (demo: `runs-demo.jsonl`) via
+  `masmorra.run_record`, com `masmorra.BALANCE_VERSION` (hash de 8 caracteres só dos números de balanceamento).
+  Mudou número, mudou a versão e o histórico real recomeça (`--todas-versoes` mostra tudo).
+- Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 25).
+  Rode `python tools/estatisticas.py`, não decore números aqui.
+- Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 38-41% passam do
+  1º chefe, p90 = andar 15, máx = 25. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0,
+  `RAR_MULT` baixo) e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.4), ou seja
+  `valor + por_andar * (andar - BOSS_EVERY)`, mínimo 1). `MON_ATK` = (1.5, 1.2).
   Quase toda morte acontece na sala do chefe. Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`),
   só então `MON_*`/`BOSS_*`.
 
@@ -108,6 +117,12 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - **Tipo de sala novo:** `ROOM_WEIGHTS` + um ramo em `enter_room` + a animação em `PetApp.play_room`.
 - **Conquista nova:** `masmorra.ACHIEVEMENTS` + regra em `_check_achievements`.
 - **Herói novo:** de preferência uma pasta em `characters/` com PNGs e `character.json` (`stats`, `unlock`, `stages[].floor`).
+
+## Antes do lançamento
+
+- Capricho visual da página de estatísticas e ícones de itens e heróis nela.
+- Screenshot e GIF do README (`docs/screenshot.png`, `docs/demo.gif`).
+- Testar na tela de verdade o modo interativo e as barras de sessão e semana.
 
 ## Ideias em aberto
 

@@ -139,9 +139,14 @@ python tests/test_reader.py      # log reading, deduplication, art
 python tests/test_gui.py         # fake tkinter: plays hundreds of rooms, dies, respawns
 python tests/test_migracao.py    # copies old ~/.tokenpet progress to ~/.tokenlike
 python tests/test_limites.py     # statusline stores only the limits; bars, stale data, time zone
+python tests/test_registro.py    # run log (runs.jsonl) and balance version
+python tests/test_estatisticas.py # balance metrics and stats page
+python tools/estatisticas.py     # stats page: simulated vs real runs (dev only)
 python tools/simular.py          # simulates 2,000 runs (after balance changes)
 python tools/preview_arte.py     # renders all art to a PNG (needs Pillow, dev only)
 ```
+
+The Claude Code skill `/balancear` (in `.claude/skills/`) reads those stats and proposes balance changes, editing only with the owner's approval.
 
 Formerly called *TokenPet*. On first launch, if `%USERPROFILE%\.tokenlike` doesn't exist and
 `%USERPROFILE%\.tokenpet` does, your saves are **copied** over (the old folder is left untouched).
