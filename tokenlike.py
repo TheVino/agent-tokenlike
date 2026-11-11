@@ -72,6 +72,7 @@ HURT = "#ff6b81"
 GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
 STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
+FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
 def fmt(n: float) -> str:
@@ -750,19 +751,25 @@ class PetApp:
         arts = item_arts()
         cor = STATUS_COR.get(self.pet_status)
 
-        def mapa(pm):
-            m = visual.compose(pm, looks, arts)
-            return visual.tingir(m, cor, 0.5) if cor else m   # com status, o pet fica na cor dele
+        # looks elementais animam em FASES quadros; sem eles, uma fase só (nenhuma imagem a mais)
+        fases = range(visual.FASES if visual.tem_animacao(looks) else 1)
+
+        def mapa(pm, fase):
+            m = visual.compose(pm, looks, arts, fase)
+            return visual.tingir(m, cor, 0.5) if cor else m   # com status, o pet fica na cor dele (todas as fases)
 
         def img(m):
             im, self.below = render_map(m, self.px)
             return im
 
-        self.look_maps = [mapa(pm) for pm in self.frame_maps]
-        self.frames = [img(m) for m in self.look_maps]
-        self.blink_img = img(mapa(self.blink_map)) if self.blink_map else None
-        self.sleep_img = img(mapa(self.sleep_map)) if self.sleep_map else (self.blink_img or self.frames[0])
-        self.canvas.itemconfigure(self.sprite, image=self.frames[0])
+        mapas = [[mapa(pm, j) for j in fases] for pm in self.frame_maps]
+        self.look_maps = [q[0] for q in mapas]                    # fase 0 de cada quadro
+        # imagens indexadas [quadro_do_heroi][fase]; o tick só escolhe qual mostrar
+        self.frames_fx = [[img(m) for m in q] for q in mapas]
+        self.blink_fx = [img(mapa(self.blink_map, j)) for j in fases] if self.blink_map else None
+        self.sleep_fx = ([img(mapa(self.sleep_map, j)) for j in fases] if self.sleep_map
+                         else (self.blink_fx or self.frames_fx[0]))
+        self.canvas.itemconfigure(self.sprite, image=self.frames_fx[0][0])
         self.place_pet(0, 0)
 
     def set_pet_status(self, s):
@@ -1317,21 +1324,22 @@ class PetApp:
                 dy = 0
             else:
                 sleeping = idle > SLEEP_AFTER_S and not busy
+                fase = int(now * 1000 / FX_MS)       # relógio dos efeitos, separado do herói
                 if sleeping:
-                    img = self.sleep_img
+                    img = self.sleep_fx[fase % len(self.sleep_fx)]
                     bob = -2 if int(now / 1.4) % 2 else 0
                     if now > self.next_zzz:
                         self.floater("z Z", MUTED, life=20)
                         self.next_zzz = now + 3
                 else:
-                    if self.blink_img is not None and now > self.next_blink:
+                    if self.blink_fx is not None and now > self.next_blink:
                         self.blink_until = now + 0.16
                         self.next_blink = now + self.rng.uniform(2.5, 6)
-                    if self.blink_img is not None and now < self.blink_until:
-                        img = self.blink_img
+                    if self.blink_fx is not None and now < self.blink_until:
+                        img = self.blink_fx[fase % len(self.blink_fx)]
                     else:
-                        i = int(now * 1000 / self.char.frame_ms) % len(self.frames)
-                        img = self.frames[i]
+                        q = self.frames_fx[int(now * 1000 / self.char.frame_ms) % len(self.frames_fx)]
+                        img = q[fase % len(q)]
                     bob = -2 if int(now / 0.6) % 2 else 0
                 dy = self.hop.pop(0) if self.hop else bob
                 dx = self.lunge.pop(0) if self.lunge else 0

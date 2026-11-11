@@ -74,8 +74,8 @@ for demo in (False, True):
         pump(app, 400)
         assert any(g["char"]=="fantasma" for g in m["graveyard"]) or app.run["char"]=="fantasma", "ghost never played"
     app.run["items"] = [{"key": k, "rar": "lendario"} for k in list(M.ITEMS)[:12]]
-    app.refresh_look(); w_full = app.frames[0].width()
-    app.run["items"] = []; app.refresh_look(); w_empty = app.frames[0].width()
+    app.refresh_look(); w_full = app.frames_fx[0][0].width()
+    app.run["items"] = []; app.refresh_look(); w_empty = app.frames_fx[0][0].width()
     assert w_full == w_empty                       # imagem sempre do tamanho de LOOK_BOX: pivô fixo
     app.run["items"] = [{"key": "chifres", "rar": "raro"}]; app.refresh_look()
     for size in ("Pequeno", "Grande"): app.size_var.set(size); app.change_size()
@@ -208,6 +208,23 @@ app6.set_pet_status("veneno"); assert app6.pet_status == "veneno" and app6.look_
 app6.set_pet_status(None); assert app6.look_maps[0] == normal
 app6.set_pet_status("queimadura"); app6.new_run(); assert app6.pet_status is None
 app6.show_stats(); app6.quit()
+# looks elementais animados: 3 fases por quadro (e no piscar/dormir); sem animação, 1 fase só
+app7 = tp.PetApp(Args()); PENDING.clear(); app7.rng = random.Random(SEED)
+ELEM = ("chamas", "faiscas", "gotas_veneno", "geada")
+for t in ELEM:   # itens temporários com cada look animado
+    M.ITEMS["_" + t] = {"name": t, "fx": {"atk": 1}, "rarities": ["comum"], "consume": {"heal": 1},
+                        "look": {"type": t}}
+app7.run["items"] = [{"key": "_" + t, "rar": "comum", "floor": 1} for t in ELEM]
+t0 = time.perf_counter(); app7.refresh_look(); dt = time.perf_counter() - t0
+assert dt < 1.0, dt
+assert len(app7.frames_fx[0]) == 3 and all(len(q) == 3 for q in app7.frames_fx)
+assert len(app7.sleep_fx) == 3 and (app7.blink_fx is None or len(app7.blink_fx) == 3)
+app7.set_pet_status("congelamento"); assert all(len(q) == 3 for q in app7.frames_fx)   # tinta em todas as fases
+app7.set_pet_status(None)
+app7.busy_until = 0; app7.run["energy"] = 0; app7.tick()
+app7.run["items"] = []; app7.refresh_look(); assert len(app7.frames_fx[0]) == 1 and len(app7.sleep_fx) == 1
+for t in ELEM: M.ITEMS.pop("_" + t)
+app7.quit()
 # herói com stats inválidos é ignorado (e logado) no carregamento, não a cada tick
 pasta = Path(tempfile.mkdtemp())
 for nome, stats in (("ruim1", {"spd": "rapido"}), ("ruim2", {"hp": None}), ("bom", {"spd": 12, "hp": "18"})):
