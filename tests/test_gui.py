@@ -66,7 +66,7 @@ for demo in (False, True):
     pump(app, 1500)
     m = app.meta
     print(("demo" if demo else "real"), "runs:", m["runs"], "best:", m["best"], "achs:", m["achievements"])
-    assert m["runs"] > 3 and len(m["graveyard"]) == m["runs"]
+    assert m["runs"] > 3 and len(m["graveyard"]) == min(m["runs"], 50)   # o cemitério guarda só as últimas 50
     # unlock ghost and switch hero
     if "chefe1" in m["achievements"]:
         app.fill_char_menu()
@@ -158,6 +158,27 @@ app5 = tp.PetApp(Args()); PENDING.clear(); app5.rng = random.Random(SEED)
 app5.run.pop("ach_start", None); app5.run.pop("consumed", None)
 app5.run["items"] = [{"key": "adaga", "rar": "comum"}]; M.migrate_run(app5.run)
 app5.give_up(); app5.quit()
+# combate novo: W estável ao trocar o tamanho, hordas na tela, status
+app6 = tp.PetApp(Args()); PENDING.clear(); app6.rng = random.Random(SEED)
+app6.size_var.set("Médio"); app6.change_size()                # o app4 deixou "Grande" no save
+w0 = app6.W
+for size in ("Pequeno", "Grande", "Médio"): app6.size_var.set(size); app6.change_size()
+assert app6.W == w0
+seen_horde = False
+for _ in range(600):
+    app6.busy_until = 0
+    if app6.run["dead"]:
+        app6.respawn_at = 1
+    app6.run["energy"] = 10 * M.ROOM_COST
+    app6.run["floor"] = max(app6.run["floor"], 3)
+    app6.tick()
+    fns = PENDING[:]; PENDING.clear()
+    for fn in fns:
+        if fn is None or getattr(fn, "__name__", "") in ("tick", "poll"): continue
+        fn()
+    seen_horde = seen_horde or any(k == "horde" for k in getattr(app6, "_ultimo_kind", [""]))
+app6.show_stats(); app6.quit()
+assert seen_horde
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)

@@ -71,6 +71,7 @@ GOOD = "#7ee081"
 HURT = "#ff6b81"
 GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
+STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
 
 
 def fmt(n: float) -> str:
@@ -571,6 +572,9 @@ class PetApp:
         self.hop: list[int] = []
         self.lunge: list[int] = []
         self.foe_lunge: list[int] = []
+        self.lunge_foe = 0            # qual inimigo está dando o bote
+        self.foe_xy: list = []        # posição de cada inimigo na tela
+        self.pet_status = None        # status do pet visto na animação da luta (só para o painel)
         self.blink_until = 0.0
         self.next_blink = time.time() + 3
         self.next_zzz = 0.0
@@ -642,9 +646,12 @@ class PetApp:
         bx0, by0, bx1, by1 = visual.LOOK_BOX
         left = 6 - bx0 * px                 # margem para os itens que saem à esquerda do quadro
         self.pcx = left + self.T // 2
-        foe_w = 11 * self.bpx
-        self.fcx = left + self.T + (bx1 - 16) * px + foe_w // 2   # idem à direita
-        self.W = self.fcx + foe_w // 2 + 10
+        # à direita: 1 inimigo grande ou um grid 2x2 de inimigos pequenos (colunas de 11 px + 1 de folga)
+        fx0 = left + self.T + (bx1 - 16) * px
+        self.foe_area = max(11 * self.bpx, 23 * px)
+        self.fcx = fx0 + self.foe_area // 2
+        self.foe_cols = (fx0 + 11 * px // 2, fx0 + 12 * px + 11 * px // 2)
+        self.W = fx0 + self.foe_area + 10
         self.top = 52 - by0 * px            # espaço para o que sai acima do quadro
         self.base_y = self.top + self.T
         self.below = (by1 - 16) * px        # o que pode descer abaixo da base (gotas)
@@ -671,14 +678,20 @@ class PetApp:
         self.floaters.clear()
         self.particles.clear()
         self.sprite = c.create_image(self.pcx, self.base_y + self.below, anchor="s")
-        self.foe = c.create_image(self.fcx, self.base_y, anchor="s", state="hidden")
-        self.foe_crown = c.create_image(self.fcx, self.base_y, anchor="s", state="hidden")
+        self.foe_items = [(c.create_image(self.fcx, self.base_y, anchor="s", state="hidden"),
+                           c.create_image(self.fcx, self.base_y, anchor="s", state="hidden"))
+                          for _ in range(4)]
+        self.foe_xy = []
+        self.foe_on = set()           # inimigos visíveis
+        self.foe_look = []
 
         py = self.base_y + self.below + 6
         c.create_rectangle(6, py, self.W - 6, py + 52 + self.limit_h, fill=PANEL_BG,
                            outline=PANEL_EDGE, width=2)
         self.title_txt = c.create_text(14, py + 11, anchor="w", fill=TEXT, font=self.font)
         self.hp_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=HURT, font=self.font)
+        self.status_y = py + 11
+        self.status_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=MUTED, font=self.font_small)
         self.info_txt = c.create_text(14, py + 26, anchor="w", fill=MUTED, font=self.font_small)
         self.bar_x0, self.bar_x1, self.bar_y = 14, self.W - 14, py + 38
         c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, fill=BAR_BG, outline="")
@@ -699,11 +712,13 @@ class PetApp:
         self.refresh_look()
         self.update_panel()
 
-    def art_img(self, key, boss=False):
-        """Imagem (em cache) de um desenho do arte.py."""
-        ck = (key, boss)
+    def art_img(self, key, boss=False, status=None):
+        """Imagem (em cache) de um desenho do arte.py; com status, tingida na cor dele."""
+        ck = (key, boss, status)
         if ck not in self.art:
             pal = arte.BOSS_PAL if boss else arte.PAL
+            if status:      # tingir a paleta = tingir cada pixel (o contorno escuro fica intacto)
+                pal = visual.tingir(pal, STATUS_COR[status], 0.5)
             self.art[ck] = render_grid(arte.all_art()[key], pal, self.bpx if boss else self.px)
         return self.art[ck]
 
@@ -746,6 +761,10 @@ class PetApp:
         st = M.stats(run)
         self.canvas.itemconfigure(self.title_txt, text=f"{self.stage_title}  ·  Run #{run['id']}")
         self.canvas.itemconfigure(self.hp_txt, text=f"♥ {run['hp']}/{st['maxhp']}")
+        x0 = self.canvas.bbox(self.hp_txt)[0] - 8
+        self.canvas.coords(self.status_txt, x0, self.status_y)
+        self.canvas.itemconfigure(self.status_txt, text=self.pet_status or "",
+                                  fill=STATUS_COR.get(self.pet_status, MUTED))
         self.canvas.itemconfigure(
             self.info_txt,
             text=f"Andar {run['floor']}-{run['room']}   ATK {st['atk']}  DEF {st['def']}   $ {run['gold']}")
@@ -961,39 +980,39 @@ class PetApp:
         def at(ms, fn):
             steps.append((ms, fn))
 
+        self._ultimo_kind = [ev["kind"]]               # só para o teste
         kind = ev["kind"]
-        foe0 = (ev.get("foes") or [{}])[0]           # por enquanto só o inimigo 0 aparece na tela
-        boss = foe0.get("boss", ev.get("boss", False))
-        sprite = foe0.get("sprite", ev.get("sprite"))
+        foes = ev.get("foes") or []
         name_color = {"boss": HURT, "monster": TEXT, "horde": TEXT, "mimic": HURT, "stairs": CYAN}.get(kind, GOLD)
-        at(0, lambda: self.show_foe(sprite, boss))
+
+        def nova_sala():
+            self.pet_status = None                     # status do pet não passa de uma sala para outra
+            self.update_panel()
+        at(0, nova_sala)
+        if foes:
+            at(0, lambda: self.show_foes(foes))
+        else:
+            at(0, lambda: self.show_foe(ev.get("sprite"), ev.get("boss", False)))
         at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22))
         t = 500
 
         if kind in ("monster", "boss", "mimic", "horde"):
             hits = ev["hits"]
-            shown = hits if len(hits) <= 8 else hits[:7] + [hits[-1]]
-            for h in shown:
-                no_pet = h["target"] == "pet"
-                x, cor = (None, HURT) if no_pet else (self.fcx, TEXT)
-                if h["skip"]:
-                    at(t, lambda h=h: self.floater("perdeu a vez", MUTED,
-                                                   x=self.pcx if h["who"] == "pet" else self.fcx, life=10))
-                elif h["dot"]:
-                    at(t, lambda h=h, x=x, cor=cor: self.floater(str(h["dmg"]), cor, x=x, life=8))
-                elif h["dodge"]:
-                    at(t, lambda: self.floater("esquivou!", CYAN, life=10))
-                elif h["who"] == "pet":
-                    at(t, lambda h=h: (self._set("lunge", [5, 10, 5, 0]),
-                                       self.floater(f"-{h['dmg']}" + ("!" if h["crit"] else ""),
-                                                    GOLD if h["crit"] else TEXT, x=self.fcx, life=10)))
-                else:
-                    at(t, lambda h=h: (self._set("foe_lunge", [-5, -10, -5, 0]),
-                                       self.floater(f"-{h['dmg']}" + ("!" if h["crit"] else ""), HURT, life=10)
-                                       if h["dmg"] else self.floater("bloqueou!", CYAN, life=10)))
+            # quem já morreu depois de cada passo (contando a lista inteira, mesmo os passos não mostrados)
+            hp = [f["hp_max"] for f in foes]
+            mortos_ate = []
+            for h in hits:
+                if h["target"] != "pet" and not h["skip"]:
+                    hp[h["target"]] -= h["dmg"]
+                mortos_ate.append([i for i, v in enumerate(hp) if v <= 0])
+            idx = list(range(len(hits)))
+            if len(idx) > 12:                          # lutas longas: os 11 primeiros passos e o último
+                idx = idx[:11] + [idx[-1]]
+            for k in idx:
+                at(t, lambda h=hits[k], mortos=mortos_ate[k]: self.anim_hit(h, mortos))
                 t += 380
             if ev["won"]:
-                at(t, lambda: (self.burst(self.fcx, self.base_y - 4 * self.px), self.hide_foe()))
+                at(t, lambda: self.hide_foe(burst=True))
                 t += 300
                 at(t, lambda: self.floater(f"+{ev.get('gold', 0)} $", GOLD, x=self.fcx))
                 t += 450
@@ -1085,21 +1104,96 @@ class PetApp:
     def _set(self, attr, value):
         setattr(self, attr, list(value))
 
+    def anim_hit(self, h, mortos):
+        """Um passo da luta: floaters, bote, tinta de status e some com quem morreu até aqui."""
+        tgt, who = h["target"], h["who"]
+
+        def fx(i):
+            return self.foe_xy[i][0] if i in self.foe_on else self.fcx
+        x = None if tgt == "pet" else fx(tgt)
+        txt = f"-{h['dmg']}" + ("!" if h["crit"] else "")
+        if h["skip"]:
+            self.floater("perdeu a vez", MUTED, x=None if who == "pet" else fx(who), life=10)
+        elif h["dot"]:
+            self.floater(str(h["dmg"]), STATUS_COR.get(h["status"], HURT), x=x, life=8)
+        elif h["dodge"]:
+            self.floater("esquivou!", CYAN, life=10)
+        elif who == "pet":
+            self.lunge = [5, 10, 5, 0]
+            self.floater(txt, GOLD if h["crit"] else TEXT, x=x, life=10)
+            if h["status"] and tgt in self.foe_on:        # ataque elemental: clarão na cor do elemento
+                self.burst(x, self.foe_xy[tgt][1] - 4 * self.px, colors=(STATUS_COR[h["status"]], "#ffffff"))
+                # ponytail: a tinta fica até o inimigo morrer (a GUI não sabe quando o status acaba)
+                self.draw_foe(tgt, h["status"])
+        else:
+            self.foe_attack(who)
+            if h["dmg"]:
+                self.floater(txt, GOLD if h["crit"] else HURT, life=10)
+            else:
+                self.floater("bloqueou!", CYAN, life=10)
+        if tgt == "pet" and h["status"] and not h["skip"]:
+            self.pet_status = h["status"]
+            self.update_panel()
+        for i in mortos:
+            self.hide_foe(i, burst=True)
+
+    def foe_slots(self, n):
+        """(centro, base) de cada inimigo: 1 no meio; 2-4 num grid 2x2 (com 3, o 3º fica em cima, no meio)."""
+        if n <= 1:
+            return [(self.fcx, self.base_y)]
+        up = self.base_y - 9 * self.px              # a arte dos monstros tem até 8 px de altura
+        xy = [(self.foe_cols[0], self.base_y), (self.foe_cols[1], self.base_y)]
+        if n == 3:
+            xy.append((self.fcx, up))
+        elif n >= 4:
+            xy += [(self.foe_cols[0], up), (self.foe_cols[1], up)]
+        return xy
+
+    def show_foes(self, foes):
+        self.hide_foe()
+        foes = foes[:4]
+        self.foe_xy = self.foe_slots(len(foes))
+        self.foe_look = [(f.get("sprite"), f.get("boss", False)) for f in foes]
+        for i in range(len(foes)):
+            self.draw_foe(i)
+
     def show_foe(self, sprite, boss=False):
+        if sprite:
+            self.show_foes([{"sprite": sprite, "boss": boss}])
+
+    def draw_foe(self, i, status=None):
+        sprite, boss = self.foe_look[i]
         if not sprite:
             return
-        self.canvas.itemconfigure(self.foe, image=self.art_img(sprite, boss), state="normal")
-        self.canvas.coords(self.foe, self.fcx, self.base_y)
+        img_i, crown = self.foe_items[i]
+        x, y = self.foe_xy[i]
+        img = self.art_img(sprite, boss, status)
+        self.canvas.itemconfigure(img_i, image=img, state="normal")
+        self.canvas.coords(img_i, x, y)
         if boss:
-            img = self.art_img(sprite, True)
-            self.canvas.itemconfigure(self.foe_crown, image=self.art_img("coroa"), state="normal")
-            self.canvas.coords(self.foe_crown, self.fcx, self.base_y - img.height() + self.px)
+            self.canvas.itemconfigure(crown, image=self.art_img("coroa"), state="normal")
+            self.canvas.coords(crown, x, y - img.height() + self.px)
         else:
-            self.canvas.itemconfigure(self.foe_crown, state="hidden")
+            self.canvas.itemconfigure(crown, state="hidden")
+        self.foe_on.add(i)
 
-    def hide_foe(self):
-        self.canvas.itemconfigure(self.foe, state="hidden")
-        self.canvas.itemconfigure(self.foe_crown, state="hidden")
+    def foe_attack(self, i):
+        """Bote do inimigo i (o anterior volta para o lugar se ainda estava no meio do bote)."""
+        j = self.lunge_foe
+        if j != i and j < len(self.foe_xy):
+            self.canvas.coords(self.foe_items[j][0], *self.foe_xy[j])
+        self.lunge_foe = i
+        self.foe_lunge = [-5, -10, -5, 0]
+
+    def hide_foe(self, i=None, burst=False):
+        """Esconde um inimigo (ou todos); com burst, explode quem ainda estava na tela."""
+        for j in (range(len(self.foe_items)) if i is None else [i]):
+            if burst and j in self.foe_on:
+                self.burst(self.foe_xy[j][0], self.foe_xy[j][1] - 4 * self.px)
+            self.foe_on.discard(j)
+            img_i, crown = self.foe_items[j]
+            self.canvas.itemconfigure(img_i, state="hidden")
+            self.canvas.itemconfigure(crown, state="hidden")
 
     def evolve(self):
         old = self.stage_title
@@ -1218,8 +1312,9 @@ class PetApp:
                 dx = self.lunge.pop(0) if self.lunge else 0
                 self.canvas.itemconfigure(self.sprite, image=img)
                 self.place_pet(dx, dy)
-            fdx = self.foe_lunge.pop(0) if self.foe_lunge else 0
-            self.canvas.coords(self.foe, self.fcx + fdx, self.base_y)
+            if self.foe_lunge and self.lunge_foe < len(self.foe_xy):
+                x, y = self.foe_xy[self.lunge_foe]
+                self.canvas.coords(self.foe_items[self.lunge_foe][0], x + self.foe_lunge.pop(0), y)
 
             for f in self.floaters[:]:
                 for item in f[0]:
@@ -1339,6 +1434,8 @@ class PetApp:
                  f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
                  f"ATK {st['atk']}   DEF {st['def']}   Esquiva {int(st['dodge'] * 100)}%"
                  f"   Ouro {run['gold']}",
+                 f"Velocidade {round(st['spd'])}   Crítico {round(st['crit'] * 100)}%"
+                 f"   Dano crítico ×{st['critdmg']:g}",
                  "Itens:"]
         for i in run["items"]:
             lines.append(f"  {M.ITEMS[i['key']]['name']} ({M.RAR_NAMES[i['rar']]}):"
