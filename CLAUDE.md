@@ -90,6 +90,19 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   a regra automática decide quando a próxima sala estiver pronta. Nunca entra em sala com pendência aberta.
 - **Tetos:** `energy` somada ≤ +100% (`MAX_ENERGY_BONUS`), multiplicador de armadilha em `TRAP_LIMITS` (0,25 a 3),
   esquiva ≤ `MAX_DODGE`. Saves antigos de 3 espaços viram itens comuns em `migrate_run`.
+- **Combate por rodadas** (`masmorra.combate`, inimigos são dicts de `make_foe`/`make_mimic`): a cada rodada,
+  1) dano de status (queimadura e veneno, ignoram escudo); 2) todos agem por `spd`, do maior para o menor (empate: pet
+  primeiro, depois a ordem da lista). Pet: `PET_SPD` 10 (ou `stats.spd` do herói), `PET_CRIT`, `PET_CRITDMG`.
+  Monstro: `spd` = `MON_SPD` (base + por andar) x `spd_mult` do monstro (x `BOSS_SPD_BONUS` no chefe), crítico fixo
+  (`MON_CRIT`/`BOSS_CRIT`, dano `FOE_CRITDMG`). Quem tem o **dobro da velocidade** do alvo ganha `DOBRO_CRIT` de
+  chance e `critdmg` x2 (vale dos dois lados; o esqueleto lento apanha muito crítico).
+- **Status:** chefes têm elemento (`BOSS_ELEMENT`) e aplicam o status com `BOSS_STATUS_CHANCE` por golpe; itens com
+  `queimar|eletrizar|envenenar|congelar` aplicam nos inimigos. Queimadura (`QUEIMA`, `QUEIMA_TURNOS`) e veneno
+  (pilhas de 1,2,3,4 de dano, até `VENENO_MAX_PILHAS`) tiram HP; eletricidade (`ELETRO_CHANCE`) e congelamento
+  (`GELO_CHANCE`) fazem perder a vez. Morte por Queimadura/Veneno vira `kind` "status" no cemitério.
+- **Hordas** (`"horde"` em `ROOM_WEIGHTS`, a partir de `HORDE_MIN_FLOOR`): 2 a `horde_max(andar)` inimigos com HP/ATK
+  x `HORDE_MULT[n]`, ouro x `HORDE_GOLD_MULT`, nunca chefe. Sem `area` o pet bate no de menor HP; com `area`, em todos.
+- **Empate:** a luta para em `MAX_ROUNDS` (60); o pet passa da sala, mas sem ouro, kill, item ou bônus de chefe.
 - Meta-progressão em `state["meta"]`: `achievements`, `graveyard` (últimas 50), `best`, `runs`, `next_char`.
   Itens com `req` e heróis com `unlock` só entram depois da conquista.
 - Estado em `~/.tokenlike/state.json` (ou `state-demo.json`). Na 1ª execução, se `~/.tokenlike` não existe e
@@ -98,17 +111,21 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - Registro de runs: toda run encerrada vira uma linha em `~/.tokenlike/runs.jsonl` (demo: `runs-demo.jsonl`) via
   `masmorra.run_record`, com `masmorra.BALANCE_VERSION` (hash de 8 caracteres só dos números de balanceamento).
   Mudou número, mudou a versão e o histórico real recomeça (`--todas-versoes` mostra tudo).
-  O hash não vê fórmulas nem números escritos no código: ao mudar regra/fórmula de combate, suba `masmorra.REGRAS_REV`.
+  O hash não vê fórmulas nem números escritos no código: ao mudar regra/fórmula de combate, suba `masmorra.REGRAS_REV`
+  (hoje 3). Mudar só constante já muda a versão sozinho.
 - Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 25).
   São julgadas na **calibração** (só slime, igual ao `simular.py`, sem e com conquistas); o "sim" com todos os
   heróis misturados é só informativo. Item verde/vermelho usa `vs_media` (vs esperado menos a média dos itens).
   Rode `python tools/estatisticas.py`, não decore números aqui.
 - Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 38-41% passam do
-  1º chefe, p90 = andar 15, máx = 25. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0,
-  `RAR_MULT` baixo) e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.4), ou seja
-  `valor + por_andar * (andar - BOSS_EVERY)`, mínimo 1). `MON_ATK` = (1.5, 1.2).
-  Quase toda morte acontece na sala do chefe. Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`),
-  só então `MON_*`/`BOSS_*`.
+  1º chefe, p90 = andar 15, máx = 25. Mortes (sem conquistas): chefe ~60%, monstro ~22%, horda ~7%, status ~6%,
+  mímico ~3%, armadilha ~1%. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0, `RAR_MULT` baixo)
+  e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), ou seja
+  `valor + por_andar * (andar - BOSS_EVERY)`, mínimo 1); o 2º chefe (andar 10) é o muro. `MON_ATK` = (1.5, 1.2).
+  Combate: `MON_SPD` = (6, 0.1), `BOSS_SPD_BONUS` = 1.1, `PET_CRIT` = 0.10, `BOSS_STATUS_CHANCE` = 0.15.
+  Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`); no combate: status e crítico,
+  velocidades, horda (peso, `HORDE_MULT`); só então `MON_*`/`BOSS_*`. Hordas devem ficar entre 5% e 35% das mortes
+  e status acima de 0 (sem ser a maioria).
 
 ## Para adicionar coisas
 
@@ -116,10 +133,14 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   `rarities` (lista das raridades possíveis), `fx`, `consume` (`{"heal": n}` ou `{"shield": n}`), `look` e `req` opcional.
   Não existe mais `slot` nem `tier`. `look` é um dos efeitos de `visual.py`: `{"type": "obj", "anchor": "dir|esq|topo|flutua", "art": ...}`,
   `espinhos`/`gotas`/`contorno` (`color`), `tingir` (`color`, `amount`) ou `adesivo` (`art`, `at`). Rode `tools/simular.py` depois.
-- **Monstro novo:** desenho em `arte.FOE_ART`, entrada em `masmorra.MONSTERS` (+ nome de chefe em `BOSS_NAMES`).
+- **Monstro novo:** desenho em `arte.FOE_ART`, entrada em `masmorra.MONSTERS`
+  `(sprite, nome, mult_hp, mult_atk, andar_min, spd_mult)` (+ nome de chefe em `BOSS_NAMES` e elemento em
+  `BOSS_ELEMENT`: `fogo|raio|veneno|gelo`; sem elemento o chefe quebra `make_foe`).
+- **Campos de `fx` do combate:** `spd`, `crit`, `critdmg`, `area` (bool, não escala com raridade) e a chance por golpe
+  de cada elemento: `queimar`, `eletrizar`, `envenenar`, `congelar` (0..1, teto `MAX_ELEM_CHANCE`; `crit` teto `MAX_CRIT`).
 - **Tipo de sala novo:** `ROOM_WEIGHTS` + um ramo em `enter_room` + a animação em `PetApp.play_room`.
 - **Conquista nova:** `masmorra.ACHIEVEMENTS` + regra em `_check_achievements`.
-- **Herói novo:** de preferência uma pasta em `characters/` com PNGs e `character.json` (`stats`, `unlock`, `stages[].floor`).
+- **Herói novo:** de preferência uma pasta em `characters/` com PNGs e `character.json` (`stats` com `spd` opcional, `unlock`, `stages[].floor`).
 
 ## Antes do lançamento
 

@@ -36,8 +36,14 @@ chefes, desbloqueios e **permadeath**.
 - **Energia:** cada token do Claude Code vira energia (os tokens lidos do cache valem 10%).
   A barra azul do painel enche, e cada **100 mil** de energia = **1 sala**. A mochila guarda no máximo 20 salas.
 - **Andares:** 5 salas por andar, depois a escada. A cada **5 andares** a última sala é um **chefe** (com coroa).
-- **Salas aleatórias:** monstro, baú (que às vezes é um **mímico**), armadilha, fonte de cura, lojinha e altar sombrio
-  (pactos com preço: perde HP máximo e ganha ATK, troca ouro por cura...).
+- **Salas aleatórias:** monstro, **horda** (2 a 4 inimigos mais fracos, a partir do andar 3), baú (que às vezes é um
+  **mímico**), armadilha, fonte de cura, lojinha e altar sombrio (pactos com preço: perde HP máximo e ganha ATK,
+  troca ouro por cura...).
+- **Combate por rodadas:** a cada rodada age primeiro quem tem mais **velocidade** (no empate, o pet). Todo golpe pode
+  ser **crítico**; quem tem o dobro da velocidade do alvo ganha chance extra de crítico, com dano dobrado. Cada chefe
+  tem um elemento e pode deixar o pet com um **status**: queimadura e veneno tiram HP no começo da rodada,
+  eletricidade e congelamento podem fazer perder a vez. Na horda o pet bate no inimigo com menos vida. Uma luta
+  que passa de 60 rodadas termina empatada: o pet segue, mas sem prêmio.
 - **Itens:** não há limite de espaços, os itens **se empilham** (cada um aparece no máximo uma vez por run) e todos
   aparecem **no pet**: objetos na mão, na cabeça ou flutuando, espinhos, gotas, contorno, cor. Cada item muda as regras,
   por exemplo a Vela Amaldiçoada dá +50% de energia, mas as armadilhas doem o dobro.
@@ -76,7 +82,8 @@ Veja o exemplo `characters\fantasma\`:
 }
 ```
 
-- `stats`: HP, ataque, defesa e esquiva (0.2 = 20%) iniciais.
+- `stats`: HP, ataque, defesa e esquiva (0.2 = 20%) iniciais. `spd` (velocidade) é opcional; sem ele, fica 10
+  (a do Slime). Ex.: `"spd": 12`.
 - `unlock` (opcional): conquista que libera o herói. Pode ser `andar5`, `chefe1`, `mimico`, `rico`,
   `colecionador`, `andar10` ou `andar20`. Sem esse campo, o herói já começa liberado.
 - `stages`: as formas do herói e o **andar** em que ele evolui para cada uma.

@@ -77,8 +77,13 @@ elsewhere the pet sits on a dark background.
 - **Energy:** every Claude Code token becomes energy (cache reads count 10%).
   Every **100k** energy = **1 room**. The backpack stores at most 20 rooms.
 - **Floors:** 5 rooms per floor, then the stairs. Every **5th floor** ends in a **boss** (wearing a crown).
-- **Random rooms:** monsters, chests (sometimes a **mimic**), traps, healing fountains, a little shop and
-  a dark altar (pacts with a price: lose max HP for ATK, trade gold for healing...).
+- **Random rooms:** monsters, **hordes** (2 to 4 weaker foes, from floor 3), chests (sometimes a **mimic**), traps,
+  healing fountains, a little shop and a dark altar (pacts with a price: lose max HP for ATK, trade gold for healing...).
+- **Round-based combat:** each round the fastest acts first (**speed**; the pet wins ties). Any hit can be a
+  **critical**; having twice the target's speed adds extra crit chance and doubles the crit damage. Each boss has
+  an element and can inflict a **status**: burn and poison deal damage at the start of the round, shock and freeze
+  can make you lose a turn. Against a horde the pet hits the foe with the least HP. A fight that lasts
+  past 60 rounds ends in a draw: the pet moves on, with no reward.
 - **Items:** no slots, items **stack** (each one at most once per run) and every one of them shows **on the pet**:
   objects in hand, on the head or floating, spikes, drips, an outline, a tint. Each item bends the rules; the
   Cursed Candle gives +50% energy but traps hurt twice as much. Items come in a **rarity**: common, **rare** (blue),
@@ -117,7 +122,8 @@ See `characters/fantasma/`:
 }
 ```
 
-- `stats`: starting HP, attack, defense and dodge chance (0.2 = 20%).
+- `stats`: starting HP, attack, defense and dodge chance (0.2 = 20%). `spd` (speed) is optional and
+  defaults to 10 (the Slime's), e.g. `"spd": 12`.
 - `unlock` (optional): the achievement that unlocks the hero: `andar5`, `chefe1`, `mimico`, `rico`,
   `colecionador`, `andar10` or `andar20`. Without it the hero is available from the start.
 - `stages`: the hero's forms and the **floor** at which it evolves into each one.
