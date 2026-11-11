@@ -1,5 +1,5 @@
 """Teste de fumaça da interface com um tkinter falso (roda sem tela)."""
-import sys, types, tempfile, os, time
+import random, sys, types, tempfile, os, time
 from pathlib import Path
 home = tempfile.mkdtemp(); os.environ["HOME"]=home; os.environ["USERPROFILE"]=home
 ROOT = Path(__file__).resolve().parent.parent
@@ -41,6 +41,7 @@ fake.Label = fake.Menu = Noop
 fake.StringVar = fake.BooleanVar = Var
 fake.TclError = TclError
 sys.modules["tkinter"] = fake
+SEED = 1
 import tokenlike as tp, masmorra as M
 tp.DATA_DIR = Path(home)/".tokenlike"; tp.LOG_FILE = tp.DATA_DIR/"tokenlike.log"
 import tkinter; tp.tk = tkinter
@@ -58,7 +59,7 @@ def pump(app, n):
             fn()
 
 for demo in (False, True):
-    app = tp.PetApp(Args(demo=demo)); PENDING.clear()
+    app = tp.PetApp(Args(demo=demo)); PENDING.clear(); app.rng = random.Random(SEED)
     app.poll(); PENDING.clear()
     pump(app, 1500)
     m = app.meta
@@ -89,7 +90,7 @@ for demo in (False, True):
     app.quit()
     st = tp.DATA_DIR/("state-demo.json" if demo else "state.json"); assert st.is_file()
     # reload from disk keeps meta
-    app2 = tp.PetApp(Args(demo=demo)); PENDING.clear()
+    app2 = tp.PetApp(Args(demo=demo)); PENDING.clear(); app2.rng = random.Random(SEED)
     assert app2.meta["runs"] == m["runs"], (app2.meta["runs"], m["runs"])
 log = tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

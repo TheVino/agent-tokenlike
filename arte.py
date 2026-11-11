@@ -188,7 +188,8 @@ ITEM_ART = {
         "KgGyGyGgK",
         "KgggggggK",
         "KKKKKKKKK",
-    ],}
+    ],
+}
 
 # --------------------------------------------------------------- monstros
 FOE_ART = {
