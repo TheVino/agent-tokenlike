@@ -22,6 +22,8 @@ The in-game text is in Brazilian Portuguese. A Portuguese readme is in [LEIA-ME.
 - **No network** access, no login, no telemetry. **No hooks**, and it never touches Claude Code's settings.
 - Progress lives in `%USERPROFILE%\.tokenlike\state.json`, a plain JSON file you can open and inspect.
 - Pure Python standard library (tkinter). No dependencies to install.
+- Optional, and only if **you** turn it on: `statusline.py` (see below) stores just your official session/weekly
+  usage percentages so the pet can draw them. Nothing else from Claude Code is kept.
 
 ## Install (Windows)
 
@@ -48,6 +50,24 @@ python tokenlike.py --demo            # demo mode (fake tokens, separate progres
 python tokenlike.py --import-history  # first run only: start with energy from your past usage
 python tokenlike.py --reset           # wipe all progress (runs, graveyard, achievements)
 ```
+
+### Optional: session and weekly usage bars
+
+The pet can show your **official** usage of the current 5-hour session and of the week (the same numbers as
+`/usage`), with when each one resets. Claude Code only hands these numbers to a *statusline* script, so you have to
+turn it on yourself. The pet never edits Claude Code's settings.
+
+Add this to `%USERPROFILE%\.claude\settings.json` (use the real path to this folder):
+
+```json
+"statusLine": { "type": "command", "command": "python \"C:/path/to/agent-tokenlike/statusline.py\"" }
+```
+
+Your Claude Code status line will show `sessão 42% · semana 18%`, and the pet grows two bars under the energy bar
+(green up to 50%, yellow up to 80%, red above). The numbers update whenever Claude Code refreshes its status line,
+after the first reply of a session. They cover your whole account (other computers and claude.ai included).
+To turn it off, remove the line and delete `%USERPROFILE%\.tokenlike\limites.json`. Requires Claude Code 2.1.80+.
+If you already use another status line, Claude Code only allows one.
 
 Other systems: it runs anywhere tkinter does, but the transparent overlay is Windows-only;
 elsewhere the pet sits on a dark background.
@@ -118,6 +138,7 @@ Please keep art original: no sprites, characters or names from existing games.
 python tests/test_reader.py      # log reading, deduplication, art
 python tests/test_gui.py         # fake tkinter: plays hundreds of rooms, dies, respawns
 python tests/test_migracao.py    # copies old ~/.tokenpet progress to ~/.tokenlike
+python tests/test_limites.py     # statusline stores only the limits; bars, stale data, time zone
 python tools/simular.py          # simulates 2,000 runs (after balance changes)
 python tools/preview_arte.py     # renders all art to a PNG (needs Pillow, dev only)
 ```

@@ -32,7 +32,7 @@ import sys
 import time
 import traceback
 from collections import deque
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -245,6 +245,40 @@ def load_state(path: Path) -> tuple[dict, bool]:
     if state.get("run"):
         M.migrate_run(state["run"])
     return state, is_new
+
+
+DIAS = ("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
+
+
+def read_limits(path: Path, now: float) -> dict | None:
+    """{"sessao": (pct|None, resets_at), "semana": ...}; pct None = dado velho (reset já passou)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    out = {}
+    for key, name in (("five_hour", "sessao"), ("seven_day", "semana")):
+        w = data.get(key) if isinstance(data, dict) else None
+        if not isinstance(w, dict):
+            continue
+        reset = w.get("resets_at")
+        pct = w.get("used_percentage")
+        if not isinstance(pct, (int, float)) or (isinstance(reset, (int, float)) and reset <= now):
+            pct = None
+        out[name] = (pct, reset if isinstance(reset, (int, float)) else None)
+    return out or None
+
+
+def limit_color(pct: float) -> str:
+    return GOOD if pct <= 50 else GOLD if pct <= 80 else HURT
+
+
+def fmt_reset(reset: float, now: float) -> str:
+    """Horário do reset no fuso do PC: "14:30" se for hoje, senão "sex 09:00"."""
+    t = datetime.fromtimestamp(reset)
+    if t.date() == datetime.fromtimestamp(now).date():
+        return t.strftime("%H:%M")
+    return f"{DIAS[t.weekday()]} {t.strftime('%H:%M')}"
 
 
 def save_state(path: Path, state: dict) -> None:
@@ -539,6 +573,7 @@ class PetApp:
         self._drag = None
         self._moved = False
 
+        self.limits = read_limits(DATA_DIR / "limites.json", time.time())   # statusline opcional
         self.build(first=True)
         self.build_menu()
         self.canvas.bind("<ButtonPress-1>", self.on_press)
@@ -601,7 +636,9 @@ class PetApp:
         self.top = 52 - by0 * px            # espaço para o que sai acima do quadro
         self.base_y = self.top + self.T
         self.below = (by1 - 16) * px        # o que pode descer abaixo da base (gotas)
-        self.H = self.base_y + self.below + 64
+        # barras de sessão/semana só aparecem se o statusline.py estiver gravando os limites
+        self.limit_h = 30 if self.limits else 0
+        self.H = self.base_y + self.below + 64 + self.limit_h
 
         self.art = {}
         self.load_images()
@@ -626,7 +663,8 @@ class PetApp:
         self.foe_crown = c.create_image(self.fcx, self.base_y, anchor="s", state="hidden")
 
         py = self.base_y + self.below + 6
-        c.create_rectangle(6, py, self.W - 6, py + 52, fill=PANEL_BG, outline=PANEL_EDGE, width=2)
+        c.create_rectangle(6, py, self.W - 6, py + 52 + self.limit_h, fill=PANEL_BG,
+                           outline=PANEL_EDGE, width=2)
         self.title_txt = c.create_text(14, py + 11, anchor="w", fill=TEXT, font=self.font)
         self.hp_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=HURT, font=self.font)
         self.info_txt = c.create_text(14, py + 26, anchor="w", fill=MUTED, font=self.font_small)
@@ -634,6 +672,18 @@ class PetApp:
         c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, fill=BAR_BG, outline="")
         self.bar = c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x0, self.bar_y + 6,
                                       fill=ENERGY, outline="")
+        self.limit_rows = {}
+        if self.limits:
+            lx0, lx1 = 92, self.W - 72          # rótulo à esquerda, horário do reset à direita
+            for i, (key, label) in enumerate((("sessao", "Sessão"), ("semana", "Semana"))):
+                y = py + 52 + 4 + i * 13
+                c.create_rectangle(lx0, y - 3, lx1, y + 3, fill=BAR_BG, outline="")
+                self.limit_rows[key] = (
+                    label,
+                    c.create_text(14, y, anchor="w", fill=MUTED, font=self.font_small),
+                    c.create_rectangle(lx0, y - 3, lx0, y + 3, fill=GOOD, outline=""),
+                    c.create_text(self.W - 14, y, anchor="e", fill=MUTED, font=self.font_small),
+                    lx0, lx1, y)
         self.refresh_look()
         self.update_panel()
 
@@ -691,6 +741,34 @@ class PetApp:
         frac = min(1.0, run["energy"] / cost) if cost else 0
         x1 = self.bar_x0 + (self.bar_x1 - self.bar_x0) * frac
         self.canvas.coords(self.bar, self.bar_x0, self.bar_y, x1, self.bar_y + 6)
+        self.update_limits()
+
+    def update_limits(self):
+        now = time.time()
+        for key, (label, txt, fill, rtxt, lx0, lx1, y) in self.limit_rows.items():
+            pct, reset = (self.limits or {}).get(key, (None, None))
+            if pct is None:
+                self.canvas.itemconfigure(txt, text=f"{label}  —")
+                self.canvas.coords(fill, lx0, y - 3, lx0, y + 3)
+                self.canvas.itemconfigure(rtxt, text="")
+                continue
+            self.canvas.itemconfigure(txt, text=f"{label}  {round(pct)}%")
+            frac = max(0.0, min(1.0, pct / 100))
+            self.canvas.coords(fill, lx0, y - 3, lx0 + (lx1 - lx0) * frac, y + 3)
+            self.canvas.itemconfigure(fill, fill=limit_color(pct))
+            self.canvas.itemconfigure(rtxt, text=f"reseta {fmt_reset(reset, now)}" if reset else "")
+
+    def refresh_limits(self):
+        """Relê limites.json; se as barras aparecem ou somem, refaz a janela."""
+        new = read_limits(DATA_DIR / "limites.json", time.time())
+        had = bool(self.limits)
+        self.limits = new
+        if bool(new) != had:
+            self.build()
+            if self.run["dead"]:
+                self.show_tomb()
+        else:
+            self.update_limits()
 
     def build_menu(self):
         self.menu = tk.Menu(self.root, tearoff=0)
@@ -844,6 +922,7 @@ class PetApp:
                 self.last_rest_heal = now
             if now - self.last_save > SAVE_EVERY_S:
                 self.save()
+            self.refresh_limits()
         except Exception:
             log("erro lendo tokens: " + traceback.format_exc())
         self.root.after(1000 if self.demo else POLL_MS, self.poll)

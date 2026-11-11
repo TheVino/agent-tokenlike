@@ -1,5 +1,5 @@
 """Teste de fumaça da interface com um tkinter falso (roda sem tela)."""
-import random, sys, types, tempfile, os, time
+import json, random, sys, types, tempfile, os, time
 from pathlib import Path
 home = tempfile.mkdtemp(); os.environ["HOME"]=home; os.environ["USERPROFILE"]=home
 ROOT = Path(__file__).resolve().parent.parent
@@ -128,6 +128,21 @@ for demo in (False, True):
     app3.state["mode"] = "interativo"; pump(app3, 300)
     app3.mode_var.set("auto"); app3.change_mode(); pump(app3, 100)
     app3.quit()
-log = tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
+
+# barras de sessão/semana (statusline opcional): aparecem, mostram "—" se velho, somem sem o arquivo
+app4 = tp.PetApp(Args()); PENDING.clear(); app4.rng = random.Random(SEED)
+h0 = app4.H; assert app4.limit_rows == {}
+lim_file = tp.DATA_DIR / "limites.json"
+lim_file.write_text(json.dumps({"five_hour": {"used_percentage": 42, "resets_at": time.time() + 3600},
+                                "seven_day": {"used_percentage": 95, "resets_at": time.time() - 5}}))
+app4.refresh_limits()
+assert app4.H > h0 and set(app4.limit_rows) == {"sessao", "semana"}
+assert app4.limits["sessao"][0] == 42 and app4.limits["semana"][0] is None
+app4.refresh_limits(); app4.update_panel(); pump(app4, 20)
+for size in ("Pequeno", "Grande"): app4.size_var.set(size); app4.change_size()
+lim_file.unlink(); app4.refresh_limits()
+assert app4.limit_rows == {} and app4.limits is None
+app4.quit()
+log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)

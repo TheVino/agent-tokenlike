@@ -13,6 +13,8 @@ chefes, desbloqueios e **permadeath**.
 - O progresso fica em `%USERPROFILE%\.tokenlike\state.json`, que você pode abrir e conferir.
   Quem usava a versão antiga (TokenPet): na primeira execução o progresso de `.tokenpet` é **copiado**
   para `.tokenlike` (o antigo não é apagado).
+- Opcional, e só se **você** ligar: o `statusline.py` (veja "Barras de sessão e semana") guarda só as suas
+  porcentagens oficiais de uso para o pet desenhar. Nada mais do Claude Code é guardado.
 - Usa só a biblioteca padrão do Python, em três arquivos: `tokenlike.py` (tela), `masmorra.py` (regras) e `arte.py` (desenhos).
 
 ## Como usar
@@ -86,6 +88,24 @@ Veja o exemplo `characters\fantasma\`:
 
 Depois, use **botão direito → Recarregar personagens**. Se algo der errado, o motivo fica em
 `%USERPROFILE%\.tokenlike\tokenlike.log`.
+
+## Barras de sessão e semana (opcional)
+
+O pet pode mostrar o seu uso **oficial** da sessão de 5 horas e da semana (os mesmos números do `/usage`), com o
+horário em que cada um zera. O Claude Code só entrega esses números para um script de *statusline*, então é você
+quem liga. O pet nunca mexe nas configurações do Claude Code.
+
+Coloque isto no `%USERPROFILE%\.claude\settings.json` (com o caminho real desta pasta):
+
+```json
+"statusLine": { "type": "command", "command": "python \"C:/caminho/para/agent-tokenlike/statusline.py\"" }
+```
+
+A statusline do Claude Code passa a mostrar `sessão 42% · semana 18%` e o pet ganha duas barras embaixo da barra de
+energia (verde até 50%, amarelo até 80%, vermelho acima). Os números atualizam quando o Claude Code atualiza a
+statusline, depois da primeira resposta da sessão, e valem para a conta inteira (outros PCs e claude.ai incluídos).
+Para desligar, apague a linha e o arquivo `%USERPROFILE%\.tokenlike\limites.json`. Precisa do Claude Code 2.1.80+.
+O Claude Code só aceita uma statusline: se você já usa outra, escolha uma.
 
 ## Outras opções
 

@@ -18,7 +18,7 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
   inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
-- `tests/`: `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
+- `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso
   que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói e testa o modo interativo;
@@ -26,6 +26,10 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
   `tools/preview_arte.py`: gera um PNG com todos os desenhos (precisa do Pillow, só para desenvolvimento).
 - `README.md` (inglês, para o GitHub) e `LEIA-ME.md` (pt-BR). Licença MIT.
+- `statusline.py`: statusline opcional do Claude Code (o usuário liga). Lê o JSON do stdin e grava só os limites oficiais
+  de sessão (5h) e semana em `~/.tokenlike/limites.json`. O pet lê com `read_limits` a cada poll e desenha as barras
+  Sessão/Semana no painel (verde ≤50%, amarelo ≤80%, vermelho acima; `—` quando o reset já passou). Sem o arquivo,
+  as barras não aparecem e a janela fica do tamanho de antes.
 - `iniciar.bat` (pythonw, sem console), `testar-demo.bat` (`--demo`: tokens falsos, estado separado).
 
 ## Comandos
@@ -36,6 +40,7 @@ python tests/test_itens.py
 python tests/test_visual.py
 python tests/test_gui.py
 python tests/test_migracao.py
+python tests/test_limites.py
 python tools/simular.py          # depois de mexer em balanceamento/itens/salas
 python tools/preview_arte.py     # depois de mexer em arte.py
 python tokenlike.py --demo        # ver na tela de verdade
@@ -48,7 +53,9 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 
 1. **Privacidade:** dos `.jsonl` do Claude Code (`~/.claude/projects/**`, ou `CLAUDE_CONFIG_DIR`) só se usa
    `message.usage`. Nunca guardar, mostrar ou logar conteúdo de prompts e respostas. Sem rede, sem telemetria,
-   sem hooks, sem alterar configs do Claude Code.
+   sem hooks, sem alterar configs do Claude Code. Exceção opcional e manual: `statusline.py` é uma statusline que o
+   **próprio usuário** liga no `settings.json` dele; ela grava só `rate_limits` (porcentagem e reset de 5h/semana) em
+   `~/.tokenlike/limites.json`. O app só lê esse arquivo e nunca instala nem edita a statusline.
 2. **Só biblioteca padrão** no app (tkinter, json etc.). O Pillow só é aceito em `tools/`.
 3. **Windows primeiro:** a transparência usa `-transparentcolor` com a cor chave `#ff00fe`. Texto sempre sobre
    um retângulo sólido (`PANEL_BG`); se ficar direto sobre a cor chave, o antialiasing deixa um contorno rosa.
