@@ -66,4 +66,16 @@ assert abs(pp["ganho"] - (2 - 5 / 6)) < 1e-9                   # max(adaga 1/6, 
 (d / "runs.jsonl").write_text("".join(json.dumps(x) + "\n" for x in
                               [recs[0], dict(recs[0], floor="3"), linha("slime", 5, [("adaga", "x")])]))
 assert E.carregar_reais(d)[1]["ignoradas"] == 2
+# página, JSON e linha de comando (sem runs reais)
+d = Path(tempfile.mkdtemp())
+dados = E.coletar(n_sim=60, pasta_real=d, todas_versoes=False)
+assert dados["real"]["n"] == 0 and set(dados["itens"]) == set(M.ITEMS)
+page = E.gerar_html(dados)
+for sec in ("Resumo", "Itens", "Melhores pares", "Onde as runs morrem", "Heróis", "sem runs reais"):
+    assert sec in page, sec
+assert "http://" not in page and "https://" not in page          # nada externo
+json.dumps(dados)                                                  # serializável
+out = Path(tempfile.mkdtemp())
+E.main(["--runs", "40", "--sem-abrir", "--real-dir", str(d), "--saida", str(out)])
+assert (out / "estatisticas.html").exists() and json.loads((out / "estatisticas.json").read_text(encoding="utf-8"))["versao"] == M.BALANCE_VERSION
 print("ok: estatisticas")

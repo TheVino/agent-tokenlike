@@ -20,3 +20,6 @@ Desktop.ini
 tools/preview_arte.png
 
 .superpowers/
+
+# gerado por tools/estatisticas.py
+tools/saida/
