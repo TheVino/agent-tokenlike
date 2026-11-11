@@ -238,6 +238,8 @@ def load_state(path: Path) -> tuple[dict, bool]:
     meta = M.new_meta()
     meta.update(state.get("meta") or {})
     state["meta"] = meta
+    if state.get("run"):
+        M.migrate_run(state["run"])
     return state, is_new
 
 
@@ -643,28 +645,10 @@ class PetApp:
         self.stage_title = stage["title"]
 
     def refresh_equipment(self):
-        """Desenha os itens equipados em volta do pet, usando a caixa da arte dele."""
-        img = self.frames[0]
-        iw, ih = img.width(), img.height()
-        bx0, by0, bx1, by1 = self.pet_box
-        left, top = -iw / 2, -ih            # relativo ao ponto (pcx, base_y)
-        ax0, ay0, ax1, ay1 = left + bx0, top + by0, left + bx1, top + by1
+        """Por enquanto só esconde os acessórios; os itens voltam a aparecer no pet na Task 3."""
         self.acc_rel = {}
-        for slot, item_id in self.acc_items.items():
-            key = self.run["items"].get(slot)
-            if not key or self.run["dead"]:
-                self.canvas.itemconfigure(item_id, state="hidden")
-                continue
-            aimg = self.art_img(key)
-            w = aimg.width()
-            if slot == "cabeca":
-                rel = ((ax0 + ax1) / 2, ay0 + 2 * self.px)
-            elif slot == "mao":
-                rel = (ax1 + w / 2 - 2 * self.px, ay1 - self.px)
-            else:
-                rel = (ax0 - w / 2 + 2 * self.px, ay1 - self.px)
-            self.acc_rel[slot] = rel
-            self.canvas.itemconfigure(item_id, image=aimg, state="normal")
+        for item_id in self.acc_items.values():
+            self.canvas.itemconfigure(item_id, state="hidden")
         self.place_pet(0, 0)
 
     def place_pet(self, dx, dy):
@@ -840,7 +824,7 @@ class PetApp:
 
     # -------------------------------------------------------------- salas
     def play_room(self):
-        ev = M.enter_room(self.run, self.meta, self.rng, self.char.stage_floors)
+        ev = M.enter_room(self.run, self.meta, self.rng, self.char.stage_floors, mode="auto")
         steps = []
         t = 0
 
@@ -896,13 +880,21 @@ class PetApp:
             at(t, lambda line=line: self.floater(line, TEXT, life=24))
             t += 600
         if ev.get("item"):
-            it = M.ITEMS[ev["item"]]
-            at(t, lambda: self.show_foe(ev["item"], False))
+            key, rar = ev["item"]["key"], ev["item"]["rar"]
+            it = M.ITEMS[key]
+            at(t, lambda: self.show_foe(key, False))
             at(t, lambda: self.floater(it["name"], GOLD, x=self.fcx, life=24))
             t += 700
             at(t, lambda: (self.hide_foe(), self.refresh_equipment(),
-                           self.floater(M.fx_text(it["fx"]), GOOD, life=24)))
+                           self.floater(M.fx_text(M.item_fx(key, rar)), GOOD, life=24)))
             t += 700
+        if ev.get("consumed"):
+            c = ev["consumed"]
+            if "heal" in c:
+                at(t, lambda: self.floater(f"+{c['heal']} ♥", GOOD))
+            else:
+                at(t, lambda: self.floater(f"+{c['shield']} escudo", CYAN))
+            t += 600
         if ev["died"]:
             at(t, self.on_death)
             t += 400
@@ -1097,13 +1089,15 @@ class PetApp:
                  f"ATK {st['atk']}   DEF {st['def']}   Esquiva {int(st['dodge'] * 100)}%"
                  f"   Ouro {run['gold']}",
                  "Itens:"]
-        for slot in M.SLOTS:
-            key = run["items"][slot]
-            if key:
-                it = M.ITEMS[key]
-                lines.append(f"  {M.SLOT_NAMES[slot]}: {it['name']} ({M.fx_text(it['fx'])})")
-            else:
-                lines.append(f"  {M.SLOT_NAMES[slot]}: -")
+        for i in run["items"]:
+            lines.append(f"  {M.ITEMS[i['key']]['name']} ({M.RAR_NAMES[i['rar']]}):"
+                         f" {M.fx_text(M.item_fx(i['key'], i['rar']))}")
+        if not run["items"]:
+            lines.append("  -")
+        if run["shield"] > 0:
+            lines.append(f"Escudo: {run['shield']}")
+        if run["pending"]:
+            lines.append(f"Esperando escolha: {M.ITEMS[run['pending']['key']]['name']}")
         stored = int(run["energy"] // M.room_cost(run))
         best = meta["best"]
         today = self.state["daily"].get(date.today().isoformat(), 0)

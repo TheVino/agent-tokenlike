@@ -30,30 +30,58 @@ ACHIEVEMENTS = {
     "chefe1": "Derrotar um chefe",
     "mimico": "Derrotar um mímico",
     "rico": "Juntar 100 de ouro numa run",
-    "colecionador": "Equipar 3 itens ao mesmo tempo",
+    "colecionador": "Pegar 10 itens numa run",
     "andar10": "Chegar ao andar 10",
     "andar20": "Chegar ao andar 20",
 }
 
-SLOTS = ("mao", "escudo", "cabeca")
-SLOT_NAMES = {"mao": "Mão", "escudo": "Escudo", "cabeca": "Cabeça"}
+RARITIES = ("comum", "raro", "epico", "lendario")
+RAR_MULT = {"comum": 1, "raro": 1.5, "epico": 2, "lendario": 3}
+RAR_NAMES = {"comum": "Comum", "raro": "Raro", "epico": "Épico", "lendario": "Lendário"}
+RAR_COLOR = {"comum": None, "raro": "#6fd6ff", "epico": "#b48cff", "lendario": "#ffd23f"}
+CHOICE_WINDOW_S = 30         # janela de escolha do modo interativo (a GUI conta o tempo)
+MAX_ENERGY_BONUS = 1.0       # soma de "energy" limitada a +100%
+TRAP_LIMITS = (0.25, 3.0)    # piso e teto do multiplicador de armadilha somado
+
+_C = ["comum", "raro", "epico"]
+_R = ["raro", "epico", "lendario"]
 
 # fx: atk, def, maxhp, dodge, gold (+% ouro), trap (multiplicador de dano de
 #     armadilha), energy (+% energia => salas mais baratas), lifesteal (cura por vitória)
+# consume: o que acontece se o herói consumir o item em vez de pegar (heal ou shield)
 ITEMS = {
-    "adaga":        {"name": "Adaga Enferrujada",  "slot": "mao",    "tier": 1, "fx": {"atk": 2}},
-    "espada_osso":  {"name": "Espada de Osso",     "slot": "mao",    "tier": 2, "fx": {"atk": 4}},
-    "cajado":       {"name": "Cajado Espectral",   "slot": "mao",    "tier": 3, "fx": {"atk": 4, "lifesteal": 2}, "req": "andar5"},
-    "foice":        {"name": "Foice Sombria",      "slot": "mao",    "tier": 4, "fx": {"atk": 8, "maxhp": -4}, "req": "chefe1"},
-    "tampa":        {"name": "Tampa de Panela",    "slot": "escudo", "tier": 1, "fx": {"def": 1}},
-    "escudo_ferro": {"name": "Escudo de Ferro",    "slot": "escudo", "tier": 2, "fx": {"def": 2}},
-    "lanterna":     {"name": "Lanterna Pálida",    "slot": "escudo", "tier": 2, "fx": {"def": 1, "trap": 0.5}},
-    "grimorio":     {"name": "Grimório Proibido",  "slot": "escudo", "tier": 3, "fx": {"atk": 2, "def": 2}, "req": "andar10"},
-    "chapeu":       {"name": "Chapéu de Bruxa",    "slot": "cabeca", "tier": 1, "fx": {"gold": 0.5}},
-    "gorro":        {"name": "Gorro de Ladrão",    "slot": "cabeca", "tier": 2, "fx": {"dodge": 0.15}},
-    "chifres":      {"name": "Chifres de Demônio", "slot": "cabeca", "tier": 3, "fx": {"atk": 3, "maxhp": -3}, "req": "chefe1"},
-    "aureola":      {"name": "Auréola Rachada",    "slot": "cabeca", "tier": 3, "fx": {"maxhp": 10}, "req": "andar10"},
-    "vela":         {"name": "Vela Amaldiçoada",   "slot": "cabeca", "tier": 3, "fx": {"energy": 0.5, "trap": 2.0}, "req": "mimico"},
+    "adaga":        {"name": "Adaga Enferrujada",  "rarities": _C, "fx": {"atk": 2}, "consume": {"heal": 6},
+                     "look": {"type": "obj", "anchor": "dir", "art": "adaga"}},
+    "espada_osso":  {"name": "Espada de Osso",     "rarities": _C, "fx": {"atk": 4}, "consume": {"heal": 8},
+                     "look": {"type": "obj", "anchor": "dir", "art": "espada_osso"}},
+    "cajado":       {"name": "Cajado Espectral",   "rarities": _R, "fx": {"atk": 4, "lifesteal": 2},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "dir", "art": "cajado"},
+                     "req": "andar5"},
+    "foice":        {"name": "Foice Sombria",      "rarities": ["epico", "lendario"], "fx": {"atk": 8, "maxhp": -4},
+                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "dir", "art": "foice"},
+                     "req": "chefe1"},
+    "tampa":        {"name": "Tampa de Panela",    "rarities": _C, "fx": {"def": 1}, "consume": {"shield": 5},
+                     "look": {"type": "obj", "anchor": "esq", "art": "tampa"}},
+    "escudo_ferro": {"name": "Escudo de Ferro",    "rarities": _C, "fx": {"def": 2}, "consume": {"shield": 7},
+                     "look": {"type": "obj", "anchor": "esq", "art": "escudo_ferro"}},
+    "lanterna":     {"name": "Lanterna Pálida",    "rarities": _C, "fx": {"def": 1, "trap": 0.5},
+                     "consume": {"shield": 7}, "look": {"type": "obj", "anchor": "esq", "art": "lanterna"}},
+    "grimorio":     {"name": "Grimório Proibido",  "rarities": _R, "fx": {"atk": 2, "def": 2},
+                     "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "esq", "art": "grimorio"},
+                     "req": "andar10"},
+    "chapeu":       {"name": "Chapéu de Bruxa",    "rarities": _C, "fx": {"gold": 0.5}, "consume": {"heal": 6},
+                     "look": {"type": "obj", "anchor": "topo", "art": "chapeu"}},
+    "gorro":        {"name": "Gorro de Ladrão",    "rarities": _C, "fx": {"dodge": 0.15}, "consume": {"heal": 8},
+                     "look": {"type": "obj", "anchor": "topo", "art": "gorro"}},
+    "chifres":      {"name": "Chifres de Demônio", "rarities": _R, "fx": {"atk": 3, "maxhp": -3},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "topo", "art": "chifres"},
+                     "req": "chefe1"},
+    "aureola":      {"name": "Auréola Rachada",    "rarities": _R, "fx": {"maxhp": 10},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "topo", "art": "aureola"},
+                     "req": "andar10"},
+    "vela":         {"name": "Vela Amaldiçoada",   "rarities": _R, "fx": {"energy": 0.5, "trap": 2.0},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "topo", "art": "vela"},
+                     "req": "mimico"},
 }
 
 # sprite, nome, mult. de vida, mult. de ataque, andar mínimo
@@ -103,20 +131,51 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
         "hp": hp,
         "base": {"maxhp": hp, "atk": int(base_stats.get("atk", 3)),
                  "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0))},
-        "items": {s: None for s in SLOTS},
+        "items": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
     }
+
+
+def _scale(fx: dict, rar: str) -> dict:
+    """Multiplica os valores positivos pela raridade; negativos e trap ficam iguais."""
+    m = RAR_MULT[rar]
+    out = {}
+    for k, v in fx.items():
+        if k == "trap" or v <= 0:
+            out[k] = v
+        elif isinstance(v, int):
+            out[k] = math.floor(v * m + 0.5)      # arredonda .5 para cima
+        else:
+            out[k] = v * m
+    return out
+
+
+def item_fx(key: str, rar: str) -> dict:
+    return _scale(ITEMS[key]["fx"], rar)
+
+
+def consume_fx(key: str, rar: str) -> dict:
+    return _scale(ITEMS[key]["consume"], rar)
+
+
+def migrate_run(run: dict) -> dict:
+    """Save antigo (3 espaços) -> lista de itens comuns; chaves que sumiram são puladas."""
+    items = run.get("items")
+    if isinstance(items, dict):
+        run["items"] = [{"key": items[s], "rar": "comum"} for s in ("mao", "escudo", "cabeca")
+                        if items.get(s) in ITEMS]
+    run.setdefault("shield", 0)
+    run.setdefault("pending", None)
+    return run
 
 
 def stats(run: dict) -> dict:
     b = run["base"]
     st = {"maxhp": b["maxhp"], "atk": b["atk"], "def": b["def"], "dodge": b["dodge"],
           "gold": 0.0, "trap": 1.0, "energy": 0.0, "lifesteal": 0}
-    for key in run["items"].values():
-        if not key:
-            continue
-        for k, v in ITEMS[key]["fx"].items():
+    for it in run["items"]:
+        for k, v in item_fx(it["key"], it["rar"]).items():
             if k == "trap":
                 st["trap"] *= v
             else:
@@ -124,6 +183,8 @@ def stats(run: dict) -> dict:
     st["maxhp"] = max(5, st["maxhp"])
     st["atk"] = max(1, st["atk"])
     st["dodge"] = min(0.5, st["dodge"])
+    st["energy"] = min(MAX_ENERGY_BONUS, st["energy"])
+    st["trap"] = min(TRAP_LIMITS[1], max(TRAP_LIMITS[0], st["trap"]))
     run["hp"] = min(run["hp"], st["maxhp"])
     return st
 
@@ -153,31 +214,82 @@ def unlocked_items(meta: dict) -> list[str]:
     return [k for k, it in ITEMS.items() if not it.get("req") or it["req"] in have]
 
 
-def roll_item(run: dict, meta: dict, rng: random.Random, best: bool = False) -> str:
-    pool = unlocked_items(meta)
-    max_tier = 1 + run["floor"] // 3
-    pool_ok = [k for k in pool if ITEMS[k]["tier"] <= max_tier] or pool
-    if best:
-        top = max(ITEMS[k]["tier"] for k in pool_ok)
-        pool_ok = [k for k in pool_ok if ITEMS[k]["tier"] == top]
-    return rng.choice(pool_ok)
+def _rarity_weights(f: int) -> list[float]:
+    # ponto de partida; a Task 6 ajusta no simulador
+    return [max(10, 70 - 4 * f), 25 + f, 4 + 1.5 * f, 0.5 + 0.5 * f]
 
 
-def give_item(run: dict, key: str, ev: dict) -> None:
-    """Equipa se o espaço estiver vazio ou o item for igual/melhor; senão vende."""
-    it = ITEMS[key]
-    cur = run["items"][it["slot"]]
-    if cur is None or it["tier"] >= ITEMS[cur]["tier"]:
-        run["items"][it["slot"]] = key
-        if "maxhp" in it["fx"] and it["fx"]["maxhp"] > 0:
-            run["hp"] += it["fx"]["maxhp"]
-        ev["item"] = key
+def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) -> dict | None:
+    """Sorteia raridade e item (um de cada por run). None quando não sobra item liberado."""
+    taken = {i["key"] for i in run["items"]}
+    if run.get("pending"):
+        taken.add(run["pending"]["key"])
+    pool = [k for k in unlocked_items(meta) if k not in taken]
+    if not pool:
+        return None
+    lo = 1 if best else 0
+    idx = max(lo, rng.choices(range(len(RARITIES)), _rarity_weights(run["floor"]))[0])
+    # desce uma raridade por vez, depois sobe; abaixo do piso só em último caso
+    order = list(range(idx, lo - 1, -1)) + list(range(idx + 1, len(RARITIES))) + list(range(lo - 1, -1, -1))
+    for i in order:
+        rar = RARITIES[i]
+        cands = [k for k in pool if rar in ITEMS[k]["rarities"]]
+        if cands:
+            return {"key": rng.choice(cands), "rar": rar}
+    return None
+
+
+def auto_choice(run: dict, offer: dict) -> str:
+    """Regra automática: consome se for cura e o HP estiver abaixo de 40%; senão pega."""
+    if "heal" in ITEMS[offer["key"]]["consume"] and run["hp"] < 0.4 * stats(run)["maxhp"]:
+        return "consumir"
+    return "pegar"
+
+
+def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
+    """Aplica a escolha. As conquistas ficam com quem chama (enter_room / *_pending)."""
+    item = {"key": offer["key"], "rar": offer["rar"]}
+    if choice == "pegar":
+        run["items"].append(item)
+        hp_bonus = item_fx(item["key"], item["rar"]).get("maxhp", 0)
+        if hp_bonus > 0:
+            run["hp"] += hp_bonus
+        ev["item"] = item
         stats(run)
+        return
+    cf = consume_fx(item["key"], item["rar"])
+    if "heal" in cf:
+        n = max(0, min(cf["heal"], stats(run)["maxhp"] - run["hp"]))
+        run["hp"] += n
+        ev["consumed"] = {**item, "heal": n}
     else:
-        price = 3 * it["tier"]
-        run["gold"] += price
-        ev["gold"] = ev.get("gold", 0) + price
-        ev["lines"].append(f"Vendeu {it['name']} (+{price} ouro)")
+        run["shield"] += cf["shield"]
+        ev["consumed"] = {**item, "shield": cf["shield"]}
+
+
+def choose_pending(run: dict, meta: dict, choice: str) -> dict:
+    """Resolve a oferta pendente com a escolha do jogador ("pegar" ou "consumir")."""
+    ev: dict = {"lines": []}
+    offer, run["pending"] = run.get("pending"), None
+    if offer:
+        resolve_offer(run, offer, choice, ev)
+        _check_achievements(run, meta, ev)
+    return ev
+
+
+def resolve_pending(run: dict, meta: dict) -> dict:
+    """Resolve a oferta pendente pela regra automática."""
+    if not run.get("pending"):
+        return {"lines": []}
+    return choose_pending(run, meta, auto_choice(run, run["pending"]))
+
+
+def apply_damage(run: dict, d: int) -> int:
+    """O escudo absorve primeiro; devolve o dano que chegou ao HP."""
+    absorbed = min(run["shield"], d)
+    run["shield"] -= absorbed
+    run["hp"] -= d - absorbed
+    return d - absorbed
 
 
 def fight(run: dict, st: dict, foe_hp: int, foe_atk: int, rng: random.Random):
@@ -192,8 +304,7 @@ def fight(run: dict, st: dict, foe_hp: int, foe_atk: int, rng: random.Random):
         if rng.random() < st["dodge"]:
             hits.append(("dodge", 0))
             continue
-        d = max(1, foe_atk - st["def"] + rng.randint(-1, 1))
-        run["hp"] -= d
+        d = apply_damage(run, max(1, foe_atk - st["def"] + rng.randint(-1, 1)))
         hits.append(("foe", d))
         if run["hp"] <= 0:
             run["hp"] = 0
@@ -207,7 +318,7 @@ def die(run: dict, meta: dict, ev: dict, killer: str) -> None:
     meta["runs"] += 1
     meta["graveyard"].append({
         "run": run["id"], "char": run["char"], "floor": run["floor"], "room": run["room"],
-        "killer": killer, "items": [k for k in run["items"].values() if k],
+        "killer": killer, "items": [i["key"] for i in run["items"]],
         "gold": run["gold"], "kills": run["kills"], "date": date.today().isoformat(),
     })
     meta["graveyard"] = meta["graveyard"][-50:]
@@ -228,7 +339,7 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("chefe1", run["bosses"] >= 1)
     grant("mimico", ev.get("kind") == "mimic" and ev.get("won"))
     grant("rico", run["gold"] >= 100)
-    grant("colecionador", all(run["items"].values()))
+    grant("colecionador", len(run["items"]) >= 10)
     if new:
         meta["achievements"].extend(new)
         ev["unlocks"] = new
@@ -238,8 +349,12 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
 
 
 def enter_room(run: dict, meta: dict, rng: random.Random,
-               stage_floors: list[int] | None = None) -> dict:
-    """Gasta energia, resolve a próxima sala e devolve o que aconteceu."""
+               stage_floors: list[int] | None = None, mode: str = "auto") -> dict:
+    """Gasta energia, resolve a próxima sala e devolve o que aconteceu.
+
+    mode "auto": a regra automática decide as ofertas na hora.
+    mode "interativo": a oferta vai para run["pending"] e ev["pending"] (a GUI resolve).
+    """
     stage_floors = stage_floors or DEFAULT_STAGE_FLOORS
     run["energy"] -= room_cost(run)
     st = stats(run)
@@ -276,6 +391,22 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             kind = "mimic"
     ev["kind"] = kind
 
+    def deliver(offer):
+        if mode == "auto":
+            resolve_offer(run, offer, auto_choice(run, offer), ev)
+        else:
+            run["pending"] = {**offer, "source": kind}
+            ev["pending"] = offer
+
+    def give(best=False):
+        offer = roll_offer(run, meta, rng, best)
+        if offer:
+            deliver(offer)
+        else:                                  # acabaram os itens: ouro do baú
+            gold = round((5 + 2 * f) * (1 + st["gold"]))
+            run["gold"] += gold
+            ev["gold"] = ev.get("gold", 0) + gold
+
     if kind in ("monster", "boss", "mimic"):
         if kind == "boss":
             m = rng.choice([m for m in MONSTERS if m[4] <= f])
@@ -307,17 +438,17 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             gold += 15 + f
             stats(run)
             run["hp"] = stats(run)["maxhp"]
-            give_item(run, roll_item(run, meta, rng, best=True), ev)
+            give(best=True)
         elif kind == "mimic":
             gold += 5 + f
-            give_item(run, roll_item(run, meta, rng), ev)
+            give()
         run["gold"] += gold
         ev["gold"] = ev.get("gold", 0) + gold
 
     elif kind == "chest":
         ev.update(name="Baú", sprite="bau")
         if rng.random() < 0.75:
-            give_item(run, roll_item(run, meta, rng), ev)
+            give()
         else:
             gold = round((5 + 2 * f) * (1 + st["gold"]))
             run["gold"] += gold
@@ -328,8 +459,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         if rng.random() < st["dodge"]:
             ev["dodged"] = True
         else:
-            dmg = max(1, round((2 + 0.6 * f) * st["trap"]))
-            run["hp"] -= dmg
+            dmg = apply_damage(run, max(1, round((2 + 0.6 * f) * st["trap"])))
             ev["dmg"] = dmg
             if run["hp"] <= 0:
                 run["hp"] = 0
@@ -353,9 +483,13 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["heal"] = heal
             ev["lines"].append(f"Comprou poção (-{potion} ouro)")
         elif run["gold"] >= item_price:
-            run["gold"] -= item_price
-            ev["lines"].append(f"Pagou {item_price} ouro")
-            give_item(run, roll_item(run, meta, rng, best=True), ev)
+            offer = roll_offer(run, meta, rng, best=True)
+            if offer:
+                run["gold"] -= item_price
+                ev["lines"].append(f"Pagou {item_price} ouro")
+                deliver(offer)
+            else:
+                ev["lines"].append("A loja não tem nada novo...")
         else:
             ev["lines"].append("Sem ouro pra comprar...")
 
