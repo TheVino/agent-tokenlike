@@ -109,6 +109,44 @@ Veja o exemplo `characters\fantasma\`:
 Depois, use **botão direito → Recarregar personagens**. Se algo der errado, o motivo fica em
 `%USERPROFILE%\.tokenlike\tokenlike.log`.
 
+### Heróis por spritesheet
+
+Um herói também pode ser um único `characters\<nome>\spritesheet.png` (o `character.json` com `stats` e
+`unlock` é opcional). A folha tem **9 linhas**, uma animação por linha, de 4 a 8 quadros, com fundo
+transparente e espaço transparente entre quadros e entre linhas (uma grade 8×9 ou 8×11 de células quase
+quadradas também é reconhecida). Os quadros são cortados sozinhos, alinhados pela base e reduzidos para no
+máximo 48 px de altura; os itens acompanham a escala do herói.
+
+| Linha | Animação | No jogo |
+|---|---|---|
+| 1 | Idle | parado |
+| 2 | Run Right | (opcional) |
+| 3 | Run Left | não usada |
+| 4 | Waving | depois do clique no pet |
+| 5 | Jumping | evolução e vitória contra chefe |
+| 6 | Failed | morte, antes da lápide |
+| 7 | Waiting | descansando e dormindo |
+| 8 | Running | salas de luta |
+| 9 | Review | escolha de item pendente (modo interativo) |
+
+Linha faltando ou vazia usa o Idle. Esses heróis não piscam.
+
+**Pets da comunidade (Petdex):** pets já instalados em `~/.petdex/pets/<slug>/` ou `~/.codex/pets/<slug>/`
+(`pet.json` + spritesheet PNG; WebP é ignorado, converta para PNG) aparecem no menu na seção
+**Comunidade**, com stats padrão. O Agent Tokenlike só lê essas pastas: nunca baixa, copia nem distribui.
+Os pets da comunidade são de quem os criou e seguem a licença de cada autor; aqui eles só aparecem
+localmente, no seu computador.
+
+**Prompt para criar o seu** (cole num gerador de imagens e salve o resultado em
+`characters\<nome>\spritesheet.png`):
+
+> Crie um spritesheet em pixel art de um personagem pequeno e original, com fundo totalmente
+> transparente. 9 linhas, uma animação por linha, de 4 a 8 quadros por linha, nesta ordem: Idle,
+> Run Right, Run Left, Waving, Jumping, Failed, Waiting, Running, Review. Cada quadro com no máximo
+> 64×64 px, pixel art de verdade (sem suavização nem antialiasing), com contorno escuro de 1 px.
+> Deixe espaço transparente entre os quadros e entre as linhas. Só o personagem: sem chão, sem
+> sombra, sem cenário, sem texto.
+
 ## Barras de sessão e semana
 
 Sem configurar nada, as barras mostram os tokens gastos na sessão de 5 horas e na semana (pelo horário

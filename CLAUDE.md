@@ -18,6 +18,12 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
   inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
+- `folha.py`: corte de spritesheet (9 linhas, `ESTADOS`: idle, run_r, run_l, waving, jumping, failed, waiting,
+  running, review). Herói = `characters/<pasta>/spritesheet.png` (+ `character.json` opcional) ou pet do Petdex
+  (`~/.petdex/pets/<slug>/`, `~/.codex/pets/<slug>/`, só PNG, `comunidade=True`, menu "Comunidade"; só lidos, nunca copiados).
+  Na GUI, `estado_atual` escolhe: escolha pendente `review` > luta `running` > morte `failed` (antes da lápide) >
+  descanso/sono `waiting` > `idle`; `waving` ~1 s após o carinho, `jumping` na evolução e ao vencer chefe.
+  `refresh_look` compõe `estados_fx[estado][quadro][fase]` uma vez; heróis sem estados (Slime, PNG) seguem como antes.
   Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
 - `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),

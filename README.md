@@ -153,6 +153,43 @@ Then right-click the pet → **Recarregar personagens** (reload characters). Err
 
 Please keep art original: no sprites, characters or names from existing games.
 
+### Heroes from a spritesheet
+
+A hero can also be a single `characters/<name>/spritesheet.png` (a `character.json` with `stats` and
+`unlock` is optional). The sheet has **9 rows**, one animation per row, 4 to 8 frames each, on a
+transparent background with transparent gaps between frames and rows (an 8×9 or 8×11 grid of near-square
+cells is also detected). Frames are cut automatically, aligned at the bottom and scaled down to at most
+48 px tall; items scale with the hero.
+
+| Row | Animation | In the game |
+|---|---|---|
+| 1 | Idle | standing still |
+| 2 | Run Right | (optional) |
+| 3 | Run Left | not used |
+| 4 | Waving | after you click the pet |
+| 5 | Jumping | evolving and beating a boss |
+| 6 | Failed | death, before the tombstone |
+| 7 | Waiting | resting and sleeping |
+| 8 | Running | combat rooms |
+| 9 | Review | a pending item choice (interactive mode) |
+
+A missing or empty row falls back to Idle. These heroes don't blink.
+
+**Community pets (Petdex):** pets already installed in `~/.petdex/pets/<slug>/` or `~/.codex/pets/<slug>/`
+(`pet.json` + a PNG spritesheet; WebP is skipped, convert it to PNG) show up in the menu under
+**Comunidade** with default stats. Agent Tokenlike only reads those folders: it never downloads,
+copies or redistributes them. Community pets belong to their authors and their licenses; they are only
+shown locally on your machine.
+
+**Prompt to make your own** (paste into an image model, then save the result as
+`characters/<name>/spritesheet.png`):
+
+> Create a pixel art spritesheet of a small original character on a fully transparent background.
+> 9 rows, one animation per row, 4 to 8 frames per row, in this order: Idle, Run Right, Run Left,
+> Waving, Jumping, Failed, Waiting, Running, Review. Each frame at most 64×64 px, real pixel art (no
+> smoothing or anti-aliasing), with a 1 px dark outline. Leave transparent space between frames and
+> between rows. Only the character: no ground, no shadow, no background, no text.
+
 ## Development
 
 ```

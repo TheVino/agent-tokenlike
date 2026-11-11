@@ -1001,6 +1001,9 @@ class PetApp:
             log(f"erro carregando imagens de '{self.char.key}': {e}; voltando para o Slime")
             self.run["char"] = "slime"
             return self.load_images()
+        # herói de spritesheet: os mapas de cada estado (os antigos não têm "estados")
+        self.estado_maps = {e: [spec_to_map(sp) for sp in specs]
+                            for e, specs in stage.get("estados", {}).items()}
         self.stage_title = stage["title"]
         h = spec_altura(stage["frames"][0])
         self.hero_k, self.hero_px = spec_k(stage["frames"][0]), max(1, round(self.px * 16 / h))
@@ -1032,6 +1035,9 @@ class PetApp:
         self.blink_fx = [img(mapa(self.blink_map, j)) for j in fases] if self.blink_map else None
         self.sleep_fx = ([img(mapa(self.sleep_map, j)) for j in fases] if self.sleep_map
                          else (self.blink_fx or self.frames_fx[0]))
+        # estados da folha: [quadro][fase], compostos uma vez aqui (o idle reaproveita frames_fx)
+        self.estados_fx = {e: (self.frames_fx if e == "idle" else [[img(mapa(pm, j)) for j in fases] for pm in pms])
+                           for e, pms in getattr(self, "estado_maps", {}).items()}
         self.canvas.itemconfigure(self.sprite, image=self.frames_fx[0][0])
         self.place_pet(0, 0)
 
@@ -1120,13 +1126,21 @@ class PetApp:
 
     def fill_char_menu(self):
         self.char_menu.delete(0, "end")
-        for key, c in self.chars.items():
+        proprios = [(k, c) for k, c in self.chars.items() if not c.comunidade]
+        comunidade = [(k, c) for k, c in self.chars.items() if c.comunidade]
+        for key, c in proprios:
             if self.is_unlocked(c):
                 self.char_menu.add_radiobutton(label=c.name, value=key, variable=self.char_var,
                                                command=self.change_character)
             else:
                 self.char_menu.add_command(
                     label=f"{c.name}  [bloqueado: {M.ACHIEVEMENTS[c.unlock]}]", state="disabled")
+        if comunidade:
+            self.char_menu.add_separator()
+            self.char_menu.add_command(label="Comunidade", state="disabled")
+            for key, c in comunidade:
+                self.char_menu.add_radiobutton(label=c.name, value=key, variable=self.char_var,
+                                               command=self.change_character)
 
     # -------------------------------------------------------------- eventos
     def on_press(self, e):
@@ -1145,6 +1159,7 @@ class PetApp:
               and not self.run["dead"]):
             self.hop = [-3, -6, -8, -6, -3, 0]
             self.floater("<3", "#ff8fb1")
+            self.estado_tmp = ("waving", time.time() + 1.0)
         self._drag = None
 
     def on_menu(self, e):
@@ -1340,6 +1355,8 @@ class PetApp:
                                        x=self.fcx, life=24))
             at(t, self.show_choice)
             t += 700
+        if kind == "boss" and not ev["died"] and not ev.get("empate"):
+            at(t, lambda: self._set("estado_tmp", ("jumping", time.time() + 1.2)))
         if ev["died"]:
             at(t, self.on_death)
             t += 400
@@ -1352,6 +1369,7 @@ class PetApp:
         for ms, fn in steps:
             self.root.after(ms, fn)
         self.busy_until = time.time() + t / 1000 + 0.8
+        self.luta_until = self.busy_until if kind in ("monster", "boss", "mimic", "horde") else 0
 
     def _offer_steps(self, ev, at, t):
         """Animação das linhas e da oferta resolvida (item pego ou consumido); devolve o novo t."""
@@ -1501,6 +1519,7 @@ class PetApp:
         self.refresh_look()
         self.burst(self.pcx, self.base_y - self.T // 2)
         self.hop = [-6, -12, -16, -12, -6, 0]
+        self.estado_tmp = ("jumping", time.time() + 1.2)
         self.floater("EVOLUIU!", GOLD, life=22)
         self.popup([f"{old} evoluiu para {self.stage_title}!", "+4 HP máx, +1 ATK"], 5000)
 
@@ -1514,7 +1533,11 @@ class PetApp:
         g = self.meta["graveyard"][-1]
         self.log_run(g["killer"], False)
         self.save()
-        self.show_tomb()
+        if getattr(self, "estados_fx", None):       # herói de folha: quadros "failed" antes da lápide
+            self.estado_tmp = ("failed", time.time() + 1.2)
+            self.root.after(1200, lambda: self.run["dead"] and self.show_tomb())
+        else:
+            self.show_tomb()
         self.burst(self.pcx, self.base_y - self.T // 3, colors=("#8a94a8", "#d7dde9", HURT))
         best = self.meta["best"]
         self.popup([f"{self.stage_title} morreu no andar {g['floor']}-{g['room']}",
@@ -1584,6 +1607,27 @@ class PetApp:
                                              fill=self.rng.choice(colors), outline="")
             self.particles.append([r, math.cos(a) * 6, math.sin(a) * 6, 12])
 
+    def estado_atual(self, now, descansando):
+        """Estado da folha a mostrar (None para heróis sem estados): escolha > luta > morte > descanso > idle;
+        waving/jumping valem pelo tempo marcado."""
+        if not getattr(self, "estados_fx", None):
+            return None
+        tmp, ate = getattr(self, "estado_tmp", (None, 0))
+        if self.run["dead"]:
+            return "failed" if tmp == "failed" and now < ate else None
+        if self.run["pending"]:
+            return "review"
+        if now < getattr(self, "luta_until", 0):
+            return "running"
+        if tmp in ("waving", "jumping") and now < ate:
+            return tmp
+        return "waiting" if descansando else "idle"
+
+    def quadro_estado(self, estado, now):
+        qs = self.estados_fx[estado]
+        q = qs[int(now * 1000 / self.char.frame_ms) % len(qs)]
+        return q[int(now * 1000 / FX_MS) % len(q)]
+
     def tick(self):
         now = time.time()
         run = self.run
@@ -1609,11 +1653,16 @@ class PetApp:
             idle = now - self.state["last_fed"]
             busy = now < self.busy_until
             if run["dead"]:
-                dy = 0
+                if self.estado_atual(now, False) == "failed":
+                    self.canvas.itemconfigure(self.sprite, image=self.quadro_estado("failed", now))
             else:
                 sleeping = idle > SLEEP_AFTER_S and not busy
                 fase = int(now * 1000 / FX_MS)       # relógio dos efeitos, separado do herói
-                if sleeping:
+                estado = self.estado_atual(now, idle > REST_AFTER_S and not busy)
+                if estado:
+                    img = self.quadro_estado(estado, now)
+                    bob = 0
+                elif sleeping:
                     img = self.sleep_fx[fase % len(self.sleep_fx)]
                     bob = -2 if int(now / 1.4) % 2 else 0
                     if now > self.next_zzz:

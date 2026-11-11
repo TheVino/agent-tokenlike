@@ -346,6 +346,35 @@ app8.char_var.set("petdex:g"); app8.change_character(); app8.new_run()
 assert app8.char.key == "petdex:g" and app8.hero_k >= 2
 dt = time.time() - t0; assert dt < 3.0, dt
 pump(app8, 300); app8.quit()
+# estados da folha na GUI: cada estado tem as próprias imagens, compostas uma vez
+app9 = tp.PetApp(Args()); PENDING.clear(); app9.rng = random.Random(SEED)
+app9.char_var.set("petdex:y"); app9.change_character(); app9.new_run()
+fx = app9.estados_fx; assert set(fx) == set(tp.folha.ESTADOS)
+def mostrando(): return cv9.it[app9.sprite][2]["image"]
+cv9 = app9.canvas
+def todas(e): return {id(i) for q in fx[e] for i in q}
+app9.busy_until = time.time() + 99; app9.state["last_fed"] = time.time()
+app9.tick(); assert id(mostrando()) in todas("idle")
+app9.state["last_fed"] = time.time() - tp.REST_AFTER_S - 5; app9.busy_until = 0
+app9.run["energy"] = 0; app9.tick(); assert id(mostrando()) in todas("waiting")
+app9.run["pending"] = {"key": next(iter(M.ITEMS)), "rar": "comum"}; app9.busy_until = time.time() + 99
+app9.tick(); assert id(mostrando()) in todas("review")          # escolha vence o descanso
+app9.run["pending"] = None; app9.state["last_fed"] = time.time()
+app9.luta_until = time.time() + 5; app9.tick(); assert id(mostrando()) in todas("running")
+app9.luta_until = 0
+app9.on_release(types.SimpleNamespace(x=app9.pcx, y=app9.base_y - 1)); app9.tick()
+assert id(mostrando()) in todas("waving")
+app9.run["dead"] = True; app9.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
+app9.on_death(); app9.tick(); assert id(mostrando()) in todas("failed")
+for fn in PENDING[:]:
+    if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
+PENDING.clear(); assert mostrando() is app9.art_img("lapide")
+app9.new_run(); pump(app9, 400)
+app9.fill_char_menu(); app9.quit()
+# Slime não tem estados: tudo como antes
+app10 = tp.PetApp(Args()); PENDING.clear(); app10.char_var.set("slime"); app10.change_character(); app10.new_run()
+assert app10.char.key == "slime" and app10.estados_fx == {}
+assert app10.estado_atual(time.time(), True) is None; app10.quit()
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)
