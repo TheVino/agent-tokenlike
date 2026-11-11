@@ -76,3 +76,12 @@ sb = {}; rb = tp.TokenReader(sb, dirs=[tmp3]); rb.skip_existing(); rb.backfill()
 assert sum(sb["usage_hist"].values()) == 320, sb["usage_hist"]
 assert rb.poll() == (0.0, 0) and not rb.seen
 print("reader backfill ok")
+
+# Petdex: pasta só com WebP é ignorada com aviso; pet.json inválido não derruba (sem tkinter)
+dex = Path(tempfile.mkdtemp()); (dex/"w").mkdir(); (dex/"w"/"pet.json").write_text("{x")
+(dex/"w"/"spritesheet.webp").write_bytes(b"w")
+tp.LOG_FILE = dex/"log.txt"; tp.DATA_DIR = dex
+tp.petdex_dirs = lambda: [dex, dex/"nao-existe"]
+assert tp.load_petdex_characters() == []
+assert "converta para PNG" in tp.LOG_FILE.read_text(encoding="utf-8") and "erro" not in tp.LOG_FILE.read_text(encoding="utf-8")
+print("reader petdex ok")

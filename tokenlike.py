@@ -38,6 +38,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import arte  # noqa: E402
+import folha  # noqa: E402
 import masmorra as M  # noqa: E402
 import visual  # noqa: E402
 
@@ -511,11 +512,12 @@ def blink_grid(grid: list[str], eye_chars: str, body_char: str) -> list[str]:
 
 
 class CharacterDef:
-    def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None):
+    def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None, comunidade=False):
         self.key, self.name, self.frame_ms = key, name, frame_ms
         self.stats = stats or {"hp": 20, "atk": 3, "def": 0, "dodge": 0}
-        self.unlock = unlock
+        self.unlock, self.comunidade = unlock, comunidade
         # cada estágio: {"floor", "title", "frames": [spec], "blink": spec|None, "sleep": spec|None}
+        # e, se vier de spritesheet, "estados": {estado: [spec]} (spec ("sheet", path, box, N))
         self.stages = sorted(stages, key=lambda s: s["floor"])
 
     @property
@@ -533,6 +535,53 @@ def builtin_characters() -> list[CharacterDef]:
     return [CharacterDef("slime", "Slime", stages, stats={"hp": 20, "atk": 3, "def": 0, "dodge": 0})]
 
 
+DEFAULT_STATS = {"hp": 20, "atk": 3, "def": 0, "dodge": 0, "spd": 10.0}
+_FOLHAS = {}  # (caminho, mtime) -> (linhas de caixas, N): cada folha é cortada uma vez
+_IMGS = {}    # caminho -> (mtime, PhotoImage): spec_to_map não reabre o PNG a cada quadro
+
+
+def _img_folha(path: Path):
+    mt = path.stat().st_mtime
+    if _IMGS.get(str(path), (None,))[0] != mt:
+        _IMGS[str(path)] = (mt, tk.PhotoImage(file=str(path)))
+    return _IMGS[str(path)][1]
+
+
+def ler_folha(path: Path):
+    """Linhas de caixas da folha e o fator N de redução. Grade fixa quando o tamanho bate; senão corte
+    automático numa grade de opacidade amostrada (1 a cada N px), porque a máscara completa é lenta."""
+    ck = (str(path), path.stat().st_mtime)
+    if ck not in _FOLHAS:
+        src = _img_folha(path)
+        w, h = src.width(), src.height()
+        grade = folha.detectar_grade(w, h)
+        if grade:
+            linhas = folha.cortar(w, h, lambda x, y: not src.transparency_get(x, y), grade)
+            n = folha.fator_reducao(h // grade[1])
+        else:
+            n = folha.fator_reducao(h // 9)
+            ws, hs = -(-w // n), -(-h // n)
+            op = [[not src.transparency_get(x * n, y * n) for x in range(ws)] for y in range(hs)]
+            linhas = [[(x0 * n, y0 * n, min(w, x1 * n), min(h, y1 * n)) for x0, y0, x1, y1 in lin]
+                      for lin in folha.cortar(ws, hs, lambda x, y: op[y][x])]
+            if any(linhas):  # N pela altura real das linhas, não pela suposição de 9 linhas
+                n = folha.fator_reducao(max(c[3] - c[1] for lin in linhas for c in lin))
+        if not any(linhas):
+            raise ValueError(f"folha sem quadros: {path.name}")
+        _FOLHAS[ck] = linhas, n
+    return _FOLHAS[ck]
+
+
+def stage_da_folha(path: Path, floor: int, title: str) -> dict:
+    """Estágio de herói de spritesheet: estados na ordem das linhas; linha vazia ou ausente usa o Idle."""
+    linhas, n = ler_folha(path)
+    specs = [[("sheet", path, c, n) for c in lin] for lin in linhas]
+    idle = next(l for l in specs if l)
+    estados = {e: (specs[i] if i < len(specs) and specs[i] else idle) for i, e in enumerate(folha.ESTADOS)}
+    return {"floor": floor, "title": title, "frames": estados["idle"], "blink": None, "sleep": None,
+            "estados": estados}
+
+
 def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     out = []
     if not folder.is_dir():
@@ -540,6 +589,12 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     for d in sorted(folder.iterdir()):
         cfg = d / "character.json"
         if not cfg.is_file():
+            if (d / "spritesheet.png").is_file():   # folha sem character.json: um estágio, stats padrão
+                try:
+                    out.append(CharacterDef(d.name, d.name, [stage_da_folha(d / "spritesheet.png", 1, d.name)],
+                                            stats=dict(DEFAULT_STATS)))
+                except Exception as e:
+                    log(f"personagem '{d.name}' ignorado: {e}")
             continue
         try:
             data = json.loads(cfg.read_text(encoding="utf-8"))
@@ -552,10 +607,14 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
 
             stages = []
             for i, st in enumerate(data["stages"]):
+                default_floor = M.DEFAULT_STAGE_FLOORS[min(i, len(M.DEFAULT_STAGE_FLOORS) - 1)]
+                if st.get("sheet"):
+                    stages.append(stage_da_folha(spec(st["sheet"])[1], int(st.get("floor", default_floor)),
+                                                 st.get("title", data.get("name", d.name))))
+                    continue
                 frames = [spec(f) for f in st["frames"]]
                 if not frames:
                     raise ValueError("estágio sem 'frames'")
-                default_floor = M.DEFAULT_STAGE_FLOORS[min(i, len(M.DEFAULT_STAGE_FLOORS) - 1)]
                 stages.append({
                     "floor": int(st.get("floor", default_floor)),
                     "title": st.get("title", data.get("name", d.name)),
@@ -582,10 +641,40 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     return out
 
 
+def petdex_dirs() -> list[Path]:
+    """Pastas de pets do Petdex (só lidas, nunca escritas). Lidas na hora para o teste trocar o HOME."""
+    return [Path.home() / ".petdex" / "pets", Path.home() / ".codex" / "pets"]
+
+
+def load_petdex_characters() -> list[CharacterDef]:
+    """Pets da comunidade: o .png da pasta (de preferência spritesheet.png) e só o `name` do pet.json."""
+    out = []
+    for base in petdex_dirs():
+        if not base.is_dir():
+            continue
+        for d in sorted(p for p in base.iterdir() if p.is_dir()):
+            pngs = sorted(d.glob("*.png"), key=lambda p: (p.name != "spritesheet.png", p.name))
+            if not pngs:
+                if any(d.glob("*.webp")):
+                    log(f"pet '{d.name}' ignorado: só tem WebP; converta para PNG para usar este pet")
+                continue
+            name = d.name
+            try:
+                name = str(json.loads((d / "pet.json").read_text(encoding="utf-8")).get("name") or d.name)
+            except (OSError, ValueError, AttributeError):
+                pass   # pet.json ausente ou inválido: fica o nome da pasta
+            try:
+                out.append(CharacterDef("petdex:" + d.name, name, [stage_da_folha(pngs[0], 1, name)],
+                                        stats=dict(DEFAULT_STATS), comunidade=True))
+            except Exception as e:
+                log(f"pet '{d.name}' ignorado: {e}")
+    return out
+
+
 def all_characters() -> dict[str, CharacterDef]:
     chars = {c.key: c for c in builtin_characters()}
-    for c in load_png_characters():
-        chars[c.key] = c
+    for c in load_png_characters() + load_petdex_characters():
+        chars.setdefault(c.key, c)
     return chars
 
 
@@ -610,6 +699,16 @@ def _hex(v):
 
 def spec_to_map(spec):
     """Spec do herói -> PixelMap com o quadro em (0..16, 0..16), centrado na horizontal e base em y = 16."""
+    if spec[0] == "sheet":
+        _, path, (x0, y0, x1, y1), n = spec
+        src = _img_folha(path)
+        pm = {((x - x0) // n, (y - y0) // n): _hex(src.get(x, y))
+              for y in range(y0, y1, n) for x in range(x0, x1, n) if not src.transparency_get(x, y)}
+        if not pm:
+            return {}
+        w, lado = -(-(x1 - x0) // n), 16 * spec_k(spec)
+        dx, dy = (lado - w) // 2, lado - 1 - max(y for _, y in pm)   # base do desenho na base do quadro
+        return {(x + dx, y + dy): c for (x, y), c in pm.items()}
     if spec[0] == "grid":
         grid = spec[1]
         w, h = max(len(r) for r in grid), len(grid)
@@ -624,6 +723,17 @@ def spec_to_map(spec):
         w, h = math.ceil(sw / step), math.ceil(sh / step)
     dx, dy = (16 - w) // 2, 16 - h
     return {(x + dx, y + dy): c for (x, y), c in pm.items()}
+
+
+def spec_altura(spec) -> int:
+    """Altura final (já reduzida) do quadro; grid e PNG solto ficam em 16."""
+    if spec[0] == "sheet":
+        return -(-(spec[2][3] - spec[2][1]) // spec[3])
+    return 16
+
+
+def spec_k(spec) -> int:
+    return max(1, round(spec_altura(spec) / 16))
 
 
 def render_map(pm, s: int, k: int = 1):
@@ -877,11 +987,14 @@ class PetApp:
             self.run["char"] = "slime"
             return self.load_images()
         self.stage_title = stage["title"]
+        h = spec_altura(stage["frames"][0])
+        self.hero_k, self.hero_px = spec_k(stage["frames"][0]), max(1, round(self.px * 16 / h))
 
-    def refresh_look(self, k: int = 1, px_heroi: int = None):
+    def refresh_look(self, k: int = None, px_heroi: int = None):
         """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick.
         Herói de altura H: k = H/16 e px_heroi = max(1, round(px*16/H)) (padrão: 16 px, k=1, px)."""
-        px_heroi = px_heroi or self.px
+        k = k or getattr(self, "hero_k", 1)
+        px_heroi = px_heroi or getattr(self, "hero_px", None) or self.px
         looks = pet_looks(self.run)
         arts = item_arts()
         cor = STATUS_COR.get(self.pet_status)
