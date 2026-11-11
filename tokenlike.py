@@ -213,8 +213,9 @@ class TokenReader:
                 got = self.parse_line(line, seen)
                 if got and got[2] is not None:
                     add_usage(self.state, got[2], got[0])
-        prune_usage(self.state, time.time())
         self.state["usage_hist"] = hist
+        self.state["usage_hist_desde"] = cutoff         # o histórico cobre os últimos 8 dias
+        prune_usage(self.state, time.time())
 
     def parse_line(self, line: bytes, seen: set | None = None):
         if b'"usage"' not in line:
@@ -288,6 +289,8 @@ def add_usage(state: dict, ts: float, xp: float) -> None:
 
 def prune_usage(state: dict, now: float) -> None:
     hist = state.get("usage_hist") or {}
+    if "usage_hist_desde" in state:
+        state["usage_hist_desde"] = max(state["usage_hist_desde"], now - HIST_KEEP_S)
     for k in [k for k in hist if int(k) < now - HIST_KEEP_S]:
         del hist[k]
 
@@ -307,8 +310,7 @@ def calibrate(state: dict, limits: dict | None, now: float) -> None:
         pct, reset = limits.get(key, (None, None))
         if pct is None or not reset:
             continue
-        hist = state.get("usage_hist") or {}
-        if not hist or min(int(k) for k in hist) > reset - win:
+        if state.get("usage_hist_desde", math.inf) > reset - win:
             continue                        # histórico não cobre a janela toda: mantém o fator anterior
         tok = usage_between(state, reset - win, now)
         if tok >= MIN_CALIB_XP:
@@ -671,6 +673,7 @@ class PetApp:
                 self.reader.skip_existing()
         if not self.demo and "usage_hist" not in self.state:
             self.reader.backfill()
+        self.state.setdefault("usage_hist_desde", time.time())   # sem backfill: cobre só daqui em diante
         self.chars = all_characters()
         if self.state["size"] not in SIZES:
             self.state["size"] = "Médio"

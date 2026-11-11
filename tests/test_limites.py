@@ -60,7 +60,7 @@ now = time.time()
 st = {}
 tp.add_usage(st, now - 3600, 10_000)                       # dentro da sessão e da semana
 tp.add_usage(st, now - 3 * 86400, 30_000)                  # só na semana
-tp.add_usage(st, now - 7.5 * 86400, 0)                    # histórico cobre a semana toda
+st["usage_hist_desde"] = now - 8 * 86400                   # histórico cobre a semana toda
 lim = {"sessao": (20.0, now + 3600), "semana": (40.0, now + 86400), "updated": now}
 tp.calibrate(st, lim, now)
 assert abs(st["calib"]["sessao"]["f"] - 20 / 10_000) < 1e-12
@@ -79,7 +79,7 @@ pct, reset, est, _ = tp.limit_view("sessao", None, st, after)
 assert est and reset == now + 3600 + 5 * 3600 and abs(pct - 2_000 * 20 / 10_000) < 1e-9
 # mesma leitura não recalibra; tokens ~0 não calibram
 st["calib"]["sessao"]["f"] = 9; tp.calibrate(st, lim, now); assert st["calib"]["sessao"]["f"] == 9
-vazio = {}; tp.calibrate(vazio, dict(lim, updated=now + 1), now); assert "sessao" not in vazio["calib"]
+vazio = {"usage_hist_desde": 0}; tp.calibrate(vazio, dict(lim, updated=now + 1), now); assert "sessao" not in vazio["calib"]
 # sem leitura oficial nem fator: só tokens da janela
 pct, reset, est, tok = tp.limit_view("sessao", None, vazio, now)
 assert pct is None and not est and tok == 0
@@ -87,7 +87,15 @@ so = {}; tp.add_usage(so, now - 60, 1_200_000)
 assert tp.limit_view("sessao", None, so, now)[3] == 1_200_000
 r = tp.read_limits(d / "limites.json", now); assert r["updated"] == saved["updated"]
 # histórico mais novo que o início da janela: não calibra e mantém o fator anterior
-curto = {"calib": {"semana": {"f": 7, "reset": 1}}}; tp.add_usage(curto, now - 5 * 3600, 0); tp.add_usage(curto, now - 60, 50_000)
+curto = {"calib": {"semana": {"f": 7, "reset": 1}}, "usage_hist_desde": now - 5 * 3600}; tp.add_usage(curto, now - 60, 50_000)
 tp.calibrate(curto, dict(lim, updated=now + 2), now)
 assert curto["calib"]["semana"]["f"] == 7 and "sessao" in curto["calib"]
+# backfill cobre 8 dias: semana sem uso nos primeiros dias ainda calibra
+tmpb = Path(tempfile.mkdtemp()); (tmpb / "p").mkdir()
+iso = datetime.fromtimestamp(now - 3600, __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+(tmpb / "p" / "a.jsonl").write_text(json.dumps({"type": "assistant", "requestId": "r", "timestamp": iso,
+    "message": {"id": "m", "usage": {"input_tokens": 5000, "output_tokens": 0}}}) + "\n")
+sb = {}; rb = tp.TokenReader(sb, dirs=[tmpb]); rb.skip_existing(); rb.backfill()
+tp.calibrate(sb, {"semana": (10.0, now + 86400), "updated": now}, now)
+assert abs(sb["calib"]["semana"]["f"] - 10 / 5000) < 1e-12
 print("ok: estimativa")
