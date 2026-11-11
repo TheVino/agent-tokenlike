@@ -130,7 +130,65 @@ ITEM_ART = {
         "KwwwK",
         "KKKKK",
     ],
-}
+    "carapaca": [
+        "..K.K.K..",
+        ".KgKgKgK.",
+        "KgGgGgGgK",
+        "KgGKGKGgK",
+        "KgGgGgGgK",
+        ".KgggggK.",
+        "..KKKKK..",
+    ],
+    "baba": [
+        ".KKKKK.",
+        "KvvvvvK",
+        "KvKvvvK",
+        "KvvvKvK",
+        ".KvvvK.",
+        ".v...v.",
+        ".c...v.",
+    ],
+    "aura": [
+        "..KKKKK..",
+        ".KpPPPpK.",
+        "KpP...PpK",
+        "KP.....PK",
+        "KpP...PpK",
+        ".KpPPPpK.",
+        "..KKKKK..",
+    ],
+    "veneno": [
+        "..KKK..",
+        "..KgK..",
+        ".KKrKK.",
+        "KrrRrrK",
+        "KrRrrRK",
+        "KrrrrrK",
+        ".KKKKK.",
+    ],
+    "terceiro_olho": [
+        ".KKKKK.",
+        "KwwpwwK",
+        "KwpxpwK",
+        "KwwpwwK",
+        ".KKKKK.",
+    ],
+    "orbe": [
+        "..KKK..",
+        ".KcwcK.",
+        "KcwccPK",
+        "KccccPK",
+        ".KcPPK.",
+        "..KKK..",
+    ],
+    "coroa_cinzas": [
+        "K..K.K..K",
+        "KgKKgKKgK",
+        "KgGgGgGgK",
+        "KgGyGyGgK",
+        "KgggggggK",
+        "KKKKKKKKK",
+    ],}
 
 # --------------------------------------------------------------- monstros
 FOE_ART = {

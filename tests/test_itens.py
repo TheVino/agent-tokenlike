@@ -61,4 +61,13 @@ for mode in ("auto", "interativo"):
         if ev.get("pending"): pendings += 1; assert run["pending"]["key"] == ev["pending"]["key"]
         assert len({i["key"] for i in run["items"]}) == len(run["items"])
     assert (pendings > 0) == (mode == "interativo")
+# itens novos cobrem todos os tipos de visual
+import arte
+tipos = {it["look"]["type"] for it in M.ITEMS.values()}
+assert {"obj", "espinhos", "gotas", "contorno", "tingir", "adesivo"} <= tipos
+assert len(M.ITEMS) >= 20
+assert any(it["rarities"] == ["lendario"] for it in M.ITEMS.values())
+assert any(it["look"].get("anchor") == "flutua" for it in M.ITEMS.values())
+assert all(k in arte.ITEM_ART for k in M.ITEMS)
+assert all(it["look"]["art"] in arte.ITEM_ART for it in M.ITEMS.values() if "art" in it["look"])
 print("ok: itens")
