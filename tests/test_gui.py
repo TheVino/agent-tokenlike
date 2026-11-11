@@ -106,6 +106,16 @@ for demo in (False, True):
     assert app2.run["pending"] is None                                       # resolveu sozinho e seguiu
     app2.run["pending"] = dict(offer, key="tampa"); app2.pending_since = time.time(); app2.choose("consumir")
     assert app2.run["pending"] is None and not any(i["key"] == "tampa" for i in app2.run["items"])
+    assert app2.choice_win is None
+    # desistir com escolha aberta: o painel fecha e a run nova não herda a oferta
+    app2.run["pending"] = dict(offer, key="gorro"); app2.busy_until = 0; app2.tick()
+    assert app2.choice_win is not None
+    app2.give_up(); assert app2.run["pending"] is None and app2.choice_win is None
+    # escolher numa run morta não muda nada
+    app2.run["pending"] = dict(offer, key="gorro"); app2.run["dead"] = True
+    before = (list(app2.run["items"]), app2.run["hp"]); app2.choose("pegar")
+    assert (app2.run["items"], app2.run["hp"]) == before
+    app2.run["dead"] = False; app2.run["pending"] = None
     app2.run["pending"] = dict(offer, key="gorro"); app2.pending_since = time.time() - 999
     app2.run["energy"] = 0; app2.busy_until = 0; app2.tick(); assert app2.run["pending"]   # sem energia: espera
     app2.mode_var.set("auto"); app2.change_mode(); assert app2.run["pending"] is None    # trocar p/ auto resolve

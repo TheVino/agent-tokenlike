@@ -777,7 +777,7 @@ class PetApp:
 
     def change_mode(self):
         self.state["mode"] = self.mode_var.get()
-        if self.state["mode"] == "auto" and self.run["pending"]:
+        if self.state["mode"] == "auto" and self.run["pending"] and not self.run["dead"]:
             self.finish_pending(M.resolve_pending(self.run, self.meta))
         self.save()
 
@@ -788,6 +788,8 @@ class PetApp:
     def give_up(self):
         if self.run["dead"]:
             return
+        self.run["pending"] = None             # a oferta morre junto com a run
+        self.close_choice()
         ev = {"lines": []}
         M.die(self.run, self.meta, ev, "Desistiu")
         self.save()
@@ -976,7 +978,7 @@ class PetApp:
         self.save()
 
     def choose(self, choice):
-        if self.run["pending"]:
+        if self.run["pending"] and not self.run["dead"]:
             self.finish_pending(M.choose_pending(self.run, self.meta, choice))
 
     def _set(self, attr, value):
@@ -1065,7 +1067,7 @@ class PetApp:
         now = time.time()
         run = self.run
         try:
-            if self.choice_win is not None and not run["pending"]:
+            if self.choice_win is not None and (not run["pending"] or run["dead"]):
                 self.close_choice()                # a pendência sumiu (run nova, desistiu...)
             if run["dead"]:
                 if self.respawn_at and now >= self.respawn_at:
@@ -1211,7 +1213,8 @@ class PetApp:
         left = max(0.0, 1 - (time.time() - since) / M.CHOICE_WINDOW_S)
         self.choice_cv.coords(self.choice_bar, 0, 0, CHOICE_BAR_W * left, 6)
         rooms = int(self.run["energy"] // M.room_cost(self.run))
-        self.choice_wait.config(text=f"{rooms} salas esperando" if rooms >= 1 else "")
+        wait = "" if rooms < 1 else ("1 sala esperando" if rooms == 1 else f"{rooms} salas esperando")
+        self.choice_wait.config(text=wait)
 
     def close_choice(self):
         w, self.choice_win, self.pending_since = self.choice_win, None, None
