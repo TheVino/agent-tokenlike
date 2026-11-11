@@ -900,7 +900,7 @@ class PetApp:
         self.run["pending"] = None             # a oferta morre junto com a run
         self.close_choice()
         ev = {"lines": []}
-        M.die(self.run, self.meta, ev, "Desistiu")
+        M.die(self.run, self.meta, ev, "Desistiu", "desistiu")
         self.log_run("Desistiu", True)
         self.save()
         self.new_run()
@@ -1206,7 +1206,8 @@ class PetApp:
 
     def log_run(self, killer, gave_up):
         rec = M.run_record(self.run, killer, gave_up, self.state["mode"],
-                           self.run.get("ach_start", self.meta["achievements"]))
+                           self.run.get("ach_start", self.meta["achievements"]),
+                           killer_kind=self.meta["graveyard"][-1].get("kind", ""))
         append_run_record(rec, self.demo)
 
     def on_death(self):

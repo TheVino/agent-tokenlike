@@ -154,7 +154,9 @@ def mortes(recs) -> dict:
     recs = validas(recs)
     por_andar = collections.Counter(r["floor"] for r in recs)
     matadores = collections.Counter(r["killer"] for r in recs if r.get("killer") not in (None, "—"))
-    return {"por_andar": dict(sorted(por_andar.items())), "matadores": matadores.most_common(6)}
+    por_tipo = collections.Counter(r.get("killer_kind") or "?" for r in recs)   # linha antiga: "?"
+    return {"por_andar": dict(sorted(por_andar.items())), "matadores": matadores.most_common(6),
+            "por_tipo": dict(por_tipo.most_common())}
 
 
 def herois(recs) -> dict:
@@ -317,6 +319,16 @@ def _matadores(lista) -> str:
     return "<ul>" + "".join(f"<li>{_e(n)}: {c}</li>" for n, c in lista) + "</ul>"
 
 
+TIPOS = {"monster": "Monstro", "horde": "Horda", "boss": "Chefe", "mimic": "Mímico", "trap": "Armadilha",
+         "status": "Status", "desistiu": "Desistiu", "?": "Antigo"}
+
+
+def _tipos(d) -> str:
+    if not d:
+        return '<p class="mu">sem dados</p>'
+    return "<ul>" + "".join(f"<li>{_e(TIPOS.get(k, k))}: {c}</li>" for k, c in d.items()) + "</ul>"
+
+
 def gerar_html(dados: dict) -> str:
     itens, info = dados["itens"], dados["info_real"]
     real_vazio = dados["real"]["n"] == 0
@@ -356,7 +368,7 @@ def gerar_html(dados: dict) -> str:
     p.append('<h2>Onde as runs morrem</h2><div class="cols">')
     for fonte in ("sim", "real"):
         m = dados["mortes"][fonte]
-        p.append(f'<div>{_histograma(m["por_andar"], fonte)}<p class="mu">Quem mais mata</p>{_matadores(m["matadores"])}</div>')
+        p.append(f'<div>{_histograma(m["por_andar"], fonte)}<p class="mu">Quem mais mata</p>{_matadores(m["matadores"])}<p class="mu">Por tipo de morte</p>{_tipos(m["por_tipo"])}</div>')
     p.append('</div><h2>Heróis</h2><div class="rolar"><table><thead><tr><th>Herói</th><th>Runs sim / real</th>'
              "<th>Mediana sim / real</th><th>p90 sim / real</th></tr></thead><tbody>")
     hs, hr = dados["herois"]["sim"], dados["herois"]["real"]

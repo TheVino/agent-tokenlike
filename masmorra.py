@@ -500,14 +500,17 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     return True, passos, "", True                        # limite de segurança: empate, sem prêmio
 
 
-def die(run: dict, meta: dict, ev: dict, killer: str) -> None:
+def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> None:
+    """kind: monster|horde|boss|mimic|trap|desistiu; morte por Queimadura/Veneno vira "status"."""
+    if killer in ("Queimadura", "Veneno"):
+        kind = "status"
     run["dead"] = True
     ev["died"] = True
     ev["killed_by"] = killer
     meta["runs"] += 1
     meta["graveyard"].append({
         "run": run["id"], "char": run["char"], "floor": run["floor"], "room": run["room"],
-        "killer": killer, "items": [i["key"] for i in run["items"]],
+        "killer": killer, "kind": kind, "items": [i["key"] for i in run["items"]],
         "gold": run["gold"], "kills": run["kills"], "date": date.today().isoformat(),
     })
     meta["graveyard"] = meta["graveyard"][-50:]
@@ -612,7 +615,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         won, ev["hits"], killer, empate = combate(run, st, foes, rng, f)
         ev["dmg"] = hp_before - run["hp"]
         if not won:
-            die(run, meta, ev, killer)
+            die(run, meta, ev, killer, kind)
             return ev
         if empate:                            # passou da sala, mas sem ouro, kills, bônus de chefe ou item
             ev["empate"] = True
@@ -657,7 +660,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["dmg"] = dmg
             if run["hp"] <= 0:
                 run["hp"] = 0
-                die(run, meta, ev, "Armadilha")
+                die(run, meta, ev, "Armadilha", "trap")
                 return ev
 
     elif kind == "fountain":
@@ -743,11 +746,12 @@ def _balance_version() -> str:
 BALANCE_VERSION = _balance_version()
 
 
-def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: list) -> dict:
+def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: list,
+               killer_kind: str = "") -> dict:
     """Linha de registro de uma run terminada (mesmo formato no jogo e no simulador)."""
     return {
         "run": run["id"], "char": run["char"], "floor": run["floor"], "room": run["room"],
-        "killer": killer, "gave_up": gave_up,
+        "killer": killer, "killer_kind": killer_kind, "gave_up": gave_up,
         "items": [dict(i) for i in run["items"]], "consumed": [dict(i) for i in run["consumed"]],
         "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
         "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,

@@ -50,6 +50,9 @@ assert (p["a"], p["b"]) == ("adaga", "tampa") and p["vs_esperado"] == 0
 assert p["ganho"] == 0 - max(E.por_item(many)["adaga"]["vs_esperado"], E.por_item(many)["tampa"]["vs_esperado"])
 mo = E.mortes(recs)
 assert mo["por_andar"] == {4: 1, 8: 1, 10: 1} and mo["matadores"] == [("Rato", 3)]
+kk = [dict(linha("slime", 5, []), killer_kind="horde"), dict(linha("slime", 6, []), killer_kind="horde"),
+      dict(linha("slime", 7, []), killer_kind="boss"), linha("slime", 8, [])]   # sem a chave: antigo
+assert E.mortes(kk)["por_tipo"] == {"horde": 2, "boss": 1, "?": 1} and E._linha_ok(kk[3])
 h = E.herois(recs + [linha("fantasma", 7, [])])
 assert h["slime"]["n"] == 3 and h["slime"]["mediana"] == 8 and h["fantasma"]["p90"] == 7
 r = E.resumo(v)
@@ -73,6 +76,7 @@ assert dados["real"]["n"] == 0 and set(dados["itens"]) == set(M.ITEMS)
 page = E.gerar_html(dados)
 for sec in ("Resumo", "Itens", "Melhores pares", "Onde as runs morrem", "Heróis", "sem runs reais"):
     assert sec in page, sec
+assert "Horda" in page and "Monstro" in page
 assert "http://" not in page and "https://" not in page          # nada externo
 json.dumps(dados)                                                  # serializável
 out = Path(tempfile.mkdtemp())
