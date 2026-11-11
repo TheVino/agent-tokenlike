@@ -178,8 +178,44 @@ for _ in range(600):
         if fn is None or getattr(fn, "__name__", "") in ("tick", "poll"): continue
         fn()
     seen_horde = seen_horde or any(k == "horde" for k in getattr(app6, "_ultimo_kind", [""]))
-app6.show_stats(); app6.quit()
 assert seen_horde
+# ataque elemental com área (item _t temporário): tinta e clarão no inimigo; status do pet some no fim da luta
+M.ITEMS["_t"] = {"name": "t", "fx": {"queimar": 0.6, "area": True}, "rarities": ["comum"], "consume": {"heal": 1},
+                 "look": {"type": "obj", "anchor": "topo", "art": "adaga"}}
+tintas, status_pet = [], []
+draw0, set0 = app6.draw_foe, app6.set_pet_status
+app6.draw_foe = lambda i, status=None: (status and tintas.append(status), draw0(i, status))
+app6.set_pet_status = lambda s: (s and status_pet.append(s), set0(s))
+for _ in range(400):
+    app6.busy_until = 0
+    if app6.run["dead"]:
+        app6.respawn_at = 1
+    app6.run["items"] = [{"key": "_t", "rar": "comum", "floor": 1}]
+    app6.run["energy"] = 10 * M.ROOM_COST
+    app6.run["floor"] = max(app6.run["floor"], 5)
+    app6.tick()
+    fns = PENDING[:]; PENDING.clear()
+    for fn in fns:
+        if fn is None or getattr(fn, "__name__", "") in ("tick", "poll"): continue
+        fn()
+    assert app6.pet_status is None, app6.pet_status
+app6.run["items"] = []; del M.ITEMS["_t"]; app6.refresh_look()
+del app6.draw_foe, app6.set_pet_status
+assert tintas and status_pet, (len(tintas), len(status_pet))
+# pet tingido na cor do status (só quando muda); sem status volta ao normal; run nova limpa o status
+normal = app6.look_maps[0]
+app6.set_pet_status("veneno"); assert app6.pet_status == "veneno" and app6.look_maps[0] != normal
+app6.set_pet_status(None); assert app6.look_maps[0] == normal
+app6.set_pet_status("queimadura"); app6.new_run(); assert app6.pet_status is None
+app6.show_stats(); app6.quit()
+# herói com stats inválidos é ignorado (e logado) no carregamento, não a cada tick
+pasta = Path(tempfile.mkdtemp())
+for nome, stats in (("ruim1", {"spd": "rapido"}), ("ruim2", {"hp": None}), ("bom", {"spd": 12, "hp": "18"})):
+    (pasta / nome).mkdir(); (pasta / nome / "a.png").write_bytes(b"x")
+    (pasta / nome / "character.json").write_text(json.dumps({"stats": stats, "stages": [{"frames": ["a.png"]}]}))
+heroes = tp.load_png_characters(pasta)
+assert [c.key for c in heroes] == ["bom"] and heroes[0].stats["spd"] == 12.0 and heroes[0].stats["hp"] == 18
+assert tp.LOG_FILE.read_text().count("ignorado") >= 2
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)

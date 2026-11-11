@@ -456,6 +456,11 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
                 raise ValueError("nenhum estágio em 'stages'")
             stats = {"hp": 20, "atk": 3, "def": 0, "dodge": 0}
             stats.update(data.get("stats") or {})
+            for k in ("hp", "atk", "def"):          # tipo errado: herói ignorado aqui, não erro a cada tick
+                stats[k] = int(stats[k])
+            for k in ("dodge", "spd", "crit", "critdmg"):
+                if k in stats:
+                    stats[k] = float(stats[k])
             unlock = data.get("unlock")
             if unlock and unlock not in M.ACHIEVEMENTS:
                 raise ValueError(f"'unlock' desconhecido: {unlock}")
@@ -633,6 +638,7 @@ class PetApp:
         self.state["run"]["energy"] = energy
         self.state["run"]["ach_start"] = list(self.meta["achievements"])
         self.respawn_at = None
+        self.pet_status = None
         if announce:
             self.build()
             self.popup([f"Run #{self.run['id']} começou!", f"{c.name} entra na masmorra..."], 5000)
@@ -742,16 +748,29 @@ class PetApp:
         looks = [(M.ITEMS[it["key"]]["look"], M.RAR_COLOR.get(it["rar"]))
                  for it in self.run["items"] if it["key"] in M.ITEMS]
         arts = item_arts()
+        cor = STATUS_COR.get(self.pet_status)
 
-        def img(pm):
-            im, self.below = render_map(visual.compose(pm, looks, arts), self.px)
+        def mapa(pm):
+            m = visual.compose(pm, looks, arts)
+            return visual.tingir(m, cor, 0.5) if cor else m   # com status, o pet fica na cor dele
+
+        def img(m):
+            im, self.below = render_map(m, self.px)
             return im
 
-        self.frames = [img(pm) for pm in self.frame_maps]
-        self.blink_img = img(self.blink_map) if self.blink_map else None
-        self.sleep_img = img(self.sleep_map) if self.sleep_map else (self.blink_img or self.frames[0])
+        self.look_maps = [mapa(pm) for pm in self.frame_maps]
+        self.frames = [img(m) for m in self.look_maps]
+        self.blink_img = img(mapa(self.blink_map)) if self.blink_map else None
+        self.sleep_img = img(mapa(self.sleep_map)) if self.sleep_map else (self.blink_img or self.frames[0])
         self.canvas.itemconfigure(self.sprite, image=self.frames[0])
         self.place_pet(0, 0)
+
+    def set_pet_status(self, s):
+        """Status do pet no painel e na tinta; só recompõe as imagens quando muda (nunca no tick)."""
+        if s != self.pet_status:
+            self.pet_status = s
+            self.refresh_look()
+            self.update_panel()
 
     def place_pet(self, dx, dy):
         self.canvas.coords(self.sprite, self.pcx + dx, self.base_y + self.below + dy)
@@ -986,7 +1005,7 @@ class PetApp:
         name_color = {"boss": HURT, "monster": TEXT, "horde": TEXT, "mimic": HURT, "stairs": CYAN}.get(kind, GOLD)
 
         def nova_sala():
-            self.pet_status = None                     # status do pet não passa de uma sala para outra
+            self.set_pet_status(None)                  # status do pet não passa de uma sala para outra
             self.update_panel()
         at(0, nova_sala)
         if foes:
@@ -1000,22 +1019,29 @@ class PetApp:
             hits = ev["hits"]
             # quem já morreu depois de cada passo (contando a lista inteira, mesmo os passos não mostrados)
             hp = [f["hp_max"] for f in foes]
-            mortos_ate = []
+            mortos_ate, status_ate, s = [], [], None
             for h in hits:
                 if h["target"] != "pet" and not h["skip"]:
                     hp[h["target"]] -= h["dmg"]
+                if h["target"] == "pet" and h["status"] and not h["skip"]:
+                    s = h["status"]                    # último status do pet até aqui (vale p/ passos pulados)
                 mortos_ate.append([i for i, v in enumerate(hp) if v <= 0])
+                status_ate.append(s)
             idx = list(range(len(hits)))
             if len(idx) > 12:                          # lutas longas: os 11 primeiros passos e o último
                 idx = idx[:11] + [idx[-1]]
             for k in idx:
-                at(t, lambda h=hits[k], mortos=mortos_ate[k]: self.anim_hit(h, mortos))
+                at(t, lambda h=hits[k], mortos=mortos_ate[k], s=status_ate[k]: self.anim_hit(h, mortos, s))
                 t += 380
             if ev["won"]:
                 at(t, lambda: self.hide_foe(burst=True))
                 t += 300
                 at(t, lambda: self.floater(f"+{ev.get('gold', 0)} $", GOLD, x=self.fcx))
                 t += 450
+            elif ev.get("empate"):
+                at(t, lambda: (self.floater("empate", MUTED, x=self.fcx), self.hide_foe()))
+                t += 450
+            at(t, lambda: self.set_pet_status(None))  # o status do pet acaba com a luta
         elif kind == "trap":
             if ev.get("dodged"):
                 at(t, lambda: self.floater("esquivou!", CYAN))
@@ -1104,7 +1130,7 @@ class PetApp:
     def _set(self, attr, value):
         setattr(self, attr, list(value))
 
-    def anim_hit(self, h, mortos):
+    def anim_hit(self, h, mortos, status):
         """Um passo da luta: floaters, bote, tinta de status e some com quem morreu até aqui."""
         tgt, who = h["target"], h["who"]
 
@@ -1131,9 +1157,7 @@ class PetApp:
                 self.floater(txt, GOLD if h["crit"] else HURT, life=10)
             else:
                 self.floater("bloqueou!", CYAN, life=10)
-        if tgt == "pet" and h["status"] and not h["skip"]:
-            self.pet_status = h["status"]
-            self.update_panel()
+        self.set_pet_status(status)
         for i in mortos:
             self.hide_foe(i, burst=True)
 
