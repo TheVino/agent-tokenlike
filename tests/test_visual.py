@@ -119,4 +119,19 @@ _run["items"] = [{"key": "brasa", "rar": "comum"}, {"key": "pelagem_chamuscada",
 assert [l["type"] for l, _ in tp.pet_looks(_run)].count("chamas") == 2        # explícitos mantêm o nível
 _run["items"] = []
 assert tp.pet_looks(_run) == []
+# escala k: k=1 igual; corpo 48x48 com k=3 -> objeto 3x mais largo, mesmo apoio entre fases
+assert V.look_box(1) == V.LOOK_BOX and V.look_box(3) == (-24, -30, 72, 60)
+_top = [({"type": "obj", "anchor": "topo", "art": "chapeu"}, None)]
+assert V.compose(slime, _top, _arts, k=1) == V.compose(slime, _top, _arts)
+_big = {(x, y): "#aa5522" for x in range(48) for y in range(48)}
+def _larg(m, b):
+    x0, _, x1, _ = V.bbox({p: c for p, c in m.items() if p not in b}); return x1 - x0
+_w1 = _larg(V.compose(slime, _top, _arts), slime)
+_w3 = _larg(V.compose(_big, _top, _arts, k=3), _big)
+assert _w3 == 3 * _w1, (_w1, _w3)
+_cen = lambda m, b: (lambda bb: (bb[0] + bb[2]) / 2)(V.bbox({p: c for p, c in m.items() if p not in b}))
+assert _cen(V.compose(_big, _top, _arts, k=3), _big) == 24 and _cen(V.compose(slime, _top, _arts), slime) == 8
+_lk3 = _top + [({"type": "chamas"}, None)]
+_s3 = [V.compose(_big, _lk3, _arts, f, 3) for f in range(V.FASES)]
+assert all(all(m.get(p) == c for p, c in V.compose(_big, _top, _arts, k=3).items() if p not in _big) for m in _s3)
 print("ok: visual")

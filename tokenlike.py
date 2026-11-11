@@ -626,13 +626,15 @@ def spec_to_map(spec):
     return {(x + dx, y + dy): c for (x, y), c in pm.items()}
 
 
-def render_map(pm, s: int):
-    """Imagem com origem em LOOK_BOX (tamanho sempre fixo) e quantos px de tela ela desce abaixo da base."""
-    x0, y0, x1, y1 = visual.LOOK_BOX
+def render_map(pm, s: int, k: int = 1):
+    """Imagem com origem em look_box(k) (tamanho sempre fixo) e quantos px de tela ela desce abaixo da base.
+    `s` = px de tela por pixel do mapa (herói de altura H: s = px_heroi); k = H/16 arredondado (escala dos looks)."""
+    box = visual.look_box(k)
+    x0, y0, x1, y1 = box
     img = tk.PhotoImage(width=(x1 - x0) * s, height=(y1 - y0) * s)
-    for (x, y), c in visual.crop(pm, visual.LOOK_BOX).items():
+    for (x, y), c in visual.crop(pm, box).items():
         img.put(c, to=((x - x0) * s, (y - y0) * s, (x - x0 + 1) * s, (y - y0 + 1) * s))
-    return img, (y1 - 16) * s
+    return img, (y1 - 16 * k) * s
 
 
 _ITEM_ARTS = {}
@@ -876,8 +878,10 @@ class PetApp:
             return self.load_images()
         self.stage_title = stage["title"]
 
-    def refresh_look(self):
-        """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick."""
+    def refresh_look(self, k: int = 1, px_heroi: int = None):
+        """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick.
+        Herói de altura H: k = H/16 e px_heroi = max(1, round(px*16/H)) (padrão: 16 px, k=1, px)."""
+        px_heroi = px_heroi or self.px
         looks = pet_looks(self.run)
         arts = item_arts()
         cor = STATUS_COR.get(self.pet_status)
@@ -886,11 +890,11 @@ class PetApp:
         fases = range(visual.FASES if visual.tem_animacao(looks) else 1)
 
         def mapa(pm, fase):
-            m = visual.compose(pm, looks, arts, fase)
+            m = visual.compose(pm, looks, arts, fase, k)
             return visual.tingir(m, cor, 0.5) if cor else m   # com status, o pet fica na cor dele (todas as fases)
 
         def img(m):
-            im, self.below = render_map(m, self.px)
+            im, self.below = render_map(m, px_heroi, k)
             return im
 
         mapas = [[mapa(pm, j) for j in fases] for pm in self.frame_maps]

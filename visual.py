@@ -10,6 +10,18 @@ DARK = "#1b1b2f"
 LOOK_BOX = (-8, -10, 24, 20)
 
 
+def look_box(k=1):
+    """LOOK_BOX para um herói k vezes maior que 16 px (quadro k*16 em (0, 0))."""
+    return tuple(v * k for v in LOOK_BOX)
+
+
+def escalar(pm, k):
+    """Cada pixel vira k x k."""
+    if k == 1:
+        return pm
+    return {(x * k + i, y * k + j): c for (x, y), c in pm.items() for i in range(k) for j in range(k)}
+
+
 def grid_to_map(grid, pal):
     """Grade de texto -> mapa. Pula '.' e letras sem cor na paleta."""
     return {(x, y): pal[ch] for y, row in enumerate(grid) for x, ch in enumerate(row) if ch in pal}
@@ -182,8 +194,13 @@ def tem_animacao(looks):
     return any(l["type"] in ELEMENTAIS for l, _ in looks)
 
 
-def compose(base, looks, arts, fase=0):
-    """looks = [(look, glow_color), ...] na ordem em que os itens foram pegos."""
+def compose(base, looks, arts, fase=0, k=1):
+    """looks = [(look, glow_color), ...] na ordem em que os itens foram pegos.
+
+    k = quantas vezes o herói é maior que 16 px. Objetos e adesivos (arte de item, desenhada em 16 px) são
+    ampliados por k, para terem o mesmo tamanho na tela do herói (que é desenhado com px/k). Efeitos sobre o corpo
+    (espinhos, gotas, contorno, brilho, chamas, faíscas, veneno, geada) ficam com 1 pixel de herói de espessura:
+    seguem a silhueta grande sem engrossar. Com k=1 o resultado é idêntico ao de sempre."""
     tipos = [l["type"] for l, _ in looks]
     out = dict(base)
     feito = set()
@@ -201,7 +218,7 @@ def compose(base, looks, arts, fase=0):
         elif t == "tingir":
             out = tingir(out, l["color"], l["amount"])
         elif t == "adesivo":
-            out = adesivo(out, arts[l["art"]], l["at"], glow)
+            out = adesivo(out, escalar(arts[l["art"]], k), l["at"], glow)
     box = bbox(out)   # os objetos usam a caixa do corpo já mutado (sem os looks animados: igual em todas as fases)
     for l, _ in looks:
         t = l["type"]
@@ -213,20 +230,20 @@ def compose(base, looks, arts, fase=0):
     por_ponto = {}
     for l, glow in looks:
         if l["type"] == "obj":
-            por_ponto.setdefault(l["anchor"], []).append((arts[l["art"]], glow))
+            por_ponto.setdefault(l["anchor"], []).append((escalar(arts[l["art"]], k), glow))
     for a, objs in por_ponto.items():
         # se faltar espaço, ficam os mais recentes do ponto: o maior k em que os k últimos cabem em LOOK_BOX
-        k = len(objs)
-        while k > 1 and not all(_cabe(art, box, a, o) for o, (art, _) in enumerate(objs[-k:])):
-            k -= 1
-        for o, (art, glow) in enumerate(objs[-k:]):
+        n = len(objs)
+        while n > 1 and not all(_cabe(art, box, a, o, k) for o, (art, _) in enumerate(objs[-n:])):
+            n -= 1
+        for o, (art, glow) in enumerate(objs[-n:]):
             out = _colocar(out, art, box, a, o, glow)
     return out
 
 
-def _cabe(art, box, anchor, ordem):
-    """A arte (sem o brilho) inteira dentro de LOOK_BOX nessa posição?"""
-    x0, y0, x1, y1 = LOOK_BOX
+def _cabe(art, box, anchor, ordem, k=1):
+    """A arte (sem o brilho) inteira dentro de look_box(k) nessa posição?"""
+    x0, y0, x1, y1 = look_box(k)
     return all(x0 <= x < x1 and y0 <= y < y1 for (x, y) in _colocar({}, art, box, anchor, ordem, None))
 
 
