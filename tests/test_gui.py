@@ -87,6 +87,7 @@ for demo in (False, True):
     e = types.SimpleNamespace(x_root=50,y_root=50,x=app.pcx,y=app.base_y-10)
     app.on_press(e); app.on_release(e); app.on_menu(e)
     app.state["last_fed"] = time.time()-20*60; app.busy_until=0; app.run["energy"]=0; app.tick()
+    if app.run["dead"]: app.new_run(announce=False)   # o pump pode parar logo depois de uma morte (depende do relógio)
     app.last_rest_heal=0; app.run["hp"]=1; PENDING.clear(); app.demo=False; app.reader.poll=lambda:(0.0,0); app.poll()
     assert app.run["hp"]==2, app.run["hp"]
     app.quit()

@@ -24,7 +24,7 @@ MON_HP = (4, 2.2)
 MON_ATK = (1.5, 1.2)
 # chefes: (valor no 1º chefe, por andar) = v + por_andar * (andar - BOSS_EVERY); crescem mais rápido que os itens
 BOSS_HP = (55, 18)
-BOSS_ATK = (7.5, 3.4)
+BOSS_ATK = (7.5, 3.1)
 REGEN_PER_ROOM = 2
 FLOOR_BONUS_HP = 2           # HP máx ganho a cada andar
 CHEST_ITEM_CHANCE = 1.0      # chance de o baú trazer item (senão, ouro)
@@ -113,28 +113,28 @@ MONSTERS = [
     ("morcego", "Morcego", 0.8, 0.9, 1, 1.4),
     ("rato", "Rato", 1.0, 0.8, 1, 1.1),
     ("aranha", "Aranha", 0.9, 1.2, 2, 1.0),
-    ("esqueleto", "Esqueleto", 1.3, 1.0, 3, 0.7),
+    ("esqueleto", "Esqueleto", 1.3, 1.0, 3, 0.6),
     ("olho", "Olho Flutuante", 1.0, 1.4, 5, 0.9),
 ]
 BOSS_NAMES = {"morcego": "Morcego Vampiro", "rato": "Rei Rato", "aranha": "Aranha Mãe",
               "esqueleto": "Lorde Esqueleto", "olho": "Olho Abissal"}
 
 # combate: velocidade, crítico e elementos
-MON_SPD = (8, 0.3)            # (base, por andar)
-BOSS_SPD_BONUS = 1.2
-MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.03, 0.05, 1.5
-PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.05, 1.5
+MON_SPD = (6, 0.1)            # (base, por andar)
+BOSS_SPD_BONUS = 1.1
+MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.02, 0.03, 1.5
+PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
 MAX_CRIT = 0.6
 MAX_ELEM_CHANCE = 0.6
 ELEMENTOS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
-BOSS_STATUS_CHANCE = 0.35
+BOSS_STATUS_CHANCE = 0.15
 DOBRO_CRIT = 0.5              # bônus de crítico de quem tem o dobro da velocidade do alvo (e critdmg x2)
 STATUS_NOME = {"queimar": "queimadura", "eletrizar": "eletricidade", "envenenar": "veneno", "congelar": "congelamento"}
 QUEIMA = (2, 0.3)             # dano por turno: base + por andar
 QUEIMA_TURNOS = 3
 ELETRO_CHANCE, ELETRO_TURNOS = 0.3, 2
-VENENO_TURNOS, VENENO_MAX_PILHAS = 4, 3
+VENENO_TURNOS, VENENO_MAX_PILHAS = 4, 2
 GELO_CHANCE, GELO_TURNOS = 0.6, 2
 MAX_ROUNDS = 60
 
@@ -163,10 +163,10 @@ def make_mimic(f: int) -> dict:
 
 
 ROOM_WEIGHTS = [("monster", 46), ("chest", 16), ("trap", 12), ("fountain", 11),
-                ("shop", 8), ("altar", 7), ("horde", 12)]
+                ("shop", 8), ("altar", 7), ("horde", 10)]
 # hordas: 2 a 4 inimigos mais fracos (HP e ATK x HORDE_MULT[n]); só a partir do andar HORDE_MIN_FLOOR
 HORDE_MIN_FLOOR = 3
-HORDE_MULT = {2: 0.75, 3: 0.6, 4: 0.5}
+HORDE_MULT = {2: 0.7, 3: 0.55, 4: 0.45}
 HORDE_GOLD_MULT = 1.25
 
 

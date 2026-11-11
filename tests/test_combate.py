@@ -6,7 +6,7 @@ import masmorra as M
 
 run = M.new_run("slime", {"hp": 20, "atk": 3}, 1)
 st = M.stats(run)
-assert st["spd"] == 10 and st["crit"] == 0.05 and st["critdmg"] == 1.5 and st["area"] is False
+assert st["spd"] == 10 and st["crit"] == M.PET_CRIT and st["critdmg"] == 1.5 and st["area"] is False
 assert st["queimar"] == 0 and st["congelar"] == 0
 assert M.new_run("x", {"spd": 14}, 2)["base"]["spd"] == 14
 old = {"items": [], "hp": 10, "base": {"maxhp": 20, "atk": 3, "def": 0, "dodge": 0}}
@@ -145,8 +145,8 @@ assert ev["kind"] == "boss" and ev.get("empate") and not ev["won"] and not ev["d
 assert r["gold"] == 0 and r["kills"] == 0 and r["bosses"] == 0 and r["base"]["maxhp"] == maxhp
 assert not ev.get("gold") and not r.get("pending") and not r["items"] and r["room"] == M.ROOMS_PER_FLOOR
 # --- Task 3: hordas ---
-assert M.HORDE_MIN_FLOOR == 3 and M.HORDE_MULT == {2: 0.75, 3: 0.6, 4: 0.5} and M.HORDE_GOLD_MULT == 1.25
-assert ("horde", 12) in M.ROOM_WEIGHTS
+assert M.HORDE_MIN_FLOOR == 3 and M.HORDE_MULT == {2: 0.7, 3: 0.55, 4: 0.45} and M.HORDE_GOLD_MULT == 1.25
+assert ("horde", 10) in M.ROOM_WEIGHTS
 assert [M.horde_max(f) for f in (3, 4, 5, 7, 8, 20)] == [2, 2, 3, 3, 4, 4]
 assert M.make_foe(bat, 6, mult=M.HORDE_MULT[4])["hp"] < M.make_foe(bat, 6)["hp"]
 # alvo de menor HP; com área acerta todos (formato: um passo por alvo, nunca "todos")
