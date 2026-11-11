@@ -30,6 +30,7 @@ class PhotoImage(Noop):
     def zoom(self,z): return PhotoImage(self.w*z,self.h*z)
     def subsample(self,s): return PhotoImage(self.w//s,self.h//s)
     def transparency_get(self,x,y): return not (3<=x<13 and 2<=y<16)
+    def get(self,x,y): return (200,100,50)
 class Var:
     def __init__(self, value=None): self.v=value
     def get(self): return self.v
@@ -69,6 +70,14 @@ for demo in (False, True):
         app.char_var.set("fantasma"); app.change_character()
         pump(app, 400)
         assert any(g["char"]=="fantasma" for g in m["graveyard"]) or app.run["char"]=="fantasma", "ghost never played"
+    app.run["items"] = [{"key": k, "rar": "lendario"} for k in list(M.ITEMS)[:12]]
+    app.refresh_look(); w_full = app.frames[0].width()
+    app.run["items"] = []; app.refresh_look(); w_empty = app.frames[0].width()
+    assert w_full == w_empty                       # imagem sempre do tamanho de LOOK_BOX: pivô fixo
+    app.run["items"] = [{"key": "chifres", "rar": "raro"}]; app.refresh_look()
+    for size in ("Pequeno", "Grande"): app.size_var.set(size); app.change_size()
+    app.evolve(); app.reload_chars(); app.give_up()
+    assert not hasattr(app, "acc_items")
     app.show_stats(); app.show_graveyard(); app.show_achievements()
     for size in ("Pequeno","Grande"): app.size_var.set(size); app.change_size()
     app.give_up(); app.reload_chars(); app.toggle_top()

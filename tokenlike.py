@@ -39,6 +39,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import arte  # noqa: E402
 import masmorra as M  # noqa: E402
+import visual  # noqa: E402
 
 tk = None  # o tkinter é importado só quando a janela abre (run_gui)
 
@@ -424,12 +425,6 @@ def all_characters() -> dict[str, CharacterDef]:
 
 
 # ------------------------------------------------------------------- GUI
-def grid_bbox(grid):
-    pts = [(x, y) for y, r in enumerate(grid) for x, ch in enumerate(r) if ch != "."]
-    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-    return min(xs), min(ys), max(xs) + 1, max(ys) + 1
-
-
 def render_grid(grid, pal, s):
     h, w = len(grid), max(len(r) for r in grid)
     img = tk.PhotoImage(width=w * s, height=h * s)
@@ -441,30 +436,48 @@ def render_grid(grid, pal, s):
     return img
 
 
-def render_spec(spec, target_px: int):
-    """Devolve (imagem, caixa_da_arte) — a caixa ignora as bordas transparentes."""
+def _hex(v):
+    """Cor de PhotoImage.get: tupla (r, g, b) no Tk 8.6, texto "r g b" em alguns builds."""
+    if isinstance(v, str):
+        v = v.split()
+    return "#%02x%02x%02x" % tuple(int(c) for c in v[:3])
+
+
+def spec_to_map(spec):
+    """Spec do herói -> PixelMap com o quadro em (0..16, 0..16), centrado na horizontal e base em y = 16."""
     if spec[0] == "grid":
-        grid, pal = spec[1], spec[2]
-        s = max(1, round(target_px / max(len(grid), max(len(r) for r in grid))))
-        x0, y0, x1, y1 = grid_bbox(grid)
-        return render_grid(grid, pal, s), (x0 * s, y0 * s, x1 * s, y1 * s)
-    src = tk.PhotoImage(file=str(spec[1]))
-    w, h = src.width(), src.height()
-    xs, ys = [], []
-    for y in range(h):
-        for x in range(w):
-            if not src.transparency_get(x, y):
-                xs.append(x)
-                ys.append(y)
-    box = (min(xs), min(ys), max(xs) + 1, max(ys) + 1) if xs else (0, 0, w, h)
-    m = max(w, h)
-    if m < target_px:
-        z = max(1, round(target_px / m))
-        return src.zoom(z), tuple(v * z for v in box)
-    if m > target_px * 1.5:
-        sub = math.ceil(m / target_px)
-        return src.subsample(sub), tuple(v // sub for v in box)
-    return src, box
+        grid = spec[1]
+        w, h = max(len(r) for r in grid), len(grid)
+        pm = visual.grid_to_map(grid, spec[2])
+    else:
+        src = tk.PhotoImage(file=str(spec[1]))
+        sw, sh = src.width(), src.height()
+        # ponytail: PNG grande só é amostrado (1 a cada `step` px); a escala de verdade fica para a parte 3
+        step = math.ceil(max(sw, sh) / 16) if max(sw, sh) > 24 else 1
+        pm = {(x // step, y // step): _hex(src.get(x, y))
+              for y in range(0, sh, step) for x in range(0, sw, step) if not src.transparency_get(x, y)}
+        w, h = math.ceil(sw / step), math.ceil(sh / step)
+    dx, dy = (16 - w) // 2, 16 - h
+    return {(x + dx, y + dy): c for (x, y), c in pm.items()}
+
+
+def render_map(pm, s: int):
+    """Imagem com origem em LOOK_BOX (tamanho sempre fixo) e quantos px de tela ela desce abaixo da base."""
+    x0, y0, x1, y1 = visual.LOOK_BOX
+    img = tk.PhotoImage(width=(x1 - x0) * s, height=(y1 - y0) * s)
+    for (x, y), c in visual.crop(pm, visual.LOOK_BOX).items():
+        img.put(c, to=((x - x0) * s, (y - y0) * s, (x - x0 + 1) * s, (y - y0 + 1) * s))
+    return img, (y1 - 16) * s
+
+
+_ITEM_ARTS = {}
+
+
+def item_arts():
+    """Arte dos itens como PixelMap (em cache: nunca muda)."""
+    if not _ITEM_ARTS:
+        _ITEM_ARTS.update({k: visual.grid_to_map(g, arte.PAL) for k, g in arte.ITEM_ART.items()})
+    return _ITEM_ARTS
 
 
 class PetApp:
@@ -572,14 +585,16 @@ class PetApp:
         self.px = px
         self.bpx = round(px * 1.5)
         self.T = 16 * px
-        left = 6 * px + 6
+        bx0, by0, bx1, by1 = visual.LOOK_BOX
+        left = 6 - bx0 * px                 # margem para os itens que saem à esquerda do quadro
         self.pcx = left + self.T // 2
         foe_w = 11 * self.bpx
-        self.fcx = left + self.T + 4 * px + foe_w // 2
+        self.fcx = left + self.T + (bx1 - 16) * px + foe_w // 2   # idem à direita
         self.W = self.fcx + foe_w // 2 + 10
-        self.top = 52
+        self.top = 52 - by0 * px            # espaço para o que sai acima do quadro
         self.base_y = self.top + self.T
-        self.H = self.base_y + 64
+        self.below = (by1 - 16) * px        # o que pode descer abaixo da base (gotas)
+        self.H = self.base_y + self.below + 64
 
         self.art = {}
         self.load_images()
@@ -599,15 +614,11 @@ class PetApp:
         c.delete("all")
         self.floaters.clear()
         self.particles.clear()
-        self.acc_items = {}
-        self.acc_items["escudo"] = c.create_image(0, 0, anchor="s", state="hidden")
-        self.sprite = c.create_image(self.pcx, self.base_y, anchor="s", image=self.frames[0])
-        self.acc_items["mao"] = c.create_image(0, 0, anchor="s", state="hidden")
-        self.acc_items["cabeca"] = c.create_image(0, 0, anchor="s", state="hidden")
+        self.sprite = c.create_image(self.pcx, self.base_y + self.below, anchor="s")
         self.foe = c.create_image(self.fcx, self.base_y, anchor="s", state="hidden")
         self.foe_crown = c.create_image(self.fcx, self.base_y, anchor="s", state="hidden")
 
-        py = self.base_y + 6
+        py = self.base_y + self.below + 6
         c.create_rectangle(6, py, self.W - 6, py + 52, fill=PANEL_BG, outline=PANEL_EDGE, width=2)
         self.title_txt = c.create_text(14, py + 11, anchor="w", fill=TEXT, font=self.font)
         self.hp_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=HURT, font=self.font)
@@ -616,7 +627,7 @@ class PetApp:
         c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, fill=BAR_BG, outline="")
         self.bar = c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x0, self.bar_y + 6,
                                       fill=ENERGY, outline="")
-        self.refresh_equipment()
+        self.refresh_look()
         self.update_panel()
 
     def art_img(self, key, boss=False):
@@ -630,12 +641,10 @@ class PetApp:
     def load_images(self):
         stage = self.char.stages[min(self.run["stage"], len(self.char.stages) - 1)]
         try:
-            self.frames, boxes = zip(*[render_spec(s, self.T) for s in stage["frames"]])
-            self.frames = list(self.frames)
-            self.pet_box = boxes[0]
-            self.blink_img = render_spec(stage["blink"], self.T)[0] if stage["blink"] else None
-            self.sleep_img = (render_spec(stage["sleep"], self.T)[0] if stage["sleep"]
-                              else self.blink_img or self.frames[0])
+            # só os mapas de pixels; as imagens saem de refresh_look (com os itens por cima)
+            self.frame_maps = [spec_to_map(s) for s in stage["frames"]]
+            self.blink_map = spec_to_map(stage["blink"]) if stage["blink"] else None
+            self.sleep_map = spec_to_map(stage["sleep"]) if stage["sleep"] else None
         except Exception as e:
             if self.char.key == "slime":
                 raise
@@ -644,17 +653,24 @@ class PetApp:
             return self.load_images()
         self.stage_title = stage["title"]
 
-    def refresh_equipment(self):
-        """Por enquanto só esconde os acessórios; os itens voltam a aparecer no pet na Task 3."""
-        self.acc_rel = {}
-        for item_id in self.acc_items.values():
-            self.canvas.itemconfigure(item_id, state="hidden")
+    def refresh_look(self):
+        """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick."""
+        looks = [(M.ITEMS[it["key"]]["look"], M.RAR_COLOR.get(it["rar"]))
+                 for it in self.run["items"] if it["key"] in M.ITEMS]
+        arts = item_arts()
+
+        def img(pm):
+            im, self.below = render_map(visual.compose(pm, looks, arts), self.px)
+            return im
+
+        self.frames = [img(pm) for pm in self.frame_maps]
+        self.blink_img = img(self.blink_map) if self.blink_map else None
+        self.sleep_img = img(self.sleep_map) if self.sleep_map else (self.blink_img or self.frames[0])
+        self.canvas.itemconfigure(self.sprite, image=self.frames[0])
         self.place_pet(0, 0)
 
     def place_pet(self, dx, dy):
-        self.canvas.coords(self.sprite, self.pcx + dx, self.base_y + dy)
-        for slot, (rx, ry) in self.acc_rel.items():
-            self.canvas.coords(self.acc_items[slot], self.pcx + dx + rx, self.base_y + dy + ry)
+        self.canvas.coords(self.sprite, self.pcx + dx, self.base_y + self.below + dy)
 
     def update_panel(self):
         run = self.run
@@ -885,7 +901,8 @@ class PetApp:
             at(t, lambda: self.show_foe(key, False))
             at(t, lambda: self.floater(it["name"], GOLD, x=self.fcx, life=24))
             t += 700
-            at(t, lambda: (self.hide_foe(), self.refresh_equipment(),
+            at(t, lambda: (self.hide_foe(), self.refresh_look(),
+                           self.burst(self.pcx, self.base_y - self.T // 2),
                            self.floater(M.fx_text(M.item_fx(key, rar)), GOOD, life=24)))
             t += 700
         if ev.get("consumed"):
@@ -930,8 +947,7 @@ class PetApp:
     def evolve(self):
         old = self.stage_title
         self.load_images()
-        self.canvas.itemconfigure(self.sprite, image=self.frames[0])
-        self.refresh_equipment()
+        self.refresh_look()
         self.burst(self.pcx, self.base_y - self.T // 2)
         self.hop = [-6, -12, -16, -12, -6, 0]
         self.floater("EVOLUIU!", GOLD, life=22)
@@ -952,9 +968,7 @@ class PetApp:
 
     def show_tomb(self):
         self.canvas.itemconfigure(self.sprite, image=self.art_img("lapide"))
-        for item_id in self.acc_items.values():
-            self.canvas.itemconfigure(item_id, state="hidden")
-        self.acc_rel = {}
+        self.canvas.coords(self.sprite, self.pcx, self.base_y)
         self.hide_foe()
 
     def announce_unlocks(self, keys):
