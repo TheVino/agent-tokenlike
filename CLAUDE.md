@@ -192,5 +192,3 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 - Heróis desbloqueáveis: velinha viva, cogumelo de caverna, baú mímico (cada um com stats e uma mecânica própria).
 - Mais salas (evento raro, sala secreta), mais chefes com sprite próprio, sinergias entre itens.
 - Mais escolhas do jogador (hoje só pegar/consumir no modo interativo), sons, estatísticas de runs.
-- Escala dos itens para heróis maiores que 16 px (fator altura_do_herói/16) fica para a parte 3 (Petdex);
-  `visual.compose` ainda não tem parâmetro de escala.
