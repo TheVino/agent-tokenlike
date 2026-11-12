@@ -23,3 +23,6 @@ tools/preview_arte.png
 
 # gerado por tools/estatisticas.py
 tools/saida/
+
+# pets da comunidade colocados para teste (licença do autor, não versionar)
+characters/bitty-openpets/

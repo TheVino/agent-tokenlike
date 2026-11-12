@@ -46,13 +46,16 @@ def escrever_png(path, w, h, linhas, tipo=6, filtros=(0,), plte=b"", trns=b""):
     path.write_bytes(d)
 
 
-def folha_png(path, w, h, linhas=9, ruido=8, sobe=None):
+def folha_png(path, w, h, linhas=9, ruido=8, sobe=None, vazias=None):
     """Folha 8 x `linhas`: corpo opaco no meio de cada célula, resto com alfa `ruido` (quase transparente).
     `sobe` = {linha: px}: o corpo daquela linha fica px mais alto (quadro de pulo)."""
-    sobe = sobe or {}
+    sobe, vazias = sobe or {}, vazias or {}   # vazias = {linha: n}: as n últimas células da linha ficam sem corpo
     cw, ch = w // 8, h // linhas
     fundo = bytes([10, 20, 30, ruido])
     corpo = bytes([200, 100, 50, 255])
-    cheia = b"".join(corpo if cw // 4 <= x % cw < 3 * cw // 4 else fundo for x in range(w))
+    def cheia(r):
+        return b"".join(corpo if cw // 4 <= x % cw < 3 * cw // 4 and x // cw < 8 - vazias.get(r, 0) else fundo
+                        for x in range(w))
     vazia = fundo * w
-    escrever_png(path, w, h, [cheia if ch // 4 <= y % ch + sobe.get(y // ch, 0) < ch - 2 else vazia for y in range(h)])
+    escrever_png(path, w, h, [cheia(y // ch) if ch // 4 <= y % ch + sobe.get(y // ch, 0) < ch - 2 else vazia
+                              for y in range(h)])

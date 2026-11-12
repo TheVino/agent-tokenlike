@@ -39,6 +39,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import arte  # noqa: E402
+from arte_herois import (SLIME_PALETTE, SLIME_GOTINHA, SLIME, SLIME_CAVALEIRO,  # noqa: E402
+                         REI_SLIME, blink_grid, estados_slime)
 import folha  # noqa: E402
 import masmorra as M  # noqa: E402
 import visual  # noqa: E402
@@ -417,101 +419,6 @@ def save_state(path: Path, state: dict) -> None:
 
 
 # ----------------------------------------------------------- personagens
-SLIME_PALETTE = {
-    "K": "#1b1b2f", "G": "#57d36b", "L": "#b4f5a8", "D": "#2f9a4a",
-    "W": "#ffffff", "B": "#1b1b2f", "P": "#ff8fb1",
-    "S": "#d7dde9", "s": "#8a94a8", "R": "#e2384d", "Y": "#ffd23f", "y": "#c99a00",
-}
-
-SLIME_GOTINHA = [
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    ".......KK.......",
-    "......KLGK......",
-    ".....KLGGGK.....",
-    "....KGGGGGGK....",
-    "....KGWBGWBK....",
-    "...KGGGGGGGGK...",
-    "...KPGGKKGGPK...",
-    "...KDGGGGGGDK...",
-    "....KKKKKKKK....",
-]
-
-SLIME = [
-    "................",
-    "................",
-    "................",
-    "......KKKK......",
-    "....KKLLGGKK....",
-    "...KLLGGGGGGK...",
-    "..KLGGGGGGGGGK..",
-    "..KLGGGGGGGGGK..",
-    ".KGGGWWGGWWGGGK.",
-    ".KGGGWBGGWBGGGK.",
-    ".KGPPGGGGGGPPGK.",
-    ".KGGGGGKKGGGGGK.",
-    ".KGGGGGGGGGGGGK.",
-    ".KDGGGGGGGGGGDK.",
-    "..KDDDDDDDDDDK..",
-    "...KKKKKKKKKK...",
-]
-
-SLIME_CAVALEIRO = [
-    "........RR......",
-    ".......RRK......",
-    ".....KKKKKK.....",
-    "....KSSSSSSK....",
-    "...KSLSSSSSsK...",
-    "..KSLSSSSSSSsK..",
-    "..KssssssssssK..",
-    ".KGGGGGGGGGGGGK.",
-    ".KGGGWWGGWWGGGK.",
-    ".KGGGWBGGWBGGGK.",
-    ".KGPPGGGGGGPPGK.",
-    ".KGGGGGKKGGGGGK.",
-    ".KGGGGGGGGGGGGK.",
-    ".KDGGGGGGGGGGDK.",
-    "..KDDDDDDDDDDK..",
-    "...KKKKKKKKKK...",
-]
-
-REI_SLIME = [
-    "....Y..YY..Y....",
-    "....YY.YY.YY....",
-    "....YYYYYYYY....",
-    "....YRYYYYRY....",
-    "...KyyyyyyyyK...",
-    "..KLGGGGGGGGGK..",
-    ".KLGGGGGGGGGGGK.",
-    "KLGGGGGGGGGGGGGK",
-    "KGGGGWWGGWWGGGGK",
-    "KGGGGWBGGWBGGGGK",
-    "KGGPPGGGGGGPPGGK",
-    "KGGGGKGGGGKGGGGK",
-    "KGGGGGKKKKGGGGGK",
-    "KDGGGGGGGGGGGGDK",
-    ".KDDDDDDDDDDDDK.",
-    "..KKKKKKKKKKKK..",
-]
-
-
-def blink_grid(grid: list[str], eye_chars: str, body_char: str) -> list[str]:
-    """Fecha os olhos: a última linha do olho vira traço, as de cima viram corpo."""
-    eyes = [(y, x) for y, row in enumerate(grid) for x, ch in enumerate(row) if ch in eye_chars]
-    bottom = {}
-    for y, x in eyes:
-        bottom[x] = max(bottom.get(x, y), y)
-    rows = [list(r) for r in grid]
-    for y, x in eyes:
-        rows[y][x] = "K" if y == bottom[x] else body_char
-    return ["".join(r) for r in rows]
-
-
 class CharacterDef:
     def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None, comunidade=False):
         self.key, self.name, self.frame_ms = key, name, frame_ms
@@ -531,8 +438,9 @@ def builtin_characters() -> list[CharacterDef]:
     for floor, title, grid in ((1, "Gotinha", SLIME_GOTINHA), (3, "Slime", SLIME),
                                (8, "Slime Cavaleiro", SLIME_CAVALEIRO), (15, "Rei Slime", REI_SLIME)):
         closed = ("grid", blink_grid(grid, "WB", "G"), SLIME_PALETTE)
-        stages.append({"floor": floor, "title": title, "frames": [("grid", grid, SLIME_PALETTE)],
-                       "blink": closed, "sleep": closed})
+        estados = {e: [("grid", g, SLIME_PALETTE) for g in gs] for e, gs in estados_slime(title).items()}
+        stages.append({"floor": floor, "title": title, "frames": estados["idle"],
+                       "blink": closed, "sleep": closed, "estados": estados})
     return [CharacterDef("slime", "Slime", stages, stats={"hp": 20, "atk": 3, "def": 0, "dodge": 0})]
 
 
@@ -569,8 +477,9 @@ def ler_folha(path: Path):
             # uma caixa só (união do opaco de todas as células) para os quadros não tremerem
             ox0, oy0 = min(x for x, _ in pts), min(y for _, y in pts)
             ox1, oy1 = min(cw, max(x for x, _ in pts) + a), min(ch, max(y for _, y in pts) + a)
-            linhas = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols)]
-                      if any((r, c) in ocup for c in range(cols)) else [] for r in range(lins)]
+            # célula sem pixel opaco (linha com menos de 8 quadros) fica de fora: nunca vira quadro piscando
+            linhas = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols) if (r, c) in ocup]
+                      for r in range(lins)]
             n = folha.fator_reducao(oy1 - oy0)
         else:
             # ponytail: caixas com precisão de `a` px (amostra); corte exato custa ~5 s em folha grande
@@ -612,6 +521,28 @@ def completar_estagio(stage: dict) -> dict:
     return stage
 
 
+def pet_openpets(d: Path):
+    """Formato OpenPets (pet.json): (png, nome) da pasta. `spritesheetPath` .webp usa o .png de mesmo nome;
+    sem pet.json: spritesheet.png ou o 1º .png. png None = nada usável (webp-only loga o aviso)."""
+    name, rel = d.name, None
+    try:
+        j = json.loads((d / "pet.json").read_text(encoding="utf-8"))
+        name = str(j.get("displayName") or j.get("name") or d.name)
+        rel = j.get("spritesheetPath")
+    except (OSError, ValueError, AttributeError):
+        pass   # pet.json ausente ou inválido: fica o nome da pasta
+    cands = []
+    if isinstance(rel, str) and rel:
+        p = d / rel
+        cands.append(p.with_suffix(".png") if p.suffix.lower() == ".webp" else p)
+    cands.append(d / "spritesheet.png")
+    cands += sorted(d.glob("*.png"))
+    png = next((c for c in cands if c.suffix.lower() == ".png" and c.is_file()), None)
+    if not png and any(d.glob("*.webp")):
+        log(f"pet '{d.name}' ignorado: só tem WebP; converta para PNG (python tools/converter_webp.py {d})")
+    return png, name
+
+
 def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     out = []
     if not folder.is_dir():
@@ -619,10 +550,10 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     for d in sorted(folder.iterdir()):
         cfg = d / "character.json"
         if not cfg.is_file():
-            if (d / "spritesheet.png").is_file():   # folha sem character.json: um estágio, stats padrão
+            png, name = pet_openpets(d)   # folha sem character.json: um estágio, stats padrão
+            if png:
                 try:
-                    out.append(CharacterDef(d.name, d.name, [stage_da_folha(d / "spritesheet.png", 1, d.name)],
-                                            stats=dict(DEFAULT_STATS)))
+                    out.append(CharacterDef(d.name, name, [stage_da_folha(png, 1, name)], stats=dict(DEFAULT_STATS)))
                 except Exception as e:
                     log(f"personagem '{d.name}' ignorado: {e}")
             continue
@@ -677,24 +608,17 @@ def petdex_dirs() -> list[Path]:
 
 
 def load_petdex_characters() -> list[CharacterDef]:
-    """Pets da comunidade: o .png da pasta (de preferência spritesheet.png) e só o `name` do pet.json."""
+    """Pets da comunidade: via `pet_openpets` (só leitura)."""
     out = []
     for base in petdex_dirs():
         if not base.is_dir():
             continue
         for d in sorted(p for p in base.iterdir() if p.is_dir()):
-            pngs = sorted(d.glob("*.png"), key=lambda p: (p.name != "spritesheet.png", p.name))
-            if not pngs:
-                if any(d.glob("*.webp")):
-                    log(f"pet '{d.name}' ignorado: só tem WebP; converta para PNG para usar este pet")
+            png, name = pet_openpets(d)
+            if not png:
                 continue
-            name = d.name
             try:
-                name = str(json.loads((d / "pet.json").read_text(encoding="utf-8")).get("name") or d.name)
-            except (OSError, ValueError, AttributeError):
-                pass   # pet.json ausente ou inválido: fica o nome da pasta
-            try:
-                out.append(CharacterDef("petdex:" + d.name, name, [stage_da_folha(pngs[0], 1, name)],
+                out.append(CharacterDef("petdex:" + d.name, name, [stage_da_folha(png, 1, name)],
                                         stats=dict(DEFAULT_STATS), comunidade=True))
             except Exception as e:
                 log(f"pet '{d.name}' ignorado: {e}")
@@ -1069,13 +993,17 @@ class PetApp:
         looks = pet_looks(self.run)
         arts = item_arts()
         cor = STATUS_COR.get(self.pet_status)
+        virar = self.virar
+        if hasattr(self, "virar_var"):
+            self.virar_var.set(virar)
 
         # looks elementais animam em FASES quadros; sem eles, uma fase só (nenhuma imagem a mais)
         fases = range(visual.FASES if visual.tem_animacao(looks) else 1)
 
         def mapa(pm, fase):
             m = visual.compose(pm, looks, arts, fase, k)
-            return visual.tingir(m, cor, 0.5) if cor else m   # com status, o pet fica na cor dele (todas as fases)
+            m = visual.tingir(m, cor, 0.5) if cor else m
+            return {(16 * k - 1 - x, y): c for (x, y), c in m.items()} if virar else m   # espelha o mapa final   # com status, o pet fica na cor dele (todas as fases)
 
         def img(m):
             im, self.below = render_map(m, px_heroi, k)
@@ -1090,16 +1018,26 @@ class PetApp:
                          else (self.blink_fx or self.frames_fx[0]))
         # estados da folha: [quadro][fase], compostos na 1ª vez que aparecem (só idle e o atual saem aqui);
         # cache por (estado, itens, status, escala), então tirar e pôr o mesmo status não recompõe
-        sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, px_heroi)
-        self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0]}
+        sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, px_heroi, virar)
+        self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0] and ck[1][4] == virar}
         self.fx_cache[("idle", sig)] = self.frames_fx
-        self.fx_compor = lambda e: [[img(mapa(pm, j)) for j in fases] for pm in self.estado_maps[e]]
+        troca = {"run_r": "run_l", "run_l": "run_r"} if virar else {}
+        self.fx_compor = lambda e: [[img(mapa(pm, j)) for j in fases] for pm in self.estado_maps[troca.get(e, e)]]
         self.fx_sig = sig
         self.estados_fx = _EstadosFx(self, getattr(self, "estado_maps", {}))
         if getattr(self, "estado_visto", None) in self.estados_fx:
             self.estados_fx[self.estado_visto]
         self.canvas.itemconfigure(self.sprite, image=self.frames_fx[0][0])
         self.place_pet(0, 0)
+
+    @property
+    def virar(self):
+        return bool(self.state.get("virar", {}).get(self.run["char"]))
+
+    def toggle_virar(self):
+        self.state.setdefault("virar", {})[self.run["char"]] = bool(self.virar_var.get())
+        self.refresh_look()
+        self.save()
 
     def set_pet_status(self, s):
         """Status do pet no painel e na tinta; só recompõe as imagens quando muda (nunca no tick)."""
@@ -1176,6 +1114,8 @@ class PetApp:
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.menu.add_checkbutton(label="Sempre por cima", variable=self.top_var,
                                   command=self.toggle_top)
+        self.virar_var = tk.BooleanVar(value=self.virar)
+        self.menu.add_checkbutton(label="Virar herói", variable=self.virar_var, command=self.toggle_virar)
         self.menu.add_separator()
         self.menu.add_command(label="Desistir da run (começa outra)", command=self.give_up)
         self.menu.add_separator()
@@ -1723,6 +1663,15 @@ class PetApp:
                 if estado:
                     img = self.quadro_estado(estado, now)
                     bob = 0
+                    if estado == "idle" and self.blink_fx is not None:   # herói de grade ainda pisca
+                        if now > self.next_blink:
+                            self.blink_until = now + 0.16
+                            self.next_blink = now + self.rng.uniform(2.5, 6)
+                        if now < self.blink_until:
+                            img = self.blink_fx[fase % len(self.blink_fx)]
+                    if sleeping and now > self.next_zzz:
+                        self.floater("z Z", MUTED, life=20)
+                        self.next_zzz = now + 3
                 elif sleeping:
                     img = self.sleep_fx[fase % len(self.sleep_fx)]
                     bob = -2 if int(now / 1.4) % 2 else 0

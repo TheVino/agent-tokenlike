@@ -131,7 +131,7 @@ máximo 48 px de altura; os itens acompanham a escala do herói.
 
 Linha faltando ou vazia usa o Idle. Esses heróis não piscam.
 
-**Pets da comunidade (Petdex):** pets já instalados em `~/.petdex/pets/<slug>/` ou `~/.codex/pets/<slug>/`
+**Pets da comunidade (Petdex):** pets já instalados em `~/.petdex/pets/<slug>/` ou `~/.codex/pets/<slug>/` O `pet.json` do OpenPets (`displayName`, `spritesheetPath`) funciona nos dois; para folhas `.webp` rode `python tools/converter_webp.py <pasta>` (precisa do Pillow).
 (`pet.json` + spritesheet PNG; WebP é ignorado, converta para PNG) aparecem no menu na seção
 **Comunidade**, com stats padrão. O Agent Tokenlike só lê essas pastas: nunca baixa, copia nem distribui.
 Os pets da comunidade são de quem os criou e seguem a licença de cada autor; aqui eles só aparecem

@@ -175,7 +175,7 @@ cells is also detected). Frames are cut automatically, aligned at the bottom and
 
 A missing or empty row falls back to Idle. These heroes don't blink.
 
-**Community pets (Petdex):** pets already installed in `~/.petdex/pets/<slug>/` or `~/.codex/pets/<slug>/`
+**Community pets (Petdex):** pets already installed in `~/.petdex/pets/<slug>/` or `~/.codex/pets/<slug>/` OpenPets `pet.json` (`displayName`, `spritesheetPath`) works in both; for `.webp` sheets run `python tools/converter_webp.py <folder>` (needs Pillow).
 (`pet.json` + a PNG spritesheet; WebP is skipped, convert it to PNG) show up in the menu under
 **Comunidade** with default stats. Agent Tokenlike only reads those folders: it never downloads,
 copies or redistributes them. Community pets belong to their authors and their licenses; they are only

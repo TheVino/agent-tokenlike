@@ -11,27 +11,18 @@
   "stages": [
     {
       "title": "Fantasminha",
-      "frames": [
-        "estagio1.png"
-      ],
-      "blink": "estagio1_piscando.png",
-      "floor": 1
+      "floor": 1,
+      "sheet": "folha1.png"
     },
     {
       "title": "Fantasma",
-      "frames": [
-        "estagio2.png"
-      ],
-      "blink": "estagio2_piscando.png",
-      "floor": 4
+      "floor": 4,
+      "sheet": "folha2.png"
     },
     {
       "title": "Fantasma Mago",
-      "frames": [
-        "estagio3.png"
-      ],
-      "blink": "estagio3_piscando.png",
-      "floor": 10
+      "floor": 10,
+      "sheet": "folha3.png"
     }
   ]
 }

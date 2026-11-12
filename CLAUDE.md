@@ -17,6 +17,10 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `contorno`, `tingir`, `adesivo`, `objeto` e `compose()`, que monta o pet com os `look` dos itens empilhados
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
   inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
+- `arte_herois.py`: grades do Slime embutido e os 9 estados (4 quadros) derivados da arte base por transformações puras
+  (`subir`, `achatar`, `espelhar`, `fechar`/`feliz`/`triste`/`bravo`/`olhar_cima` nos olhos `W`/`B`, `sobrepor` mão, lágrima, z, gotas).
+  `tools/gerar_folhas.py` usa as mesmas regras para gerar `characters/fantasma/folha1..3.png` (grade 8x9, quadro de 16 px;
+  `teto=16` para o k ficar 1) e a prévia `tools/saida/preview_herois.png`. Os PNGs antigos do Fantasma ficam no repo.
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
 - `folha.py`: corte de spritesheet (9 linhas, `ESTADOS`: idle, run_r, run_l, waving, jumping, failed, waiting,
   running, review). Herói = `characters/<pasta>/spritesheet.png` (+ `character.json` opcional) ou pet do Petdex
@@ -28,7 +32,7 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   mapas reduzidos) roda numa thread quando o herói fica ativo, e o `after` troca o visual ("preparando herói…").
   `refresh_look` compõe na hora só o idle e o estado na tela; os outros de `estados_fx` saem na 1ª leitura
   (cache `fx_cache` por estado + itens + status). Todos os estados usam o mesmo k e o pivô na base da caixa aparada.
-  Heróis sem estados (Slime, PNG) seguem como antes.
+  O Slime embutido também tem `estados` (grade) e continua piscando no idle; heróis PNG soltos seguem sem estados.
   Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
 - `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
