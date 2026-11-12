@@ -477,8 +477,9 @@ def ler_folha(path: Path):
             # uma caixa só (união do opaco de todas as células) para os quadros não tremerem
             ox0, oy0 = min(x for x, _ in pts), min(y for _, y in pts)
             ox1, oy1 = min(cw, max(x for x, _ in pts) + a), min(ch, max(y for _, y in pts) + a)
-            linhas = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols)]
-                      if any((r, c) in ocup for c in range(cols)) else [] for r in range(lins)]
+            # célula sem pixel opaco (linha com menos de 8 quadros) fica de fora: nunca vira quadro piscando
+            linhas = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols) if (r, c) in ocup]
+                      for r in range(lins)]
             n = folha.fator_reducao(oy1 - oy0)
         else:
             # ponytail: caixas com precisão de `a` px (amostra); corte exato custa ~5 s em folha grande
@@ -992,13 +993,17 @@ class PetApp:
         looks = pet_looks(self.run)
         arts = item_arts()
         cor = STATUS_COR.get(self.pet_status)
+        virar = self.virar
+        if hasattr(self, "virar_var"):
+            self.virar_var.set(virar)
 
         # looks elementais animam em FASES quadros; sem eles, uma fase só (nenhuma imagem a mais)
         fases = range(visual.FASES if visual.tem_animacao(looks) else 1)
 
         def mapa(pm, fase):
             m = visual.compose(pm, looks, arts, fase, k)
-            return visual.tingir(m, cor, 0.5) if cor else m   # com status, o pet fica na cor dele (todas as fases)
+            m = visual.tingir(m, cor, 0.5) if cor else m
+            return {(16 * k - 1 - x, y): c for (x, y), c in m.items()} if virar else m   # espelha o mapa final   # com status, o pet fica na cor dele (todas as fases)
 
         def img(m):
             im, self.below = render_map(m, px_heroi, k)
@@ -1013,16 +1018,26 @@ class PetApp:
                          else (self.blink_fx or self.frames_fx[0]))
         # estados da folha: [quadro][fase], compostos na 1ª vez que aparecem (só idle e o atual saem aqui);
         # cache por (estado, itens, status, escala), então tirar e pôr o mesmo status não recompõe
-        sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, px_heroi)
-        self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0]}
+        sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, px_heroi, virar)
+        self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0] and ck[1][4] == virar}
         self.fx_cache[("idle", sig)] = self.frames_fx
-        self.fx_compor = lambda e: [[img(mapa(pm, j)) for j in fases] for pm in self.estado_maps[e]]
+        troca = {"run_r": "run_l", "run_l": "run_r"} if virar else {}
+        self.fx_compor = lambda e: [[img(mapa(pm, j)) for j in fases] for pm in self.estado_maps[troca.get(e, e)]]
         self.fx_sig = sig
         self.estados_fx = _EstadosFx(self, getattr(self, "estado_maps", {}))
         if getattr(self, "estado_visto", None) in self.estados_fx:
             self.estados_fx[self.estado_visto]
         self.canvas.itemconfigure(self.sprite, image=self.frames_fx[0][0])
         self.place_pet(0, 0)
+
+    @property
+    def virar(self):
+        return bool(self.state.get("virar", {}).get(self.run["char"]))
+
+    def toggle_virar(self):
+        self.state.setdefault("virar", {})[self.run["char"]] = bool(self.virar_var.get())
+        self.refresh_look()
+        self.save()
 
     def set_pet_status(self, s):
         """Status do pet no painel e na tinta; só recompõe as imagens quando muda (nunca no tick)."""
@@ -1099,6 +1114,8 @@ class PetApp:
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.menu.add_checkbutton(label="Sempre por cima", variable=self.top_var,
                                   command=self.toggle_top)
+        self.virar_var = tk.BooleanVar(value=self.virar)
+        self.menu.add_checkbutton(label="Virar herói", variable=self.virar_var, command=self.toggle_virar)
         self.menu.add_separator()
         self.menu.add_command(label="Desistir da run (começa outra)", command=self.give_up)
         self.menu.add_separator()

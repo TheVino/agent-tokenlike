@@ -333,6 +333,13 @@ assert tp.spec_altura(st["frames"][0]) == 28 and tp.spec_k(st["frames"][0]) == 2
 pm = tp.spec_to_map(st["frames"][0], 2); pj = tp.spec_to_map(st["estados"]["jumping"][0], 2)
 assert max(y for _, y in pm) == 31 and min(y for _, y in pm) == 9 and set(pm.values()) == {"#c86432"}
 assert max(y for _, y in pj) == 26 and min(x for x, _ in pj) == min(x for x, _ in pm)   # pulo sai do chão, mesmo pivô
+# linhas com menos de 8 quadros: célula vazia não vira quadro (nunca pisca invisível); estado sem quadros usa o idle
+folha_png(chars/"v"/"spritesheet.png", 512, 576, vazias={0: 2, 3: 5, 6: 8})
+v = tp.completar_estagio({c.key: c for c in tp.load_png_characters(chars)}["v"].stages[0])
+assert "erro" not in v, v.get("erro")
+cont = {e: len(q) for e, q in v["estados"].items()}
+assert cont["idle"] == 6 and cont["waving"] == 3 and cont["waiting"] == 6 and cont["run_r"] == 8, cont   # waiting (linha 6) vazia -> idle
+assert all(tp.spec_to_map(sp, 2) for q in v["estados"].values() for sp in q)   # nenhum quadro em branco
 # PNG de formato que o decodificador não lê: ignorado (e logado) na descoberta
 (chars/"q").mkdir(); (chars/"q"/"spritesheet.png").write_bytes((chars/"x"/"spritesheet.png").read_bytes()[:24] + bytes([16]) + bytes(5))
 assert "q" not in {c.key for c in tp.load_png_characters(chars)} and "formato de PNG não suportado" in tp.LOG_FILE.read_text(encoding="utf-8")
@@ -391,6 +398,14 @@ for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 PENDING.clear(); assert mostrando() is app9.art_img("lapide")
 app9.new_run(); pump(app9, 400)
+# Virar herói: espelha o mapa final em torno do pivô (x -> 16k-1-x), troca run_r/run_l, persiste no state
+app9.virar_var.set(False); app9.toggle_virar(); assert not app9.virar
+normal = app9.look_maps; k = app9.hero_k
+app9.virar_var.set(True); app9.toggle_virar()
+assert app9.virar and app9.state["virar"][app9.run["char"]] is True and app9.fx_sig[4] is True
+assert app9.look_maps == [{(16 * k - 1 - x, y): c for (x, y), c in m.items()} for m in normal] and app9.look_maps != normal
+n0 = len(app9.fx_cache); app9.estados_fx["run_r"]; app9.estados_fx["run_r"]; assert len(app9.fx_cache) == n0 + 1   # compõe uma vez
+saved = json.loads((tp.DATA_DIR / "state.json").read_text(encoding="utf-8")); assert saved["virar"][app9.run["char"]] is True
 app9.fill_char_menu(); app9.quit()
 # Slime (grade) e Fantasma (folha) têm os 9 estados, >= 4 quadros cada, mesmo pivô (base em y = 15)
 app10 = tp.PetApp(Args()); PENDING.clear(); app10.char_var.set("slime"); app10.change_character(); app10.new_run()
