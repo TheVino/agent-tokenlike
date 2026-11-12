@@ -39,6 +39,8 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import arte  # noqa: E402
+from arte_herois import (SLIME_PALETTE, SLIME_GOTINHA, SLIME, SLIME_CAVALEIRO,  # noqa: E402
+                         REI_SLIME, blink_grid, estados_slime)
 import folha  # noqa: E402
 import masmorra as M  # noqa: E402
 import visual  # noqa: E402
@@ -417,101 +419,6 @@ def save_state(path: Path, state: dict) -> None:
 
 
 # ----------------------------------------------------------- personagens
-SLIME_PALETTE = {
-    "K": "#1b1b2f", "G": "#57d36b", "L": "#b4f5a8", "D": "#2f9a4a",
-    "W": "#ffffff", "B": "#1b1b2f", "P": "#ff8fb1",
-    "S": "#d7dde9", "s": "#8a94a8", "R": "#e2384d", "Y": "#ffd23f", "y": "#c99a00",
-}
-
-SLIME_GOTINHA = [
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    ".......KK.......",
-    "......KLGK......",
-    ".....KLGGGK.....",
-    "....KGGGGGGK....",
-    "....KGWBGWBK....",
-    "...KGGGGGGGGK...",
-    "...KPGGKKGGPK...",
-    "...KDGGGGGGDK...",
-    "....KKKKKKKK....",
-]
-
-SLIME = [
-    "................",
-    "................",
-    "................",
-    "......KKKK......",
-    "....KKLLGGKK....",
-    "...KLLGGGGGGK...",
-    "..KLGGGGGGGGGK..",
-    "..KLGGGGGGGGGK..",
-    ".KGGGWWGGWWGGGK.",
-    ".KGGGWBGGWBGGGK.",
-    ".KGPPGGGGGGPPGK.",
-    ".KGGGGGKKGGGGGK.",
-    ".KGGGGGGGGGGGGK.",
-    ".KDGGGGGGGGGGDK.",
-    "..KDDDDDDDDDDK..",
-    "...KKKKKKKKKK...",
-]
-
-SLIME_CAVALEIRO = [
-    "........RR......",
-    ".......RRK......",
-    ".....KKKKKK.....",
-    "....KSSSSSSK....",
-    "...KSLSSSSSsK...",
-    "..KSLSSSSSSSsK..",
-    "..KssssssssssK..",
-    ".KGGGGGGGGGGGGK.",
-    ".KGGGWWGGWWGGGK.",
-    ".KGGGWBGGWBGGGK.",
-    ".KGPPGGGGGGPPGK.",
-    ".KGGGGGKKGGGGGK.",
-    ".KGGGGGGGGGGGGK.",
-    ".KDGGGGGGGGGGDK.",
-    "..KDDDDDDDDDDK..",
-    "...KKKKKKKKKK...",
-]
-
-REI_SLIME = [
-    "....Y..YY..Y....",
-    "....YY.YY.YY....",
-    "....YYYYYYYY....",
-    "....YRYYYYRY....",
-    "...KyyyyyyyyK...",
-    "..KLGGGGGGGGGK..",
-    ".KLGGGGGGGGGGGK.",
-    "KLGGGGGGGGGGGGGK",
-    "KGGGGWWGGWWGGGGK",
-    "KGGGGWBGGWBGGGGK",
-    "KGGPPGGGGGGPPGGK",
-    "KGGGGKGGGGKGGGGK",
-    "KGGGGGKKKKGGGGGK",
-    "KDGGGGGGGGGGGGDK",
-    ".KDDDDDDDDDDDDK.",
-    "..KKKKKKKKKKKK..",
-]
-
-
-def blink_grid(grid: list[str], eye_chars: str, body_char: str) -> list[str]:
-    """Fecha os olhos: a última linha do olho vira traço, as de cima viram corpo."""
-    eyes = [(y, x) for y, row in enumerate(grid) for x, ch in enumerate(row) if ch in eye_chars]
-    bottom = {}
-    for y, x in eyes:
-        bottom[x] = max(bottom.get(x, y), y)
-    rows = [list(r) for r in grid]
-    for y, x in eyes:
-        rows[y][x] = "K" if y == bottom[x] else body_char
-    return ["".join(r) for r in rows]
-
-
 class CharacterDef:
     def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None, comunidade=False):
         self.key, self.name, self.frame_ms = key, name, frame_ms
@@ -531,8 +438,9 @@ def builtin_characters() -> list[CharacterDef]:
     for floor, title, grid in ((1, "Gotinha", SLIME_GOTINHA), (3, "Slime", SLIME),
                                (8, "Slime Cavaleiro", SLIME_CAVALEIRO), (15, "Rei Slime", REI_SLIME)):
         closed = ("grid", blink_grid(grid, "WB", "G"), SLIME_PALETTE)
-        stages.append({"floor": floor, "title": title, "frames": [("grid", grid, SLIME_PALETTE)],
-                       "blink": closed, "sleep": closed})
+        estados = {e: [("grid", g, SLIME_PALETTE) for g in gs] for e, gs in estados_slime(title).items()}
+        stages.append({"floor": floor, "title": title, "frames": estados["idle"],
+                       "blink": closed, "sleep": closed, "estados": estados})
     return [CharacterDef("slime", "Slime", stages, stats={"hp": 20, "atk": 3, "def": 0, "dodge": 0})]
 
 
@@ -1723,6 +1631,15 @@ class PetApp:
                 if estado:
                     img = self.quadro_estado(estado, now)
                     bob = 0
+                    if estado == "idle" and self.blink_fx is not None:   # herói de grade ainda pisca
+                        if now > self.next_blink:
+                            self.blink_until = now + 0.16
+                            self.next_blink = now + self.rng.uniform(2.5, 6)
+                        if now < self.blink_until:
+                            img = self.blink_fx[fase % len(self.blink_fx)]
+                    if sleeping and now > self.next_zzz:
+                        self.floater("z Z", MUTED, life=20)
+                        self.next_zzz = now + 3
                 elif sleeping:
                     img = self.sleep_fx[fase % len(self.sleep_fx)]
                     bob = -2 if int(now / 1.4) % 2 else 0

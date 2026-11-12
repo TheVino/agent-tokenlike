@@ -355,7 +355,7 @@ assert "petdex:y" in tp.all_characters()
 t0 = time.time()
 app8 = tp.PetApp(Args()); PENDING.clear(); app8.rng = random.Random(SEED)
 app8.char_var.set("petdex:g"); app8.change_character(); app8.new_run()
-assert app8.char.key == "petdex:g" and app8.estados_fx == {}     # ainda cortando: visual anterior
+assert app8.char.key == "petdex:g" and "estados" not in app8.char.stages[0]   # ainda cortando: visual anterior
 pronto(app8)
 g = app8.char.stages[0]["frames"]; assert len(g) == 8 and tp.spec_altura(g[0]) <= 48
 assert app8.hero_k >= 2 and set(app8.estados_fx) == set(tp.folha.ESTADOS)
@@ -392,10 +392,19 @@ for fn in PENDING[:]:
 PENDING.clear(); assert mostrando() is app9.art_img("lapide")
 app9.new_run(); pump(app9, 400)
 app9.fill_char_menu(); app9.quit()
-# Slime não tem estados: tudo como antes
+# Slime (grade) e Fantasma (folha) têm os 9 estados, >= 4 quadros cada, mesmo pivô (base em y = 15)
 app10 = tp.PetApp(Args()); PENDING.clear(); app10.char_var.set("slime"); app10.change_character(); app10.new_run()
-assert app10.char.key == "slime" and app10.estados_fx == {}
-assert app10.estado_atual(time.time(), True) is None; app10.quit()
+assert app10.char.key == "slime" and set(app10.estados_fx) == set(tp.folha.ESTADOS)
+assert app10.estado_atual(time.time(), True) == "waiting"
+for st in tp.all_characters()["slime"].stages + tp.all_characters()["fantasma"].stages:
+    if st.get("sheet"): tp.completar_estagio(st)
+    assert set(st["estados"]) == set(tp.folha.ESTADOS) and all(len(v) >= 4 for v in st["estados"].values())
+    base = {e: max(y for sp in v for _, y in tp.spec_to_map(sp, 1)) for e, v in st["estados"].items() if e != "jumping"}
+    assert set(base.values()) == {15}, (st["title"], base)
+    assert max(tp.spec_altura(sp) for v in st["estados"].values() for sp in v) <= 16 or not st.get("sheet")
+app10.run["dead"] = True; app10.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
+app10.on_death(); app10.tick(); assert app10.estado_visto == "failed"
+app10.new_run(); pump(app10, 300); app10.quit()
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)
