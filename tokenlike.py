@@ -520,6 +520,28 @@ def completar_estagio(stage: dict) -> dict:
     return stage
 
 
+def pet_openpets(d: Path):
+    """Formato OpenPets (pet.json): (png, nome) da pasta. `spritesheetPath` .webp usa o .png de mesmo nome;
+    sem pet.json: spritesheet.png ou o 1º .png. png None = nada usável (webp-only loga o aviso)."""
+    name, rel = d.name, None
+    try:
+        j = json.loads((d / "pet.json").read_text(encoding="utf-8"))
+        name = str(j.get("displayName") or j.get("name") or d.name)
+        rel = j.get("spritesheetPath")
+    except (OSError, ValueError, AttributeError):
+        pass   # pet.json ausente ou inválido: fica o nome da pasta
+    cands = []
+    if isinstance(rel, str) and rel:
+        p = d / rel
+        cands.append(p.with_suffix(".png") if p.suffix.lower() == ".webp" else p)
+    cands.append(d / "spritesheet.png")
+    cands += sorted(d.glob("*.png"))
+    png = next((c for c in cands if c.suffix.lower() == ".png" and c.is_file()), None)
+    if not png and any(d.glob("*.webp")):
+        log(f"pet '{d.name}' ignorado: só tem WebP; converta para PNG (python tools/converter_webp.py {d})")
+    return png, name
+
+
 def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     out = []
     if not folder.is_dir():
@@ -527,10 +549,10 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     for d in sorted(folder.iterdir()):
         cfg = d / "character.json"
         if not cfg.is_file():
-            if (d / "spritesheet.png").is_file():   # folha sem character.json: um estágio, stats padrão
+            png, name = pet_openpets(d)   # folha sem character.json: um estágio, stats padrão
+            if png:
                 try:
-                    out.append(CharacterDef(d.name, d.name, [stage_da_folha(d / "spritesheet.png", 1, d.name)],
-                                            stats=dict(DEFAULT_STATS)))
+                    out.append(CharacterDef(d.name, name, [stage_da_folha(png, 1, name)], stats=dict(DEFAULT_STATS)))
                 except Exception as e:
                     log(f"personagem '{d.name}' ignorado: {e}")
             continue
@@ -585,24 +607,17 @@ def petdex_dirs() -> list[Path]:
 
 
 def load_petdex_characters() -> list[CharacterDef]:
-    """Pets da comunidade: o .png da pasta (de preferência spritesheet.png) e só o `name` do pet.json."""
+    """Pets da comunidade: via `pet_openpets` (só leitura)."""
     out = []
     for base in petdex_dirs():
         if not base.is_dir():
             continue
         for d in sorted(p for p in base.iterdir() if p.is_dir()):
-            pngs = sorted(d.glob("*.png"), key=lambda p: (p.name != "spritesheet.png", p.name))
-            if not pngs:
-                if any(d.glob("*.webp")):
-                    log(f"pet '{d.name}' ignorado: só tem WebP; converta para PNG para usar este pet")
+            png, name = pet_openpets(d)
+            if not png:
                 continue
-            name = d.name
             try:
-                name = str(json.loads((d / "pet.json").read_text(encoding="utf-8")).get("name") or d.name)
-            except (OSError, ValueError, AttributeError):
-                pass   # pet.json ausente ou inválido: fica o nome da pasta
-            try:
-                out.append(CharacterDef("petdex:" + d.name, name, [stage_da_folha(pngs[0], 1, name)],
+                out.append(CharacterDef("petdex:" + d.name, name, [stage_da_folha(png, 1, name)],
                                         stats=dict(DEFAULT_STATS), comunidade=True))
             except Exception as e:
                 log(f"pet '{d.name}' ignorado: {e}")

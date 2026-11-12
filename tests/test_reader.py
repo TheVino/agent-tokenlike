@@ -83,5 +83,15 @@ dex = Path(tempfile.mkdtemp()); (dex/"w").mkdir(); (dex/"w"/"pet.json").write_te
 tp.LOG_FILE = dex/"log.txt"; tp.DATA_DIR = dex
 tp.petdex_dirs = lambda: [dex, dex/"nao-existe"]
 assert tp.load_petdex_characters() == []
-assert "converta para PNG" in tp.LOG_FILE.read_text(encoding="utf-8") and "erro" not in tp.LOG_FILE.read_text(encoding="utf-8")
+_l = tp.LOG_FILE.read_text(encoding="utf-8")
+assert "converta para PNG" in _l and "converter_webp.py" in _l and "erro" not in _l
+# OpenPets: displayName + spritesheetPath .webp com .png de mesmo nome ao lado
+sys.path.insert(0, str(Path(__file__).parent)); from _png import folha_png as _png0
+def _png(path): _png0(path, 8 * 9, 9 * 8)
+(dex/"o").mkdir(); (dex/"o"/"pet.json").write_text('{"displayName":"Bitty","spritesheetPath":"sheet.webp"}')
+(dex/"o"/"sheet.webp").write_bytes(b"w"); _png(dex/"o"/"sheet.png")
+assert [c.name for c in tp.load_petdex_characters()] == ["Bitty"]
+tp.CHARACTERS_DIR = dex/"nao-existe"
+chd = Path(tempfile.mkdtemp()); (chd/"o").mkdir(); (chd/"o"/"pet.json").write_text('{"name":"Nome","displayName":"Bitty"}'); _png(chd/"o"/"x.png")
+assert [c.name for c in tp.load_png_characters(chd)] == ["Bitty"]
 print("reader petdex ok")
