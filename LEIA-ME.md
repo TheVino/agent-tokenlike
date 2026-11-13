@@ -21,7 +21,7 @@ chefes, desbloqueios e **permadeath**.
 
 1. Tenha o Python 3.9+ instalado (python.org; marque "Add to PATH" na instalação).
 2. **`testar-demo.bat`**: modo demo, com tokens falsos para ver salas, lutas, mortes e desbloqueios acontecendo rápido.
-   O progresso do demo fica separado do real.
+   O progresso do demo fica separado do real, e no demo todos os heróis já vêm liberados.
 3. **`iniciar.bat`**: modo real. O pet aparece no canto inferior direito da tela.
 
 | Ação | O que faz |
@@ -72,7 +72,24 @@ chefes, desbloqueios e **permadeath**.
 - **Descanso:** ficar sem usar o Claude Code **nunca mata o pet**. Depois de 5 minutos parado ele descansa
   e recupera HP; depois de 10, dorme (Zzz).
 - **Conquistas e desbloqueios:** chegar ao andar 5 ou 10, derrotar um chefe, derrotar um mímico... cada conquista libera
-  itens novos no sorteio e **heróis novos**. O Fantasma é liberado ao derrotar o primeiro chefe.
+  itens novos no sorteio e **heróis novos**. São 14 heróis, cada um com um traço passivo:
+
+  | Herói | Como liberar |
+  |---|---|
+  | Slime | já vem liberado |
+  | Fantasma | derrotar o primeiro chefe |
+  | Médico da Peste | matar um inimigo com veneno |
+  | Bruxa do Pântano | pegar 3 itens elementais numa run |
+  | Coveiro | juntar 300 de ouro numa run |
+  | Ceifeirinho | vencer uma horda de 4 inimigos |
+  | Vela Viva | matar um inimigo com queimadura |
+  | Cogumelo de Caverna | chegar ao andar 8 com o HP cheio |
+  | Inquisidor | chegar ao andar 15 |
+  | Boneca de Pano | esquivar 10 golpes numa run |
+  | Cavaleiro Oco | bloquear 10 golpes numa run |
+  | Corvo Mensageiro | vencer 3 chefes no total |
+  | Alquimista | consumir 10 itens numa run |
+  | Freira das Cinzas | morrer 10 vezes |
 
 Em simulação, cerca de 40% das runs passam do primeiro chefe, e as melhores chegam ao andar 15–25.
 Os números ficam no topo do `masmorra.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...) e podem ser ajustados.
