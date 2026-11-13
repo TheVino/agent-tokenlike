@@ -456,6 +456,12 @@ def test_heroi_corvo():
     # bolsa e capuz cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
     w, h = len(co.BOLSA_CAPUZ[0]), len(co.BOLSA_CAPUZ)
     assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in co.ANCORA.values() for a in qs)
+    conta = lambda q, c: sum(l.count(c) for l in q)
+    for i in (1, 2):   # a bolsa não cobre a asa esticada (review e 3º quadro do running)
+        est = montar.estados(co, i)
+        for e, j in [("review", k) for k in range(4)] + [("running", 2)]:
+            assert conta(est[e][j], "A") == conta(base[e][j], "A"), (i, e, j)
+    assert all(conta(q, "N") for qs in base.values() for q in qs)   # brilho azulado nas penas em todo quadro
     for i in range(3):
         ult = montar.estados(co, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i

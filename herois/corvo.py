@@ -9,7 +9,7 @@ PAL = {
     "K": "#0d0a12", "B": "#3d3858", "b": "#29253c", "P": "#5e5882", "A": "#4b4574", "a": "#9a94c8",
     "W": "#f4f6fb", "Y": "#f0b030", "y": "#a8701c", "L": "#e0913a", "C": "#f4ead2", "c": "#c9b994",
     "R": "#c8334a", "r": "#7e1f33", "D": "#7a4a28", "d": "#4e2e16", "H": "#5a2a6e", "h": "#3a1a48",
-    "G": "#ffd23f", "g": "#b8860b", "T": "#8fd8ff",
+    "G": "#ffd23f", "g": "#b8860b", "T": "#8fd8ff", "N": "#7f92d6",
 }
 
 CORPO = (3, 5, 6, 7, 7, 7, 7, 7, 6, 6, 5, 3)           # meia-largura do corpo por linha (12 linhas)
@@ -114,6 +114,9 @@ def quadro(cx=12, base=30, perna=3, corpo=CORPO, olho="n", bico="f", carta="bico
     for r, a, b, cor in partes:
         for x in range(hx + a, hx + b + 1):
             px[(x, htop + r)] = cor
+    for (x, y), c in list(px.items()):                  # brilho azulado no alto das penas (contraste em fundo escuro)
+        if c in "BbP" and (x, y - 1) not in px:
+            px[(x, y)] = "N"
     contornar(g, px)
     if bico != "f":
         for x in range(hx + 5, hx + 9):
@@ -180,14 +183,14 @@ _SPECS = {
     # bicada dupla: arma para trás, bica com a carta (brilho), bica de novo com golpe de asa, volta
     "running": [dict(cx=11, olho="bravo", asa=(ASA_CIMA, -11, -12)),
                 dict(cx=13, olho="bravo", asa=(ASA_BAIXO, -8, -1), cdy=-1, por=((BRILHO, 25, 5),)),
-                dict(cx=13, olho="bravo", asa=(ASA_FRENTE, 0, 2), cdy=1,
+                dict(cx=13, olho="bravo", asa=(ASA_FRENTE, 0, 3), cdy=1,
                      por=((BRILHO, 25, 12), (BRILHO_P, 29, 7), (VENTO, 24, 27))),
                 dict(cx=12, olho="bravo", asa=(ASA_FECHADA, -5, -2))],
     # lê a carta segurada na ponta da asa, olho baixo; "?" aparece
-    "review": [dict(olho="baixo", carta=(CARTA, 22, 22), asa=(ASA_FRENTE, -1, 1)),
-               dict(olho="baixo", carta=(CARTA, 22, 22), asa=(ASA_FRENTE, -1, 1), por=((INTERROG_P, 25, 3),)),
-               dict(olho="n", carta=(CARTA, 22, 22), asa=(ASA_FRENTE, -1, 1), por=((INTERROG, 25, 1),)),
-               dict(olho="baixo", carta=(CARTA, 22, 22), asa=(ASA_FRENTE, -1, 1), por=((INTERROG, 25, 1),))],
+    "review": [dict(olho="baixo", carta=(CARTA, 22, 23), asa=(ASA_FRENTE, -1, 3)),
+               dict(olho="baixo", carta=(CARTA, 22, 23), asa=(ASA_FRENTE, -1, 3), por=((INTERROG_P, 25, 3),)),
+               dict(olho="n", carta=(CARTA, 22, 23), asa=(ASA_FRENTE, -1, 3), por=((INTERROG, 25, 1),)),
+               dict(olho="baixo", carta=(CARTA, 22, 23), asa=(ASA_FRENTE, -1, 3), por=((INTERROG, 25, 1),))],
 }
 
 QUADROS, ANCORA = {}, {}
