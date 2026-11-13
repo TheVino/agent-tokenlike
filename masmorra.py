@@ -53,6 +53,12 @@ ACHIEVEMENTS = {
     "chefes3": "Vencer 3 chefes no total",
     "consumir10": "Consumir 10 itens numa run",
     "morrer10": "Morrer 10 vezes",
+    "ajudantes3": "Pegar 3 itens de ajudante numa run",
+    "sem_consumir10": "Chegar ao andar 10 sem consumir nenhum item",
+    "lendarios3": "Pegar 3 itens lendários numa run",
+    "veneno3": "Matar 3 inimigos com veneno numa run",
+    "andar13": "Morrer no andar 13",
+    "chefes3run": "Vencer 3 chefes numa mesma run",
 }
 
 RARITIES = ("comum", "raro", "epico", "lendario")
@@ -879,6 +885,12 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("chefes3", meta.get("chefes", 0) >= 3)
     grant("consumir10", len(run.get("consumed", [])) >= 10)
     grant("morrer10", meta["runs"] >= 10)
+    grant("sem_consumir10", run["floor"] >= 10 and not run.get("consumed"))
+    grant("lendarios3", sum(1 for it in run["items"] if it["rar"] == "lendario") >= 3)
+    grant("ajudantes3", sum(1 for it in run["items"] if "ajudante" in ITEMS[it["key"]]["fx"]) >= 3)
+    grant("veneno3", cont.get("mortes_veneno", 0) >= 3)
+    grant("chefes3run", run["bosses"] >= 3)
+    grant("andar13", run.get("dead") and run["floor"] == 13)
     if run["floor"] >= 8 and "andar8cheio" not in have:
         grant("andar8cheio", run["hp"] >= stats(run)["maxhp"])
     if "elementos3" not in have:
