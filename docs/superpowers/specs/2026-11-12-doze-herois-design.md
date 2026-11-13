@@ -151,8 +151,9 @@ fim de cada leva.
 ## Balanceamento
 
 - A calibração das `METAS` continua só com o Slime, como hoje.
-- A seção "Heróis" das estatísticas mostra cada herói. Nenhum herói pode ficar com mediana de andar fora
-  de ±2 andares da mediana do Slime, a não ser por decisão anotada.
+- Cada herói precisa passar do 1º chefe em 30% a 50% das runs (1.500 runs só dele), a não ser por decisão
+  anotada. Troca aprovada pelo dono em 2026-11-13: a regra antiga (mediana a ±2 da do Slime) não separava
+  ninguém, todos ficavam com mediana 5.
 - Traços fortes demais são ajustados nos números do `character.json`.
 
 ## Testes
