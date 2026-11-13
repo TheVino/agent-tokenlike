@@ -87,6 +87,30 @@ def _cheio(floor, falta):
     return f
 _ach("andar8cheio", _cheio(8, 1), _cheio(8, 0))
 _ach("andar8cheio", _cheio(7, 0), _cheio(9, 0))
+# leva 3
+_ach("bloqueio10", _cont("bloqueios", 9), _cont("bloqueios", 10))
+_ach("consumir10", lambda r: r.__setitem__("consumed", [{}] * 9), lambda r: r.__setitem__("consumed", [{}] * 10))
+def _meta(k, v):
+    m = M.new_meta(); m[k] = v; return m
+for k, v, quer in (("chefes", 2, False), ("chefes", 3, True)):
+    m = _meta(k, v); ev = {"lines": []}; M._check_achievements(M.new_run("slime", {}, 1), m, ev)
+    assert ("chefes3" in m["achievements"]) == quer
+for v, quer in ((9, False), (10, True)):
+    m = _meta("runs", v); ev = {"lines": []}; M._check_achievements(M.new_run("slime", {}, 1), m, ev)
+    assert ("morrer10" in m["achievements"]) == quer
+m = M.new_meta(); del m["chefes"]; M._check_achievements(M.new_run("slime", {}, 1), m, {"lines": []})   # save antigo
+assert "chefes3" not in m["achievements"]
+# 10ª morte numa run de verdade concede morrer10 no ev da sala da morte
+m = _meta("runs", 9); r = M.new_run("slime", {"hp": 1, "atk": 0}, 1); r["energy"] = 1e9; r["floor"] = 3
+rng = random.Random(3); ev = None
+for _ in range(50):
+    ev = M.enter_room(r, m, rng)
+    if r["dead"]: break
+assert r["dead"] and m["runs"] == 10 and "morrer10" in ev["unlocks"] and "morrer10" in m["achievements"]
+# chefe vencido soma em meta["chefes"]
+m = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 999}, 1); r["floor"] = 5; r["room"] = 4; r["energy"] = 1e9
+ev = M.enter_room(r, m, random.Random(1))
+assert ev.get("kind") == "boss" and ev.get("won") and m["chefes"] == 1, ev
 # muitas salas nos dois modos, sem exceção; pendência resolvida antes de cada sala
 for mode in ("auto", "interativo"):
     rng = random.Random(7); meta = M.new_meta(); run = M.new_run("slime", {"hp": 20, "atk": 3}, 1)

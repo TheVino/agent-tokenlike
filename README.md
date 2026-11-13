@@ -30,7 +30,7 @@ The in-game text is in Brazilian Portuguese. A Portuguese readme is in [LEIA-ME.
 1. Install Python 3.9+ from [python.org](https://www.python.org/) (tick "Add python.exe to PATH").
 2. Download or clone this repository.
 3. Double-click **`testar-demo.bat`** to try demo mode: fake tokens, so you can watch rooms, fights,
-   deaths and unlocks happen fast. Demo progress is kept separate from the real one.
+   deaths and unlocks happen fast. Demo progress is kept separate from the real one, and every hero is unlocked in demo mode.
 4. Double-click **`iniciar.bat`** for the real thing. The pet appears in the bottom-right corner of the screen.
 
 To start it with Windows: `Win + R` → `shell:startup` → create a shortcut to `iniciar.bat` there.
@@ -113,7 +113,12 @@ elsewhere the pet sits on a dark background.
 - **Rest, never punishment:** not using Claude Code **never kills the pet or removes progress**.
   After 5 idle minutes it rests and heals; after 10 it falls asleep (Zzz).
 - **Achievements and unlocks:** reaching floors 5/10/20, beating a boss, beating a mimic... each one adds new
-  items to the loot pool and unlocks **new heroes**. The Ghost unlocks after the first boss.
+  items to the loot pool and unlocks **new heroes**. There are 14 heroes, each with a small passive trait: Slime (starts unlocked),
+  Ghost (beat the first boss), Plague Doctor (poison kill), Swamp Witch (3 elemental items in a run),
+  Gravedigger (300 gold in a run), Little Reaper (beat a horde of 4), Living Candle (burn kill),
+  Cave Mushroom (floor 8 at full HP), Inquisitor (floor 15), Rag Doll (dodge 10 hits in a run),
+  Empty Knight (block 10 hits in a run), Messenger Crow (3 bosses in total), Alchemist (consume 10 items
+  in a run) and Ash Nun (die 10 times).
 
 In simulation about 40% of runs get past the first boss and the best reach floors 15–25.
 Balance numbers live at the top of `masmorra.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...).

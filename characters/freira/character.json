@@ -1,0 +1,31 @@
+{
+  "name": "Freira das Cinzas",
+  "unlock": "morrer10",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0
+  },
+  "traço": {
+    "lifesteal": 1,
+    "congelar": 0.06
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Noviça das Cinzas",
+      "floor": 1,
+      "sheet": "folha1.png"
+    },
+    {
+      "title": "Freira das Cinzas",
+      "floor": 4,
+      "sheet": "folha2.png"
+    },
+    {
+      "title": "Abadessa das Cinzas",
+      "floor": 10,
+      "sheet": "folha3.png"
+    }
+  ]
+}

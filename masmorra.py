@@ -49,6 +49,10 @@ ACHIEVEMENTS = {
     "andar8cheio": "Chegar ao andar 8 com o HP cheio",
     "andar15": "Chegar ao andar 15",
     "esquiva10": "Esquivar 10 golpes numa run",
+    "bloqueio10": "Bloquear 10 golpes numa run",
+    "chefes3": "Vencer 3 chefes no total",
+    "consumir10": "Consumir 10 itens numa run",
+    "morrer10": "Morrer 10 vezes",
 }
 
 RARITIES = ("comum", "raro", "epico", "lendario")
@@ -438,7 +442,7 @@ def fx_text(fx: dict) -> str:
 
 def new_meta() -> dict:
     return {"achievements": [], "graveyard": [], "runs": 0,
-            "best": {"floor": 0, "room": 0}, "next_char": "slime"}
+            "best": {"floor": 0, "room": 0}, "next_char": "slime", "chefes": 0}
 
 
 CONT_ZERO = {"esquivas": 0, "bloqueios": 0, "mortes_veneno": 0, "mortes_queima": 0, "horda4": 0}
@@ -845,6 +849,7 @@ def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> 
         "gold": run["gold"], "kills": run["kills"], "date": date.today().isoformat(),
     })
     meta["graveyard"] = meta["graveyard"][-50:]
+    _check_achievements(run, meta, ev)
 
 
 def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
@@ -870,6 +875,10 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("queima1", cont.get("mortes_queima", 0) >= 1)
     grant("esquiva10", cont.get("esquivas", 0) >= 10)
     grant("andar15", run["floor"] >= 15)
+    grant("bloqueio10", cont.get("bloqueios", 0) >= 10)
+    grant("chefes3", meta.get("chefes", 0) >= 3)
+    grant("consumir10", len(run.get("consumed", [])) >= 10)
+    grant("morrer10", meta["runs"] >= 10)
     if run["floor"] >= 8 and "andar8cheio" not in have:
         grant("andar8cheio", run["hp"] >= stats(run)["maxhp"])
     if "elementos3" not in have:
@@ -984,6 +993,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             run["hp"] = min(st["maxhp"], run["hp"] + st["lifesteal"])
         if kind == "boss":
             run["bosses"] += 1
+            meta["chefes"] = meta.get("chefes", 0) + 1
             run["base"]["maxhp"] += 5
             gold += 15 + f
             stats(run)

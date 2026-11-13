@@ -837,7 +837,7 @@ class PetApp:
         return self.chars.get(self.run["char"]) or self.chars["slime"]
 
     def is_unlocked(self, c: CharacterDef) -> bool:
-        return not c.unlock or c.unlock in self.meta["achievements"]
+        return self.demo or not c.unlock or c.unlock in self.meta["achievements"]   # demo: todos liberados para testar
 
     def new_run(self, announce=True):
         key = self.meta.get("next_char", "slime")

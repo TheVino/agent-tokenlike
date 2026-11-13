@@ -64,11 +64,28 @@ def gotas(pm, color, nivel=1):
     return out
 
 
+def _externo(pm):
+    """Células vazias ligadas à borda (flood fill numa caixa com 1 px de folga). Buracos internos da silhueta
+    (olhos vazados, o quadriculado do fantasma sumindo) não entram, para os efeitos de borda não pintarem o meio."""
+    x0, y0, x1, y1 = bbox(pm)
+    x0, y0, x1, y1 = x0 - 1, y0 - 1, x1 + 1, y1 + 1
+    fora, pilha = set(), [(x0, y0)]
+    while pilha:
+        q = pilha.pop()
+        if q in fora or q in pm or not (x0 <= q[0] < x1 and y0 <= q[1] < y1):
+            continue
+        fora.add(q)
+        x, y = q
+        pilha += [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+    return fora
+
+
 def contorno(pm, color):
     out = dict(pm)
+    fora = _externo(pm)
     for (x, y) in pm:
         for p in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if p not in pm:
+            if p in fora:
                 out[p] = color
     return out
 
@@ -164,7 +181,8 @@ def chamas(pm, nivel=1, fase=0, cor="#ff9f43", ponta="#ffd23f"):
 
 def faiscas(pm, nivel=1, fase=0, cor="#fff27a"):
     """Faíscas no contorno (pixels logo fora da silhueta); a fase muda o subconjunto aceso."""
-    fora = sorted({q for (x, y) in pm for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q not in pm},
+    ext = _externo(pm)
+    fora = sorted({q for (x, y) in pm for q in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if q in ext},
                   key=lambda q: (q[1], q[0]))
     out = dict(pm)
     for j, q in enumerate(fora):
@@ -186,8 +204,9 @@ def gotas_veneno(pm, nivel=1, fase=0, cor="#4fbf5a"):
 def geada(pm, nivel=1, fase=0, cor="#9fe8ff", branco="#ffffff"):
     """Recolore a borda do corpo com gelo (silhueta igual); a fase muda quais pixels."""
     out = dict(pm)
+    ext = _externo(pm)
     for (x, y) in pm:
-        if any(p not in pm for p in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))):
+        if any(p in ext for p in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1))):
             r = (x + y + fase) % 3
             if r < nivel:
                 out[(x, y)] = branco if r == 0 else cor
