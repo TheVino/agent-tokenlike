@@ -2,7 +2,7 @@
 cabeça de capuz com máscara de bico e óculos verdes, botinhas, braços em linha grossa (com contorno) e objetos
 (lanterna de ervas, frasco de veneno, nuvenzinha). No `failed` a máscara se solta e cai, mostrando o rostinho.
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
-from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar, linha
 
 PAL = {
     "K": "#231b33", "C": "#4a3f66", "c": "#342b4c", "H": "#5b4d7d", "h": "#3f3560",
@@ -22,14 +22,9 @@ LUVA = [".KKK.", "KNNNK", "KNNNK", "KNNNK", ".KKK."]
 MAO_ROSTO = [".KKK.", "KNNNK", "KNNNK", ".KKK."]
 
 
-def _linha(x0, y0, x1, y1):
-    n = max(abs(x1 - x0), abs(y1 - y0), 1)
-    return [(round(x0 + (x1 - x0) * i / n), round(y0 + (y1 - y0) * i / n)) for i in range(n + 1)]
-
-
 def _braco(g, a, b):
     """Manga grossa de casaco de `a` a `b`, com contorno escuro."""
-    pts = _linha(*a, *b)
+    pts = linha(*a, *b)
     for x, y in pts:
         for dx in (-1, 0, 1):
             for dy in (-1, 0, 1):

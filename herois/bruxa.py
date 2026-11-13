@@ -2,7 +2,7 @@
 com nariz pontudo e cabelo de musgo atrás, chapéu de ponta torta (segue a inclinação do corpo), botinhas, braços em
 linha grossa e a concha de pau com caldo do brejo. No `failed` ela derrete numa poça verde e só sobra o chapéu.
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
-from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar, linha
 
 PAL = {
     "K": "#1c1a2a", "R": "#5f3f86", "r": "#3f2a5e", "G": "#b3dc8e", "g": "#7fae66", "L": "#3d6e45",
@@ -20,13 +20,8 @@ RESPINGO = ["..KK...KK.", ".KYOK.KVK.", "KVYOVKKVVK", "KVVVVVVvK.", ".KVvVVVVVK"
 MAO = ["KKK", "KGK", "KKK"]
 
 
-def _linha(x0, y0, x1, y1):
-    n = max(abs(x1 - x0), abs(y1 - y0), 1)
-    return [(round(x0 + (x1 - x0) * i / n), round(y0 + (y1 - y0) * i / n)) for i in range(n + 1)]
-
-
 def _traco(g, a, b, cor, grosso=1):
-    pts = _linha(*a, *b)
+    pts = linha(*a, *b)
     r = range(-grosso, grosso + 1)
     for x, y in pts:
         for dx in r:
