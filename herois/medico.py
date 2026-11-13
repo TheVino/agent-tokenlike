@@ -218,14 +218,18 @@ CHAPEU = [
     "KkkkkkkkkkkkkkK",
     ".KKKKKKKKKKKKK.",
 ]
-# capa curta sobre os ombros (abaixo do pescoço)
+# capa curta caída sobre o ombro de trás (abaixo do pescoço); para na coluna da âncora + 7 (x = centro da cabeça)
+# para não cobrir a junta do braço da frente, que sai em x >= centro + 1
 CAPA = ["." * 15] * 16 + [
-    "..KKKKKKKKKKK..",
-    ".KRRRRRRRRRRRK.",
-    "KRRRRRRYRRRRRrK",
-    "KrRRRRRRRRRRrrK",
-    ".KrrK.....KrK..",
-    "..KK.......K...",
+    "..KKKKKK.......",
+    ".KRRRRRK.......",
+    "KRRRRRYK.......",
+    "KRRRRRRK.......",
+    "KrRRRRK........",
+    "KrRRRRK........",
+    "KrrRRK.........",
+    "KrrrK..........",
+    ".KKK...........",
 ]
 DOUTOR = [CHAPEU[i] if i < len(CHAPEU) else CAPA[i] for i in range(len(CAPA))]
 ESTAGIOS = [
