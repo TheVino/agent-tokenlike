@@ -7,7 +7,31 @@ import tokenlike as tp
 import arte
 import visual as V
 
-slime = V.grid_to_map(tp.SLIME, tp.SLIME_PALETTE)
+SLIME_16_PAL = {
+    "K": "#1b1b2f", "G": "#57d36b", "L": "#b4f5a8", "D": "#2f9a4a",
+    "W": "#ffffff", "B": "#1b1b2f", "P": "#ff8fb1",
+    "S": "#d7dde9", "s": "#8a94a8", "R": "#e2384d", "Y": "#ffd23f", "y": "#c99a00",
+    "T": "#8fd8ff",   # lágrima, gotas de pensamento e o "z" do sono
+}
+SLIME_16 = [
+    "................",
+    "................",
+    "................",
+    "......KKKK......",
+    "....KKLLGGKK....",
+    "...KLLGGGGGGK...",
+    "..KLGGGGGGGGGK..",
+    "..KLGGGGGGGGGK..",
+    ".KGGGWWGGWWGGGK.",
+    ".KGGGWBGGWBGGGK.",
+    ".KGPPGGGGGGPPGK.",
+    ".KGGGGGKKGGGGGK.",
+    ".KGGGGGGGGGGGGK.",
+    ".KDGGGGGGGGGGDK.",
+    "..KDDDDDDDDDDK..",
+    "...KKKKKKKKKK...",
+]
+slime = V.grid_to_map(SLIME_16, SLIME_16_PAL)
 assert V.bbox(slime) == (1, 3, 15, 16), V.bbox(slime)
 assert V.grid_to_map(["A.", ".B"], {"A": "#111111"}) == {(0, 0): "#111111"}  # pula '.' e letra sem cor
 

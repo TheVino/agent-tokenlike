@@ -39,8 +39,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 import arte  # noqa: E402
-from arte_herois import (SLIME_PALETTE, SLIME_GOTINHA, SLIME, SLIME_CAVALEIRO,  # noqa: E402
-                         REI_SLIME, blink_grid, estados_slime)
+from herois import montar as _montar, slime as _slime  # noqa: E402
 import folha  # noqa: E402
 import masmorra as M  # noqa: E402
 import visual  # noqa: E402
@@ -436,11 +435,11 @@ class CharacterDef:
 
 def builtin_characters() -> list[CharacterDef]:
     stages = []
-    for floor, title, grid in ((1, "Gotinha", SLIME_GOTINHA), (3, "Slime", SLIME),
-                               (8, "Slime Cavaleiro", SLIME_CAVALEIRO), (15, "Rei Slime", REI_SLIME)):
-        closed = ("grid", blink_grid(grid, "WB", "G"), SLIME_PALETTE)
-        estados = {e: [("grid", g, SLIME_PALETTE) for g in gs] for e, gs in estados_slime(title).items()}
-        stages.append({"floor": floor, "title": title, "frames": estados["idle"],
+    for i, st in enumerate(_slime.ESTAGIOS):
+        estados = {e: [("grid", g, _slime.PAL) for g in gs] for e, gs in _montar.estados(_slime, i).items()}
+        piscar = _montar._sobrepor(_slime.BLINK, st["extra"], *_slime.ANCORA["idle"][2]) if st["extra"] else _slime.BLINK
+        closed = ("grid", piscar, _slime.PAL)
+        stages.append({"floor": st["floor"], "title": st["title"], "frames": estados["idle"],
                        "blink": closed, "sleep": closed, "estados": estados})
     return [CharacterDef("slime", "Slime", stages, stats={"hp": 20, "atk": 3, "def": 0, "dodge": 0})]
 
@@ -695,15 +694,16 @@ def spec_to_map(spec, k: int = None):
         pm = {(x // step, y // step): _hex(src.get(x, y))
               for y in range(0, sh, step) for x in range(0, sw, step) if not src.transparency_get(x, y)}
         w, h = math.ceil(sw / step), math.ceil(sh / step)
-    dx, dy = (16 - w) // 2, 16 - h
+    lado = 16 * (k or max(1, -(-h // 16)))      # grade 32 px: quadro de 32 (k = 2)
+    dx, dy = (lado - w) // 2, lado - h
     return {(x + dx, y + dy): c for (x, y), c in pm.items()}
 
 
 def spec_altura(spec) -> int:
-    """Altura final (já reduzida) do quadro; grid e PNG solto ficam em 16."""
+    """Altura final (já reduzida) do quadro; grid = altura da grade; PNG solto fica em 16."""
     if spec[0] == "sheet":
         return -(-(spec[2][3] - spec[2][1]) // spec[3])
-    return 16
+    return len(spec[1]) if spec[0] == "grid" else 16
 
 
 def spec_k(spec) -> int:

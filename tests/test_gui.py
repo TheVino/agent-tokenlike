@@ -427,6 +427,19 @@ for st in tp.all_characters()["slime"].stages + tp.all_characters()["fantasma"].
 app10.run["dead"] = True; app10.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
 app10.on_death(); app10.tick(); assert app10.estado_visto == "failed"
 app10.new_run(); pump(app10, 300); app10.quit()
+# test_slime_32: 3 estágios, 9 estados, quadros 32x32
+sl = tp.builtin_characters()[0]
+assert [s["title"] for s in sl.stages] == ["Gotinha", "Slime", "Rei Slime"] and sl.stage_floors == [1, 4, 10]
+for st in sl.stages:
+    assert set(st["estados"]) == set(tp.folha.ESTADOS)
+    assert all(len(sp[1]) == 32 and all(len(l) == 32 for l in sp[1]) for v in st["estados"].values() for sp in v)
+    assert len(st["blink"][1]) == 32 and st["blink"][1] != st["frames"][0][1]
+# test_heroi32_mesmo_tamanho: k = 2 e o quadro desenhado fica do tamanho do 16 px antigo
+app11 = tp.PetApp(Args()); PENDING.clear(); app11.char_var.set("slime"); app11.change_character(); app11.new_run()
+app11.refresh_look()
+assert app11.hero_k == 2 and abs(32 * app11.hero_px - 16 * app11.px) <= 2, (app11.hero_px, app11.px)
+app11.run["stage"] = 3; app11.load_images(); app11.refresh_look()   # save antigo de 4 estágios: não quebra
+app11.quit()
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)

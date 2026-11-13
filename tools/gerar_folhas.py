@@ -162,8 +162,6 @@ def main():
             if not sem:
                 gerar_folha(pasta / nome, est, FANTASMA_PAL, cel=20)
                 print("gerado", pasta / nome)
-    if not faixas:
-        faixas = [(AH.estados_slime(t), AH.SLIME_PALETTE) for t in AH.GRADES_SLIME]
         faixas += [(estados_fantasma(g, m, b), FANTASMA_PAL) for _, g, m, b in FANTASMAS]
     saida = RAIZ / "tools" / "saida" / "preview_herois.png"
     preview(saida, faixas)
