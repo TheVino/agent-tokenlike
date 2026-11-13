@@ -129,17 +129,23 @@ assert all(len(q) == 32 and all(len(l) == 32 for l in q) for qs in est.values() 
 assert est["idle"][0][0][31] == "X"
 
 montar.validar(falso())
-h = falso(); h.QUADROS["idle"][0] = h.QUADROS["idle"][0][:31]
 for ruim in (lambda h: h.QUADROS["idle"].__setitem__(0, h.QUADROS["idle"][0][:31]),
              lambda h: h.QUADROS["idle"].__setitem__(0, ["." * 32] * 32),
              lambda h: h.QUADROS.pop("review"),
-             lambda h: h.QUADROS.__setitem__("idle", h.QUADROS["idle"][:3])):
+             lambda h: h.QUADROS.__setitem__("idle", h.QUADROS["idle"][:3]),
+             lambda h: h.QUADROS.__setitem__("idle", h.QUADROS["idle"] * 2),
+             lambda h: h.ESTAGIOS.pop(),
+             lambda h: h.ESTAGIOS[0].__setitem__("extra", ["X"]),
+             lambda h: h.ANCORA.__setitem__("idle", [(1.5, 2)] * 4)):
     h = falso(); h.QUADROS = {k: list(v) for k, v in h.QUADROS.items()}
     ruim(h)
     try:
         montar.validar(h); assert False, "validar aceitou"
     except AssertionError as e:
-        assert "validar aceitou" not in str(e) and ("idle" in str(e) or "review" in str(e)), e
+        assert "validar aceitou" not in str(e), e
+for n in (5, 6):
+    h = falso(); h.QUADROS["idle"] = h.QUADROS["idle"][:1] * n; h.ANCORA["idle"] = [(0, 0)] * n
+    montar.validar(h)
 
 # folha 32 px com 5 quadros por estado lê de volta (células de 40 px)
 import tokenlike
@@ -148,7 +154,7 @@ est = montar.estados(h, 0)
 GF.gerar_folha(tmp / "f32.png", est, h.PAL)
 assert F.ler_png(tmp / "f32.png")[:2] == (320, 360)
 linhas, n, mapas = tokenlike.ler_folha(tmp / "f32.png")
-assert len(linhas) == 9 and all(len(l) == 8 for l in linhas), [len(l) for l in linhas]
+assert len(linhas) == 9 and all(len(l) == 5 for l in linhas), [len(l) for l in linhas]
 assert all(mapas[c] for l in linhas for c in l)
 assert n == 1 and max(c[3] - c[1] for l in linhas for c in l) <= 32
 

@@ -25,11 +25,17 @@ def estados(heroi, estagio):
 
 
 def validar(heroi):
+    est = heroi.ESTAGIOS
+    assert len(est) == 3, f"ESTAGIOS: {len(est)} itens (esperado 3)"
+    assert est[0]["extra"] is None, "ESTAGIOS[0]: extra deve ser None"
+    assert all("title" in s and "floor" in s for s in est), "ESTAGIOS: falta title/floor"
     for e in DESENHADOS:
         assert e in heroi.QUADROS, f"estado faltando: {e}"
         qs = heroi.QUADROS[e]
-        assert len(qs) == 4, f"{e}: {len(qs)} quadros (esperado 4)"
-        assert len(heroi.ANCORA.get(e, [])) == 4, f"{e}: âncoras != quadros"
+        assert 4 <= len(qs) <= 6, f"{e}: {len(qs)} quadros (esperado 4 a 6)"
+        anc = heroi.ANCORA.get(e, [])
+        assert len(anc) == len(qs), f"{e}: âncoras != quadros"
+        assert all(len(a) == 2 and all(type(v) is int for v in a) for a in anc), f"{e}: âncora não é (int, int)"
         for i, q in enumerate(qs):
             assert len(q) == N and all(len(l) == N for l in q), f"{e} quadro {i}: não é {N}x{N}"
             assert any(c != "." for l in q for c in l), f"{e} quadro {i}: vazio"

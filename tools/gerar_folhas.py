@@ -2,7 +2,7 @@
 heróis embutidos (tools/saida/preview_herois.png). Só biblioteca padrão.
 
 Folha: grade 8 x 9 (linhas na ordem de folha.ESTADOS), células de 40 px (heróis 32 px; o Fantasma antigo ainda usa 20 px/16 px) com o quadro embaixo.
-Cada estado tem 4 quadros, repetidos para encher as 8 colunas (a grade fixa usa todas).
+Cada estado tem 4 a 6 quadros; as colunas sobrando ficam vazias (o leitor ignora célula vazia).
 Uso: python tools/gerar_folhas.py [--so-preview]
 """
 import importlib
@@ -102,8 +102,7 @@ def gerar_folha(path, est, pal, cel=CEL):
     px = [[b"\0\0\0\0"] * w for _ in range(h)]
     for r, e in enumerate(folha.ESTADOS):
         quadros = est[e]
-        for c in range(8):
-            g = quadros[c % len(quadros)]
+        for c, g in enumerate(quadros[:8]):   # só os quadros reais; as células sobrando ficam vazias
             n = len(g)
             ox, oy = c * cel + (cel - n) // 2, r * cel + cel - n
             for y, lin in enumerate(g):
