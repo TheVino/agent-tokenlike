@@ -4,7 +4,7 @@ N = 32
 DESENHADOS = ("idle", "run_r", "waving", "jumping", "failed", "waiting", "running", "review")
 
 
-def _sobrepor(quadro, extra, ax, ay):
+def sobrepor(quadro, extra, ax, ay):
     g = [list(l) for l in quadro]
     for dy, lin in enumerate(extra):
         for dx, ch in enumerate(lin):
@@ -19,7 +19,7 @@ def estados(heroi, estagio):
     est = {}
     for e in DESENHADOS:
         qs = heroi.QUADROS[e]
-        est[e] = [_sobrepor(q, extra, *heroi.ANCORA[e][i]) if extra else list(q) for i, q in enumerate(qs)]
+        est[e] = [sobrepor(q, extra, *heroi.ANCORA[e][i]) if extra else list(q) for i, q in enumerate(qs)]
     est["run_l"] = [[l[::-1] for l in q] for q in est["run_r"]]
     return {e: est[e] for e in ("idle", "run_r", "run_l") + DESENHADOS[2:]}
 

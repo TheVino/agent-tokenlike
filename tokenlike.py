@@ -437,7 +437,7 @@ def builtin_characters() -> list[CharacterDef]:
     stages = []
     for i, st in enumerate(_slime.ESTAGIOS):
         estados = {e: [("grid", g, _slime.PAL) for g in gs] for e, gs in _montar.estados(_slime, i).items()}
-        piscar = _montar._sobrepor(_slime.BLINK, st["extra"], *_slime.ANCORA["idle"][2]) if st["extra"] else _slime.BLINK
+        piscar = _montar.sobrepor(_slime.BLINK, st["extra"], *_slime.ANCORA["idle"][2]) if st["extra"] else _slime.BLINK
         closed = ("grid", piscar, _slime.PAL)
         stages.append({"floor": st["floor"], "title": st["title"], "frames": estados["idle"],
                        "blink": closed, "sleep": closed, "estados": estados})

@@ -28,13 +28,15 @@ BOCA = {
 
 GOTA = [".K.", "KGK", "KDK", ".K."]
 GOTA_P = ["K", "K"]
-BRACO_CIMA = ["...KK.", "..KGLK", ".KGGK.", "KGGK..", "KGGK..", "KGK..."]
-BRACO_MEIO = [".....KK", "...KKGLK", "KKKGGGK.", "KGGGKK..", "KGK....."]
-BRACO_BAIXO = ["KKK.....", "KGGKK...", ".KKGGKK.", "...KKGLK", ".....KK."]
-Z_P = ["TT", ".T", "TT"]
-Z_G = ["TTT", "..T", ".T.", "T..", "TTT"]
-PERG_P = [".TT", "...", ".T."]
-PERG = [".TTT.", "TT.TT", "...TT", "..TT.", "..T..", ".....", "..T.."]
+# bracinho de gosma (raiz embaixo à esquerda): baixo, horizontal, diagonal, para cima = arco do aceno
+BRACO_BAIXO = ["KKK......", "KGGKK....", "KGGGGKK..", ".KKGGGGK.", "...KKGGLK", ".....KKK."]
+BRACO_HOR = ["......KKK.", "KKKKKKGGLK", "KGGGGGGGGK", "KGGGGGGGDK", "KKKKKKKKK."]
+BRACO_DIAG = [".....KKK", "....KGLK", "...KGGGK", "..KGGGK.", ".KGGGK..", "KGGGK...", "KGGK....", "KKK....."]
+BRACO_CIMA = [".KKK.", "KGLGK", "KGGGK", "KGGGK", "KGGK.", "KGGK.", "KGGK.", "KKK.."]
+Z_P = ["KKKKK", "KTTTK", "KKKTK", "KKTKK", "KTKKK", "KTTTK", "KKKKK"]
+Z_G = ["KKKKKK", "KTTTTK", "KKKKTK", "KKKTKK", "KKTKKK", "KTKKKK", "KTTTTK", "KKKKKK"]
+PERG_P = [".KKK.", "KTTTK", "KKKTK", "..KKK", "..KTK", "..KKK"]
+PERG = [".KKKK.", "KTTTTK", "KTKKTK", "KKKKTK", "..KTTK", "..KTK.", "..KKK.", "..KTK.", "..KKK."]
 LAGRIMA = ["T", "T"]
 
 
@@ -125,10 +127,10 @@ _SPECS = {
               dict(w=25, h=15, cx=17, lean=5, olhar=3, por=((GOTA_P, 2, 29),)),
               dict(w=24, h=17, cx=18, lean=4, olhar=2, por=((GOTA, 3, 26),))],
     # bracinho de gosma sai do lado direito e balança
-    "waving": [dict(w=24, h=18, cx=14, olhos="feliz", boca="aberta", por=((BRACO_MEIO, 22, 17),)),
-               dict(w=24, h=18, cx=14, olhos="feliz", boca="aberta", por=((BRACO_CIMA, 24, 13),)),
-               dict(w=24, h=18, cx=14, olhos="feliz", boca="aberta", por=((BRACO_MEIO, 22, 17),)),
-               dict(w=24, h=18, cx=14, olhos="feliz", boca="aberta", por=((BRACO_BAIXO, 23, 19),))],
+    "waving": [dict(w=24, h=18, cx=13, olhos="feliz", boca="aberta", por=((BRACO_BAIXO, 22, 18),)),
+               dict(w=24, h=18, cx=13, olhos="feliz", boca="aberta", por=((BRACO_HOR, 22, 16),)),
+               dict(w=24, h=18, cx=13, olhos="feliz", boca="aberta", por=((BRACO_DIAG, 22, 11),)),
+               dict(w=24, h=18, cx=13, olhos="feliz", boca="aberta", por=((BRACO_CIMA, 22, 9),))],
     # agacha, estica no ar, alto, cai, achata ao cair
     "jumping": [dict(w=28, h=12, olhos="fechado", boca="reta"),
                 dict(w=18, h=23, base=27, boca="o"),
@@ -143,9 +145,9 @@ _SPECS = {
                dict(w=30, h=7, olhos="x", boca=None)],
     # cabeça pende de lado, olhos fechados, "z" subindo
     "waiting": [dict(w=25, h=17, cx=14, lean=-2, olhos="fechado", boca=None),
-                dict(w=26, h=16, cx=14, lean=-4, olhos="fechado", boca=None, por=((Z_P, 22, 11),)),
-                dict(w=26, h=16, cx=14, lean=-4, olhos="fechado", boca="o", por=((Z_P, 23, 8), (Z_G, 26, 3))),
-                dict(w=25, h=17, cx=14, lean=-3, olhos="fechado", boca=None, por=((Z_G, 27, 1),))],
+                dict(w=26, h=16, cx=14, lean=-4, olhos="fechado", boca=None, por=((Z_P, 21, 7),)),
+                dict(w=26, h=16, cx=14, lean=-4, olhos="fechado", boca="o", por=((Z_P, 21, 7), (Z_G, 25, 1))),
+                dict(w=25, h=17, cx=14, lean=-3, olhos="fechado", boca=None, por=((Z_G, 25, 0),))],
     # investe e morde: recua, avança de boca aberta, fecha os dentes
     "running": [dict(w=25, h=16, cx=15, lean=-3, olhos="bravo", boca="reta"),
                 dict(w=26, h=16, cx=16, lean=5, olhar=3, olhos="bravo", boca="aberta"),
@@ -153,9 +155,9 @@ _SPECS = {
                 dict(w=24, h=18, cx=15, lean=1, olhar=1, olhos="bravo", boca="aberta")],
     # olha para cima e o "?" aparece
     "review": [dict(w=24, h=18, cx=14, olhos="cima", boca="reta"),
-               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((PERG_P, 24, 8),)),
+               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((PERG_P, 24, 7),)),
                dict(w=23, h=19, cx=14, olhos="cima", boca="o", por=((PERG, 24, 3),)),
-               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((PERG, 24, 2),))],
+               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((PERG, 24, 1),))],
 }
 
 QUADROS, ANCORA = {}, {}
