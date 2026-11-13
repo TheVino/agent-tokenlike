@@ -138,21 +138,21 @@ _SPECS = {
     "failed": [dict(olhos="triste", bracos=(((20, 25), (23, 29)), ((10, 25), (7, 29))), por=((LAGRIMA, 11, 25),)),
                dict(olhos="triste", h=8, hc=6, chapeu=10, tilt=-2, brilho=1,
                     bracos=(((20, 26), (23, 29)), ((10, 26), (7, 29))), por=((ESPORO, 25, 12),)),
-               dict(olhos="triste", h=8, hc=5, chapeu=10, tilt=-3, por=((LAGRIMA, 11, 26), (ESPORO, 24, 9),
+               dict(cx=16, olhos="triste", h=8, hc=5, chapeu=10, tilt=-3, por=((LAGRIMA, 11, 26), (ESPORO, 24, 9),
                                                                       (ESPORO, 3, 13))),
-               dict(olhos="x", h=7, hc=4, chapeu=10, tilt=-3, lean=-1, brilho=1,
+               dict(cx=17, olhos="x", h=7, hc=4, chapeu=10, tilt=-3, lean=-1, brilho=1,
                     por=((ESPORO_P, 25, 8), (ESPORO, 4, 9), (ESPORO, 26, 14))),
-               dict(olhos="x", h=7, hc=4, chapeu=11, tilt=-4, lean=-1, brilho=2, por=((ESPORO_P, 6, 6),))],
+               dict(cx=18, olhos="x", h=7, hc=4, chapeu=11, tilt=-4, lean=-1, brilho=2, por=((ESPORO_P, 6, 6),))],
     # cochila com o chapéu caído para a frente, "z" subindo
     "waiting": [dict(h=8, olhos="fechado", tilt=2, brilho=2),
                 dict(h=8, olhos="fechado", tilt=3, brilho=2, por=((Z_P, 24, 6),)),
                 dict(h=8, olhos="fechado", tilt=3, brilho=2, por=((Z_P, 23, 6), (Z_G, 26, 0))),
                 dict(h=8, olhos="fechado", tilt=2, brilho=2, por=((Z_G, 26, 0),))],
     # golpe: puxa o braço, espreme o chapéu e sopra uma nuvem de esporos que se espalha
-    "running": [dict(cx=13, lean=-2, tilt=-2, hc=8, chapeu=8, olhos="bravo", bracos=(((8, 25), (3, 21)),)),
+    "running": [dict(cx=15, lean=-1, tilt=-1, hc=8, chapeu=8, olhos="bravo", bracos=(((8, 25), (3, 21)),)),
                 dict(cx=14, lean=1, hc=5, chapeu=11, olhos="bravo", brilho=1, bracos=(((19, 24), (24, 22)),),
                      por=((PUFF, 25, 22),)),
-                dict(cx=14, lean=3, tilt=2, olhos="bravo", bracos=(((19, 24), (22, 24)),),
+                dict(cx=14, lean=3, tilt=1, olhos="bravo", bracos=(((19, 24), (22, 24)),),
                      por=((NUVEM, 20, 18),)),
                 dict(cx=14, lean=1, tilt=1, olhos="bravo", brilho=1, bracos=(((19, 24), (23, 27)),),
                      por=((NUVEM, 19, 9), (ESPORO, 25, 21), (ESPORO_P, 28, 26), (ESPORO_P, 22, 19)))],
@@ -178,7 +178,8 @@ def _extra(pecas, w=27, h=14):
     return ["".join(l) for l in g]
 
 
-# esporos brilhando em volta do chapéu (o topo do chapéu fica na linha 6, centrado na coluna 13)
+# esporos brilhando em volta do chapéu (o topo do chapéu fica na linha 6, centrado na coluna 13); o extra tem 27
+# colunas, então o topo do chapéu (ct + tilt) fica entre x=13 e x=18 em todo quadro para os esporos caberem
 _BRILHO = ((ESPORO, 2, 1), (ESPORO, 22, 6), (ESPORO, 0, 9))
 ESPOROS = _extra(_BRILHO)
 # ancião: cogumelinhos brotando do topo do chapéu e dois esporos dos lados

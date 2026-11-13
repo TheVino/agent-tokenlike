@@ -333,6 +333,7 @@ def test_heroi_cogumelo():
     for i in range(3):
         ult = montar.estados(cg, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
+    extra_dentro(cg)   # esporos laterais inteiros, mesmo com o corpo indo para a esquerda
 
 
 test_heroi_cogumelo()
