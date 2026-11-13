@@ -597,6 +597,8 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
             if unlock and unlock not in M.ACHIEVEMENTS:
                 raise ValueError(f"'unlock' desconhecido: {unlock}")
             traco = data.get("traço") or data.get("traco") or {}
+            if not isinstance(traco, dict):
+                raise ValueError("'traço' precisa ser um objeto")
             validas = M.stats(M.new_run("x", {}, 0))
             for k, v in traco.items():
                 if k not in validas or isinstance(v, bool) or not isinstance(v, (int, float)):

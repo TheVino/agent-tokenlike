@@ -304,4 +304,16 @@ for nome, chave in (("veneno", "mortes_veneno"), ("queimadura", "mortes_queima")
 r = pet(); M._contar(r, [], [foe()], True); assert r["cont"]["horda4"] == 1
 velho = {"items": [], "hp": 10, "base": {"maxhp": 20, "atk": 3, "def": 0, "dodge": 0}}
 assert M.migrate_run(velho)["cont"] == M.CONT_ZERO and velho["cont"] is not M.CONT_ZERO
+# horda de 4 empatada (limite de rodadas) não conta horda4; vencida conta
+_cb, _rw, _hm = M.combate, M.ROOM_WEIGHTS, M.horde_max
+M.ROOM_WEIGHTS = [("horde", 1)]; M.horde_max = lambda f: 4
+for empate, esperado in ((True, 0), (False, 1)):
+    M.combate = lambda run, st, foes, rng, f, e=empate: (True, [], "", e)
+    r = pet(); r["floor"] = max(M.HORDE_MIN_FLOOR, 2); rng = random.Random(5); meta = M.new_meta()
+    for _ in range(300):
+        r["energy"] = 10**6; ev = M.enter_room(r, meta, rng)
+        if ev["name"] == "Horda (4)":
+            break
+    assert ev["name"] == "Horda (4)" and r["cont"]["horda4"] == esperado, (empate, r["cont"])
+M.combate, M.ROOM_WEIGHTS, M.horde_max = _cb, _rw, _hm
 print("ok: combate")

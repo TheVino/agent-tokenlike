@@ -946,7 +946,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         hp_before = run["hp"]
         won, ev["hits"], killer, empate = combate(run, st, foes, rng, f)
         ev["dmg"] = hp_before - run["hp"]
-        _contar(run, ev["hits"], foes, kind == "horde" and len(foes) == 4 and won)
+        _contar(run, ev["hits"], foes, kind == "horde" and len(foes) == 4 and won and not empate)
         if not won:
             die(run, meta, ev, killer, kind)
             return ev
