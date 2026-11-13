@@ -845,7 +845,7 @@ def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> 
     meta["runs"] += 1
     meta["graveyard"].append({
         "run": run["id"], "char": run["char"], "floor": run["floor"], "room": run["room"],
-        "killer": killer, "kind": kind, "items": [i["key"] for i in run["items"]],
+        "killer": killer, "kind": kind, "items": [{"key": i["key"], "rar": i["rar"]} for i in run["items"]],
         "gold": run["gold"], "kills": run["kills"], "date": date.today().isoformat(),
     })
     meta["graveyard"] = meta["graveyard"][-50:]
