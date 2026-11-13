@@ -1021,6 +1021,38 @@ ROOM_ART = {
 }
 
 
+# ------------------------------------------------------ status (janela de Status: um por campo de stats())
+STAT_ART = {
+    "maxhp": [".KK.KK.", "KrrKrrK", "KrwrrrK", "KrrrrrK", ".KrrrK.", "..KrK..", "...K..."],
+    "atk": [".....KK", "....KnK", "...KnK.", "KKKnK..", ".KbK...", "KbKKK..", "KK....."],
+    "def": ["KKKKKKK", "KGGgGGK", "KGGgGGK", "KgggggK", "KGGgGGK", ".KGgGK.", "..KKK.."],
+    "spd": ["cc..cc..", ".cc..cc.", "..cc..cc", ".cc..cc.", "cc..cc.."],
+    "crit": ["...e...", "...e...", "..eoe..", "eeoroee", "..eoe..", "...e...", "...e..."],
+    "critdmg": ["r..r..r", ".r.r.r.", "..rer..", "rrewerr", "..rer..", ".r.r.r.", "r..r..r"],
+    "dodge": [".....KK", "....KwK", "...KwGK", "..KwGK.", ".KwGK..", "KGKK...", "K......"],
+    "lifesteal": ["KKKKKKK", "KwKKKwK", "KwK.KwK", ".K...K.", ".r...r.", ".r...r."],
+    "gold": [".KKKK.", "KyeeyK", "KeyyYK", "KeyyYK", "KyYYyK", ".KKKK."],
+    "energy": ["..KK..", ".KPPK.", "KPwPpK", "KPPppK", ".KPpK.", "..KK.."],
+    "trap": ["..K...K..", ".KGK.KGK.", "KGggKGggK", "KKKKKKKKK"],
+    "area": ["..PPP..", ".P...P.", "P..w..P", "P.www.P", "P..w..P", ".P...P.", "..PPP.."],
+    "queimar": ["...r...", "..ro...", ".roor..", ".rooer.", "roeeer.", "roeyeor", ".rrrrr."],
+    "eletrizar": ["....ey", "...ey.", "..eyy.", ".eeeey", "...ey.", "..ey..", ".e...."],
+    "envenenar": ["..V..", "..V..", ".VvV.", "VvvvV", "VvwvV", "VvvvV", ".VVV."],
+    "congelar": ["i..i..i", ".i.i.i.", "..iwi..", "iiwwwii", "..iwi..", ".i.i.i.", "i..i..i"],
+    "bloqueio": ["KKKKKKKK", "KGgKGGgK", "KKKKKKKK", "KGGgKGgK", "KKKKKKKK", "KGgKGGgK", "KKKKKKKK"],
+    "espinhos": ["..v.v..", ".vVVVv.", "vVvvvVv", ".VvwvV.", "vVvvvVv", ".vVVVv.", "..v.v.."],
+    "cura_sala": ["..vvv..", "..vwv..", "vvvwvvv", "vwwwwwv", "vvvwvvv", "..vwv..", "..vvv.."],
+    "cura_andar": ["...o...", "..oeo..", "..oeo..", ".oeyeo.", ".bKbKb.", "bBbBbBb"],
+    "custo_ataque": ["..K..", ".KrK.", "KrrrK", "KrwrK", "KrrrK", ".KKK."],
+    "furia": [".R...R.", "RrR.RrR", ".Rr.rR.", ".......", ".Rr.rR.", "RrR.RrR", ".R...R."],
+    "duplo": ["w...w..", ".n...n.", "..n...n", "...w...", "w...w..", ".n...n.", "..n...n"],
+    "ajudante": ["..KKK..", ".KPPPK.", "KPwPwPK", "KPPPPPK", ".KPPPK.", "K.K.K.K"],
+    "crescer": ["..v.v..", ".vVvVv.", "..vVv..", "...V...", "...V...", ".bbbbb.", "..bbb.."],
+    "sorte": [".vv.vv.", "vVvvvVv", ".vvVvv.", "vVvvvVv", ".vv.vv.", "...V...", "...V..."],
+    "desconto": ["rr...r", "rr..r.", "...r..", "..r...", ".r..rr", "r...rr"],
+}
+
+
 def _escada(n, c):
     """Escada de n degraus (2x2 px cada) subindo para a direita."""
     return ["".join(c if 2 * n - 1 - y < 2 * (x // 2 + 1) else "." for x in range(2 * n)) for y in range(2 * n)]
@@ -1063,6 +1095,7 @@ def all_art():
     for group in (ITEM_ART, FOE_ART, ROOM_ART, MENU_ART):
         out.update(group)
     out["coroa"] = CROWN
+    out.update({"stat_" + k: g for k, g in STAT_ART.items()})
     out.update({"conq_" + k: g for k, g in CONQ_ART.items()})
     return out
 

@@ -83,7 +83,7 @@ MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
 HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
 CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
-JANELAS = ("menu_win", "heroes_win", "conq_win", "cemi_win")
+JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win")
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -772,6 +772,54 @@ def pet_looks(run):
     tipos = {l["type"] for l, _ in looks}
     st = M.stats(run)
     return looks + [({"type": t}, None) for k, t in ELEMENTO_LOOK.items() if st[k] > 0 and t not in tipos]
+
+
+def _pct(v):
+    return f"{round(v * 100)}%"
+
+
+# janela de Status: (campo de stats(), nome, formato, teto ou None, mostra mesmo zerado)
+STAT_LINHAS = (
+    ("maxhp", "HP máx", str, None, True),
+    ("atk", "Ataque", str, None, True),
+    ("def", "Defesa", str, None, True),
+    ("spd", "Velocidade", lambda v: f"{round(v)}", None, True),
+    ("crit", "Crítico", _pct, M.MAX_CRIT, True),
+    ("critdmg", "Dano crítico", lambda v: f"×{v:g}", None, True),
+    ("dodge", "Esquiva", _pct, M.MAX_DODGE, False),
+    ("lifesteal", "Roubo de vida", lambda v: f"+{v} por vitória", None, False),
+    ("duplo", "Golpe duplo", _pct, M.MAX_DUPLO, False),
+    ("area", "Ataque em área", lambda v: "sim", None, False),
+    ("queimar", "Queimar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("eletrizar", "Eletrizar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("envenenar", "Envenenar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("congelar", "Congelar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("bloqueio", "Bloqueios por luta", str, M.MAX_BLOQUEIO, False),
+    ("espinhos", "Espinhos", _pct, M.MAX_ESPINHOS, False),
+    ("cura_sala", "Cura por sala", lambda v: f"+{v} HP", None, False),
+    ("cura_andar", "Cura por andar", lambda v: f"+{v} HP", None, False),
+    ("custo_ataque", "Custo de ataque", lambda v: f"-{v} HP", None, False),
+    ("furia", "Fúria", lambda v: f"+{v} ATK a cada 10%", None, False),
+    ("ajudante", "Ajudante", lambda v: f"{v} de dano", None, False),
+    ("crescer", "Crescer", lambda v: f"+1 ATK / {v} kills", None, False),
+    ("gold", "Ouro", lambda v: f"+{_pct(v)}", None, False),
+    ("energy", "Energia", lambda v: f"+{_pct(v)}", M.MAX_ENERGY_BONUS, False),
+    ("trap", "Armadilhas", lambda v: f"×{v:g}", None, False),
+    ("sorte", "Sorte", lambda v: f"+{_pct(v)}", M.MAX_SORTE, False),
+    ("desconto", "Desconto", _pct, M.MAX_DESCONTO, False),
+)
+
+
+def stat_linhas(run, st):
+    """[(campo, nome, valor)] da janela de Status: os fixos sempre, os outros só quando mudam algo."""
+    st = dict(st, crescer=min([M.item_fx(i["key"], i["rar"]).get("crescer", 0) for i in run["items"]
+                               if "crescer" in M.ITEMS.get(i["key"], {}).get("fx", {})] or [0]))
+    out = []
+    for k, nome, fmt_, teto, sempre in STAT_LINHAS:
+        v = st[k]
+        if sempre or (v != 1 if k == "trap" else v):
+            out.append((k, nome, fmt_(v) + (f" / {fmt_(teto)}" if teto is not None else "")))
+    return out
 
 
 @lru_cache(maxsize=None)
@@ -2065,34 +2113,74 @@ class PetApp:
     def show_stats(self):
         run, meta = self.run, self.meta
         st = M.stats(run)
-        lines = [f"Run #{run['id']}  -  {self.char.name} ({self.stage_title})"
-                 f"    Modo: {MODES[self.state['mode']]}",
-                 f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
-                 f"ATK {st['atk']}   DEF {st['def']}   Esquiva {int(st['dodge'] * 100)}%"
-                 f"   Ouro {run['gold']}",
-                 f"Velocidade {round(st['spd'])}   Crítico {round(st['crit'] * 100)}%"
-                 f"   Dano crítico ×{st['critdmg']:g}",
-                 "Itens:"]
+        w, f = self.janela("stats_win", f"Status  ·  Run #{run['id']}")
+        head = tk.Frame(f, bg=PANEL_BG)
+        head.pack(fill="x", pady=(4, 0))
+        self.stats_thumb = map_img(self.look_maps[0], 56)    # referência: o tk não guarda a imagem sozinho
+        tk.Label(head, image=self.stats_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
+        col = tk.Frame(head, bg=PANEL_BG)
+        col.pack(side="left", fill="x")
+        tk.Label(col, text=f"{self.char.name}  ·  {self.stage_title}", bg=PANEL_BG, fg=GOLD, font=self.font,
+                 anchor="w").pack(fill="x")
+        tk.Label(col, text=f"Andar {run['floor']}-{run['room']}   ·   Modo {MODES[self.state['mode']]}",
+                 bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+        barra = tk.Canvas(col, width=170, height=8, bg=BAR_BG, highlightthickness=0)
+        barra.pack(anchor="w", pady=3)
+        barra.create_rectangle(0, 0, 170 * min(1, run["hp"] / st["maxhp"]), 8, fill=HURT, width=0)
+        escudo = f"   ·   escudo {run['shield']}" if run["shield"] > 0 else ""
+        tk.Label(col, text=f"♥ {run['hp']}/{st['maxhp']}{escudo}   ·   $ {run['gold']}   ·   {run['kills']} kills"
+                 f"   ·   {run['bosses']} chefe{'s' if run['bosses'] != 1 else ''}", bg=PANEL_BG, fg=TEXT, font=self.font_small,
+                 anchor="w").pack(fill="x")
         if run.get("traco"):
-            lines.insert(-1, f"Traço: {M.fx_text(run['traco'])}")
-        for i in run["items"]:
-            lines.append(f"  {M.ITEMS[i['key']]['name']} ({M.RAR_NAMES[i['rar']]}):"
-                         f" {M.fx_text(M.item_fx(i['key'], i['rar']))}")
-        if not run["items"]:
-            lines.append("  -")
-        if run["shield"] > 0:
-            lines.append(f"Escudo: {run['shield']}")
-        if run["pending"]:
-            lines.append(f"Esperando escolha: {M.ITEMS[run['pending']['key']]['name']}")
-        stored = int(run["energy"] // M.room_cost(run))
+            tk.Label(f, text=f"Traço: {M.fx_text(run['traco'])}", bg=PANEL_BG, fg=MUTED, font=self.font_small,
+                     anchor="w").pack(fill="x", pady=(4, 0))
+        self.menu_sep(f)
+        grade = tk.Frame(f, bg=PANEL_BG)
+        grade.pack(fill="x")
+        for n, (k, nome, valor) in enumerate(stat_linhas(run, st)):
+            r, c = n // 2, (n % 2) * 3
+            tk.Label(grade, image=self.icon(arte.STAT_ART[k], 2), bg=PANEL_BG, width=20, height=18).grid(
+                row=r, column=c)
+            tk.Label(grade, text=nome, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").grid(
+                row=r, column=c + 1, sticky="w", padx=(2, 6))
+            tk.Label(grade, text=valor, bg=PANEL_BG, fg=TEXT, font=self.font_small, anchor="e").grid(
+                row=r, column=c + 2, sticky="e", padx=(0, 14 if c == 0 else 0))
+        self.menu_sep(f)
+        dica = "passe o mouse num item" if run["items"] or run["consumed"] else ""
+        info = tk.Label(f, text=dica, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w", justify="left",
+                        wraplength=330)
+        for titulo, lista, s, dim in ((f"Itens ({len(run['items'])})", run["items"], 3, False),
+                                      (f"Consumidos ({len(run['consumed'])})", run["consumed"], 2, True)):
+            if not lista and dim:
+                continue
+            tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+            box = tk.Frame(f, bg=PANEL_BG)
+            box.pack(fill="x", pady=(2, 4))
+            if not lista:
+                tk.Label(box, text="nenhum ainda", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(anchor="w")
+            for n, it in enumerate(i for i in lista if i["key"] in M.ITEMS):
+                rar = it.get("rar", "comum")
+                lbl = tk.Label(box, image=self.icon(arte.ITEM_ART[it["key"]], s, glow=M.RAR_COLOR.get(rar), dim=dim),
+                               bg=PANEL_BG, width=s * 9 + 4, height=s * 9 + 4)
+                lbl.grid(row=n // 12, column=n % 12)
+                txt = (f"{M.ITEMS[it['key']]['name']} ({M.RAR_NAMES.get(rar, rar)})"
+                       + ("" if dim else f": {M.fx_text(M.item_fx(it['key'], rar))}"))
+                lbl.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
+                lbl.bind("<Leave>", lambda e: info.configure(text=dica, fg=MUTED))
+        info.pack(fill="x")
+        self.menu_sep(f)
         best = meta["best"]
-        today = self.state["daily"].get(date.today().isoformat(), 0)
-        lines += [f"Energia guardada: {stored} sala(s)",
-                  f"Recorde: andar {best['floor']}-{best['room']}    Runs: {meta['runs']}",
-                  f"Tokens hoje: {fmt(today)}    Total: {fmt(self.state['tokens_total'])}"]
+        rodape = [f"Energia guardada: {int(run['energy'] // M.room_cost(run))} sala(s)",
+                  f"Recorde: andar {best['floor']}-{best['room']}   ·   Runs: {meta['runs']}",
+                  f"Tokens hoje: {fmt(self.state['daily'].get(date.today().isoformat(), 0))}"
+                  f"   ·   Total: {fmt(self.state['tokens_total'])}"]
+        if run["pending"]:
+            rodape.append(f"Esperando escolha: {M.ITEMS[run['pending']['key']]['name']}")
         if self.demo:
-            lines.append("(modo demo)")
-        self.popup(lines, 14000)
+            rodape.append("(modo demo)")
+        tk.Label(f, text="\n".join(rodape), bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w",
+                 justify="left").pack(fill="x")
+        self.ao_lado(w)
 
     def killer_icon(self, d):
         """Ícone de quem matou: monstro, chefe com coroa, mímico, status, armadilha ou desistência."""
@@ -2103,7 +2191,7 @@ class PetApp:
         spr = "mimico" if k == "Mímico" else next((m[0] for m in M.MONSTERS if m[1] == k), None)
         if spr:
             return self.icon(arte.FOE_ART[spr], 2)
-        grid = {"Queimadura": arte.CONQ_ART["queima1"], "Veneno": arte.CONQ_ART["veneno1"],
+        grid = {"Queimadura": arte.STAT_ART["queimar"], "Veneno": arte.STAT_ART["envenenar"],
                 "Armadilha": arte.ROOM_ART["armadilha"], "Desistiu": arte.ROOM_ART["escada"]}.get(k)
         return self.icon(grid or arte.ROOM_ART["lapide"], 2)
 

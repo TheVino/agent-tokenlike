@@ -473,12 +473,14 @@ for fn in PENDING[:]:
 # janelas de conquistas, cemitério e status: vazias e cheias, reabrir troca a janela, fechar não vaza
 import arte
 assert set(arte.CONQ_ART) == set(M.ACHIEVEMENTS)
-JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements))
+campos = set(M.stats(appm.run)) | {"crescer"}
+assert campos <= set(arte.STAT_ART) and campos == {k for k, *_ in tp.STAT_LINHAS}
+JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats))
 def abre_fecha():
     for _ in range(2):
         for attr, fn in JAN:
             fn(); fn(); assert getattr(appm, attr) in VIVAS
-        assert len(VIVAS - {appm.popup_win}) == 2
+        assert len(VIVAS - {appm.popup_win}) == 3
         for attr, _ in JAN:
             appm.close_win(getattr(appm, attr)); assert getattr(appm, attr) is None
         assert not VIVAS - {appm.popup_win}
@@ -493,6 +495,7 @@ appm.meta["graveyard"] = [{"run": i, "char": "naoexiste" if i % 3 else "slime", 
 appm.meta["achievements"] = list(M.ACHIEVEMENTS)[::2]
 appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40, shield=3, traco={"dodge": 0.1},
                 consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
+assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
 abre_fecha()
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
