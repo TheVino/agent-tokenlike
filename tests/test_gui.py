@@ -441,7 +441,9 @@ app12.meta["achievements"] = [a for a in app12.meta["achievements"] if a != "our
 assert not app12.is_unlocked(fake) and M.ACHIEVEMENTS["ouro300"]
 app12.meta["next_char"] = "fakeouro"; app12.new_run(announce=False); assert app12.run["char"] == "slime"
 app12.meta["achievements"].append("ouro300"); assert app12.is_unlocked(fake)
-app12.new_run(announce=False); assert app12.run["char"] == "fakeouro"; app12.quit()
+app12.new_run(announce=False); assert app12.run["char"] == "fakeouro"
+app12.meta["achievements"].remove("ouro300"); app12.demo = True; assert app12.is_unlocked(fake)   # demo libera todos
+app12.quit()
 # test_heroi32_mesmo_tamanho: k = 2 e o quadro desenhado fica do tamanho do 16 px antigo
 app11 = tp.PetApp(Args()); PENDING.clear(); app11.char_var.set("slime"); app11.change_character(); app11.new_run()
 app11.refresh_look()
