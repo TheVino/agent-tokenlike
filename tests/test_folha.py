@@ -258,4 +258,32 @@ def test_heroi_ceifeirinho():
 
 test_heroi_ceifeirinho()
 
+
+def test_heroi_vela():
+    import herois.vela as vl
+    import masmorra
+    montar.validar(vl)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "vela" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["vela"]
+    assert c.traco == {"queimar": 0.12, "maxhp": -4} and c.unlock == "queima1", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("vela", {"hp": 20, "atk": 3, "def": 0}, 1, c.traco)
+    assert masmorra.stats(run)["maxhp"] == 16
+    run["traco"] = {"maxhp": -100}
+    assert masmorra.stats(run)["maxhp"] >= 1
+    base = montar.estados(vl, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(vl, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(vl, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_vela()
+
 print("test_folha ok")
