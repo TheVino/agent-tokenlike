@@ -1,0 +1,30 @@
+{
+  "name": "Médico da Peste",
+  "unlock": "veneno1",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0
+  },
+  "traço": {
+    "envenenar": 0.10
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Aprendiz da Peste",
+      "floor": 1,
+      "sheet": "folha1.png"
+    },
+    {
+      "title": "Médico da Peste",
+      "floor": 4,
+      "sheet": "folha2.png"
+    },
+    {
+      "title": "Doutor da Praga",
+      "floor": 10,
+      "sheet": "folha3.png"
+    }
+  ]
+}

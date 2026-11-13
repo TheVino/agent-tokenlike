@@ -165,4 +165,28 @@ for i in (1, 2, 3):
     assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
     assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
 
+# Médico da Peste (leva 1): validar, folhas, carregador, acréscimo em todo quadro, failed visível
+def test_heroi_medico():
+    import herois.medico as med
+    montar.validar(med)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "medico" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["medico"]
+    assert c.traco == {"envenenar": 0.10} and c.unlock == "veneno1", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    base = montar.estados(med, 0)
+    for i in (1, 2):
+        est = montar.estados(med, i)
+        for e, qs in est.items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(med, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_medico()
+
 print("test_folha ok")
