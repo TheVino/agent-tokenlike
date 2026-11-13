@@ -761,6 +761,15 @@ def heroi_idle(key):
     return visual.grid_to_map(_montar.estados(mod, 0)["idle"][0], mod.PAL)
 
 
+def heroi_proprio(key):
+    """Herói feito aqui (tem módulo herois/<key>.py); os outros (pasta em characters/, Petdex/Codex) são importados."""
+    import importlib.util
+    try:
+        return importlib.util.find_spec(f"herois.{key}") is not None
+    except (ImportError, ValueError):
+        return False
+
+
 _ITEM_ARTS = {}
 
 
@@ -1423,14 +1432,12 @@ class PetApp:
 
     def show_heroes(self):
         w, f = self.janela("heroes_win", "Herói da próxima run")
-        secoes = [("", [(k, c) for k, c in self.chars.items() if not c.comunidade]),
-                  ("Comunidade", [(k, c) for k, c in self.chars.items() if c.comunidade])]
-        for titulo, lista in secoes:
-            if not lista:
-                continue
-            if titulo:
+        secoes = [("Heróis", [(k, c) for k, c in self.chars.items() if heroi_proprio(k)]),
+                  ("Comunidade", [(k, c) for k, c in self.chars.items() if not heroi_proprio(k)])]
+        for n, (titulo, lista) in enumerate(s for s in secoes if s[1]):
+            if n:
                 self.menu_sep(f)
-                tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+            tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x", pady=(4, 0))
             grade = tk.Frame(f, bg=PANEL_BG)
             grade.pack(pady=(4, 0))
             for i, (key, c) in enumerate(lista):

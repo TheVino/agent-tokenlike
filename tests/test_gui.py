@@ -526,6 +526,9 @@ for conqs in ([], list(M.ACHIEVEMENTS)):
         assert len(rar_txt(cv)) == (0 if k in bloq else len(M.ITEMS[k]["rarities"])), k
     appm.close_win(appm.itens_win); assert not VIVAS - {appm.popup_win}
 appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_liberado(k) for k in M.ITEMS); appm.demo = False
+# grade de heróis: os nossos (módulo em herois/) separados dos importados (characters/ sem módulo, Petdex)
+assert tp.heroi_proprio("slime") and tp.heroi_proprio("fantasma")
+assert not tp.heroi_proprio("bitty-openpets") and not tp.heroi_proprio("naoexiste") and not tp.heroi_proprio("x.y")
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

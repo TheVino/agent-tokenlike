@@ -11,7 +11,8 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `run_gui()`, para o resto do módulo ser testável sem tela.
   O botão direito abre um menu próprio em pixel art (`on_menu`: `Toplevel` sem borda de `pixel_box`, moldura dourada
   com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
-  "Heróis…" abre a grade `show_heroes` (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
+  "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
+  "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
   Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
   `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
   e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,
