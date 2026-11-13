@@ -618,4 +618,32 @@ def test_heroi_mariposa():
 
 test_heroi_mariposa()
 
+def test_heroi_sapo():
+    import herois.sapo as sa
+    import masmorra
+    montar.validar(sa)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "sapo" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["sapo"]
+    assert c.traco == {"envenenar": 0.06, "cura_sala": 1} and c.unlock == "veneno3", (c.traco, c.unlock)
+    assert "veneno3" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("sapo", c.stats, 1, c.traco)
+    st = masmorra.stats(run)
+    assert st["envenenar"] == 0.06 and st["cura_sala"] >= 1, st
+    base = montar.estados(sa, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(sa, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    extra_dentro(sa)   # colar e cocar cabem inteiros, inclusive no alto do pulo e afundado na poça
+    for i in range(3):
+        ult = montar.estados(sa, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_sapo()
+
 print("test_folha ok")
