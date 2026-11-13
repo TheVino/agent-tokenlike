@@ -175,3 +175,11 @@ for _k, _b, _ord in ((1, slime, 4), (3, _big, 0)):
     _ba, _bn = V.bbox({p for p in _sem if p not in _b}), V.bbox(_nov)
     assert _bn[0] == _ba[0] - _k and _bn[3] == _ba[3] + _k, (_k, _ord, _ba, _bn)
 print("ok: visual")
+
+# buraco interno da silhueta (quadriculado do fantasma sumindo) não é pintado por contorno/faíscas/geada
+anel = {(x, y): "#ffffff" for x in range(5) for y in range(5) if (x, y) != (2, 2)}
+assert (2, 2) not in V.contorno(anel, "#ff0000")
+assert all((2, 2) not in V.faiscas(anel, 4, f) for f in range(3))
+assert all(V.geada(anel, 3, f)[(2, 1)] == "#ffffff" for f in range(3))
+assert (-1, 0) in V.contorno(anel, "#ff0000")              # lado de fora continua
+print("buraco interno ok")
