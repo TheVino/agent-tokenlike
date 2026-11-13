@@ -492,6 +492,12 @@ def test_heroi_alquimista():
     # cinto e óculos cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
     w, h = len(aq.CINTO_OCULOS[0]), len(aq.CINTO_OCULOS)
     assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in aq.ANCORA.values() for a in qs)
+    for e, ancs in aq.ANCORA.items():   # os óculos ficam dentro da copa: não cobrem o contorno do chapéu
+        for j, (ax, ay) in enumerate(ancs):
+            for dy, lin in enumerate(aq.CINTO_OCULOS[:8]):
+                for dx, ch in enumerate(lin):
+                    if ch != ".":
+                        assert base[e][j][ay + dy][ax + dx] != "K", (e, j, dx, dy)
     for i in range(3):
         ult = montar.estados(aq, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i

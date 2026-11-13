@@ -239,7 +239,7 @@ for _e, _s in _SPECS.items():
 
 # grade 15x21 colada 7 à esquerda e 12 acima do topo da túnica (túnica a partir da linha 12, centro na coluna 7;
 # faixa do chapéu na linha 4, cabeça centrada na coluna 8): cinto de couro com três frascos coloridos na cintura;
-# óculos de lente dupla com aro de latão presos na faixa do chapéu
+# óculos de lente dupla com aro de latão presos na faixa do chapéu, dentro da copa (linhas 2-5, colunas 5-11)
 _CINTO = [
     "KddddKGKddddK",
     ".KdK...KdKKdK",
@@ -248,10 +248,10 @@ _CINTO = [
     ".KKK...KKKKKK",
 ]
 _OCULOS = [                                       # aro de latão, sem contorno escuro, para destacar no chapéu
-    ".gg..gg.",
-    "gLWggLWg",
-    "gLLgdLLg",
-    ".gg..gg.",
+    ".gg.gg.",                                    # 7 de largura: cabe dentro da copa sem comer o contorno dela
+    "gLWgLWg",
+    "gLLgLLg",
+    ".gg.gg.",
 ]
 
 
@@ -266,7 +266,7 @@ def _extra(pecas, w=15, h=21):
 
 
 CINTO = _extra(((_CINTO, 1, 15),))
-CINTO_OCULOS = _extra(((_CINTO, 1, 15), (_OCULOS, 7, 1)))
+CINTO_OCULOS = _extra(((_CINTO, 1, 15), (_OCULOS, 5, 2)))
 ESTAGIOS = [
     {"title": "Aprendiz de Alquimia", "floor": 1, "extra": None},
     {"title": "Alquimista", "floor": 4, "extra": CINTO},
