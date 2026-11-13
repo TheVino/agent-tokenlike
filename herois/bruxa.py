@@ -72,28 +72,23 @@ def _chapeu(g, bx, by, torto=0):
 
 
 def _rosto(g, hx, hy, olhos):
+    """Rosto enxuto: dois olhos (blocos 2x2, ou traço/arco) e uma boquinha; sem brilho nem bochecha soltos."""
     ex, ey = hx + 1, hy - 1
-    for x in (ex, ex + 4):
+    for x in (ex - 2, ex + 2):
         if olhos == "fechado":
-            carimbar(g, ["BB"], x - 1 + (x > ex), ey + 1)
+            carimbar(g, ["BB"], x, ey + 1)
         elif olhos == "feliz":
-            carimbar(g, [".B.", "B.B"], x - 1, ey)
+            carimbar(g, [".B.", "B.B"], x - (x > ex), ey)
         elif olhos == "x":
-            carimbar(g, ["B.B", ".B.", "B.B"], x - 1, ey - 1)
+            carimbar(g, ["B.B", ".B.", "B.B"], x - (x > ex), ey - 1)
         else:
-            carimbar(g, ["BB", "BB", "BB"] if olhos != "cima" else ["WB", "BB", "BB"], x - 1 + (x > ex), ey - 1)
-            if olhos != "cima":
-                g[ey][x - 1 + (x > ex)] = "W"
+            carimbar(g, ["BB", "BB"], x, ey - (olhos == "cima"))
             if olhos == "bravo":
-                carimbar(g, ["BB."] if x == ex else [".BB"], x - 2 + (x > ex), ey - 2)
-                g[ey - 2][ex] = g[ey - 2][ex + 3] = "B"
+                carimbar(g, ["BB."] if x < ex else [".BB"], x - (x < ex), ey - 2)
             if olhos == "triste":
-                carimbar(g, [".BB"] if x == ex else ["BB."], x - 2 + (x > ex), ey - 2)
-    if olhos == "x":
-        carimbar(g, [".B.", "B.B"], ex + 1, ey + 3)
-    else:
-        carimbar(g, ["B.B", ".B."] if olhos in ("feliz", "normal", "cima", "fechado") else [".B.", "B.B"], ex + 1, ey + 3)
-    g[ey + 2][ex - 2] = "P"
+                carimbar(g, [".BB"] if x < ex else ["BB."], x - (x < ex), ey - 2)
+    boca = {"feliz": ["B..B", ".BB."], "triste": [".BB.", "B..B"], "bravo": [".BB.", "B..B"]}.get(olhos, [".BB."])
+    carimbar(g, boca, ex - 1, ey + 3)
 
 
 def _poca(g, cx, y, meia, olhos=False):
@@ -221,14 +216,14 @@ _SPECS = {
                dict(ch=6, olhos="triste", derrete=1, por=((LAGRIMA, 20, 21), (GOTA, 21, 24))),
                dict(ch=4, olhos="fechado", derrete=2),
                dict(derrete=3, chapeu=(14, 23), torto=1, por=((BOLHA_P, 24, 22),)),
-               dict(derrete=3, chapeu=(14, 24), torto=2, por=((BOLHA, 22, 19),))],
+               dict(derrete=3, chapeu=(14, 23), torto=2, por=((BOLHA, 22, 19),))],
     # cochila sentada, cabeça pende, "z" subindo
     "waiting": [dict(ch=7, lean=-1, olhos="fechado", torto=2),
                 dict(ch=7, lean=-2, olhos="fechado", torto=3, por=((Z_P, 23, 4),)),
                 dict(ch=7, lean=-2, olhos="fechado", torto=3, por=((Z_P, 22, 4), (Z_G, 26, 0))),
                 dict(ch=7, lean=-1, olhos="fechado", torto=2, por=((Z_G, 26, 0),))],
     # golpe: recua a concha, gira por cima e arremessa o caldo, que estoura em fogo verde
-    "running": [dict(cx=13, lean=-2, olhos="bravo", torto=2, bracos=(((14, 23), (9, 21)),), conchas=(_c((9, 21), (4, 17)),)),
+    "running": [dict(cx=14, lean=-2, olhos="bravo", torto=2, bracos=(((15, 23), (10, 21)),), conchas=(_c((10, 21), (5, 17)),)),
                 dict(cx=14, lean=1, olhos="bravo", torto=-1, bracos=(((16, 22), (20, 16)),), conchas=(_c((20, 16), (22, 9)),)),
                 dict(cx=14, lean=3, olhos="bravo", torto=-3, bracos=(((17, 23), (22, 21)),), conchas=(_c((22, 21), (27, 19), False),),
                      por=((FEITICO, 21, 6),)),
@@ -248,17 +243,18 @@ QUADROS, ANCORA = {}, {}
 for _e, _s in _SPECS.items():
     QUADROS[_e], ANCORA[_e] = _estado(_s)
 
-# caldeirãozinho flutuando ao lado (atrás, à esquerda), com bolha; âncora = (aba - 12, aba - 10)
+# caldeirãozinho flutuando ao lado (atrás, à esquerda), com bolha; âncora = (aba - 12, aba - 10).
+# Uma coluna de folga à esquerda para o caldeirão nunca encostar na borda.
 _VAZIO = "." * 25
 CALDEIRAO = [_VAZIO] * 11 + [
-    "..KK.....................",
-    ".KVVK....................",
-    "KKVVKK...................",
-    "KSSSSSK..................",
-    "KSkkkSK..................",
-    "KSkkkSK..................",
-    ".KSSSK...................",
-    "..KKK....................",
+    "...KK....................",
+    "..KVVK...................",
+    ".KKVVKK..................",
+    ".KSSSSSK.................",
+    ".KSkkkSK.................",
+    ".KSkkkSK.................",
+    "..KSSSK..................",
+    "...KKK...................",
 ]
 # corvinho pousado na aba e vagalumes em volta do chapéu
 MATRIARCA = CALDEIRAO[:]
@@ -272,7 +268,7 @@ for _i, _lin in {
     8: "KOKkkkkkK................",
     9: ".KKkkkkK..............KK.",
     10: "..KKKKK..............KYYK",
-    11: "..KK..................KK.",
+    11: "...KK.................KK.",
 }.items():
     MATRIARCA[_i] = _lin
 ESTAGIOS = [
