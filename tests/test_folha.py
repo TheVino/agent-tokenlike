@@ -562,4 +562,32 @@ def test_heroi_espantalho():
 
 test_heroi_espantalho()
 
+def test_heroi_golem():
+    import herois.golem as go
+    import masmorra
+    montar.validar(go)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "golem" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["golem"]
+    assert c.traco == {"def": 1, "maxhp": 3} and c.unlock == "sem_consumir10", (c.traco, c.unlock)
+    assert "sem_consumir10" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("golem", c.stats, 1, c.traco)
+    st = masmorra.stats(run)
+    assert st["spd"] == 8 and st["maxhp"] == 23 and st["def"] == 1, st
+    base = montar.estados(go, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(go, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    extra_dentro(go)   # flor, ninho e cogumelos cabem inteiros, inclusive no alto do pulo e no monte de pedras
+    for i in range(3):
+        ult = montar.estados(go, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_golem()
+
 print("test_folha ok")

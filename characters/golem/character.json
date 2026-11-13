@@ -1,0 +1,32 @@
+{
+  "name": "Golem de Musgo",
+  "unlock": "sem_consumir10",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0,
+    "spd": 8
+  },
+  "traço": {
+    "def": 1,
+    "maxhp": 3
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Pedrinha",
+      "floor": 1,
+      "sheet": "folha1.png"
+    },
+    {
+      "title": "Golem de Musgo",
+      "floor": 4,
+      "sheet": "folha2.png"
+    },
+    {
+      "title": "Golem Ancião",
+      "floor": 10,
+      "sheet": "folha3.png"
+    }
+  ]
+}
