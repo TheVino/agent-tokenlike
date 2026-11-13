@@ -733,6 +733,17 @@ def map_img(pm, lado):
     return img
 
 
+def heroi_idle(key):
+    """1º quadro idle do 1º estágio direto do módulo herois/<key>.py (sem cortar a folha PNG, que leva segundos).
+    None se não houver módulo (herói externo/Petdex: a grade espera a thread de corte)."""
+    import importlib
+    try:
+        mod = importlib.import_module(f"herois.{key}")
+    except ImportError:
+        return None
+    return visual.grid_to_map(_montar.estados(mod, 0)["idle"][0], mod.PAL)
+
+
 _ITEM_ARTS = {}
 
 
@@ -1256,18 +1267,19 @@ class PetApp:
     def hero_thumb(self, c, ok):
         """Idle do 1º estágio ampliado (bloqueado: silhueta). None enquanto a folha ainda é cortada na thread."""
         stage = c.stages[0]
-        if not stage.get("frames"):
-            return None
         ck = (id(stage), ok)
         if ck not in self.thumbs:
-            pm = spec_to_map(stage["frames"][0])
+            pm = heroi_idle(c.key) if not stage.get("frames") else spec_to_map(stage["frames"][0])
+            if pm is None:
+                return None
             self.thumbs[ck] = map_img(pm if ok else {p: "#0b0b14" for p in pm}, 64)
         return self.thumbs[ck]
 
     def cortar_folhas(self):
         """Corta numa thread as folhas que a grade ainda não tem; depois só troca as miniaturas."""
         pend = [c.stages[0] for c in self.chars.values()
-                if not c.stages[0].get("frames") and "erro" not in c.stages[0]]
+                if not c.stages[0].get("frames") and "erro" not in c.stages[0]
+                and (id(c.stages[0]), True) not in self.thumbs and (id(c.stages[0]), False) not in self.thumbs]
         if not pend or self.thumb_thread is not None:
             return
         self.thumb_thread = threading.Thread(target=lambda: [completar_estagio(s) for s in pend], daemon=True)
