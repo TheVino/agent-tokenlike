@@ -139,6 +139,10 @@ See `characters/fantasma/`:
 
 - `stats`: starting HP, attack, defense and dodge chance (0.2 = 20%). `spd` (speed) is optional and
   defaults to 10 (the Slime's), e.g. `"spd": 12`.
+- `traço` (optional, "trait"): a passive for the hero, an object using the same fields as items (`crit`,
+  `dodge`, `atk`, `espinhos`, `cura_sala`...), e.g. `"traço": { "crit": 0.05 }`. It adds to the hero during the
+  run and does not scale with rarity. An unknown field or a non-numeric value makes the hero be skipped (the
+  reason goes to the log).
 - `unlock` (optional): the achievement that unlocks the hero: `andar5`, `chefe1`, `mimico`, `rico`,
   `colecionador`, `andar10` or `andar20`. Without it the hero is available from the start.
 - `stages`: the hero's forms and the **floor** at which it evolves into each one.

@@ -97,6 +97,9 @@ Veja o exemplo `characters\fantasma\`:
 
 - `stats`: HP, ataque, defesa e esquiva (0.2 = 20%) iniciais. `spd` (velocidade) é opcional; sem ele, fica 10
   (a do Slime). Ex.: `"spd": 12`.
+- `traço` (opcional): um passivo do herói, um objeto com os mesmos campos dos itens (`crit`, `dodge`, `atk`,
+  `espinhos`, `cura_sala`...), ex.: `"traço": { "crit": 0.05 }`. Soma ao herói durante a run, sem variar por
+  raridade. Campo desconhecido ou valor que não seja número faz o herói ser ignorado (o motivo vai para o log).
 - `unlock` (opcional): conquista que libera o herói. Pode ser `andar5`, `chefe1`, `mimico`, `rico`,
   `colecionador`, `andar10` ou `andar20`. Sem esse campo, o herói já começa liberado.
 - `stages`: as formas do herói e o **andar** em que ele evolui para cada uma.
