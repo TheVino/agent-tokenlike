@@ -46,7 +46,7 @@ xp, raw = r3.poll(); assert raw == 1998+1130+10+2, raw
 
 assert tp.fmt(1500)=="1.5K" and tp.fmt(1000)=="1K" and tp.fmt(2_340_000)=="2.3M" and tp.fmt(12)=="12"
 chars = tp.all_characters(); print({k:[s["title"] for s in c.stages] for k,c in chars.items()})
-assert chars["slime"].stage_floors == [1, 3, 8, 15] and chars["fantasma"].unlock == "chefe1"
+assert chars["slime"].stage_floors == [1, 4, 10] and chars["fantasma"].unlock == "chefe1"
 import arte; arte.validate()
 print("reader tests ok")
 

@@ -17,10 +17,18 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `contorno`, `tingir`, `adesivo`, `objeto` e `compose()`, que monta o pet com os `look` dos itens empilhados
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
   inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
-- `arte_herois.py`: grades do Slime embutido e os 9 estados (4 quadros) derivados da arte base por transformações puras
-  (`subir`, `achatar`, `espelhar`, `fechar`/`feliz`/`triste`/`bravo`/`olhar_cima` nos olhos `W`/`B`, `sobrepor` mão, lágrima, z, gotas).
-  `tools/gerar_folhas.py` usa as mesmas regras para gerar `characters/fantasma/folha1..3.png` (grade 8x9, quadro de 16 px;
-  `teto=16` para o k ficar 1) e a prévia `tools/saida/preview_herois.png`. Os PNGs antigos do Fantasma ficam no repo.
+- `herois/`: heróis embutidos 32 px, um módulo por herói (`slime.py`, `fantasma.py`) com: `PAL` (letra -> cor), `QUADROS`
+  (8 estados desenhados: idle, run_r, waving, jumping, failed, waiting, running, review; 4 a 6 quadros 32x32 cada),
+  `ESTAGIOS` (exatamente 3: `title`, `floor`, `extra`; o 1º com `extra=None`; o Slime evolui nos andares 1/4/10: Gotinha,
+  Slime, Rei Slime) e `ANCORA` (por estado e quadro, `(x, y)` inteiros onde o `extra` do estágio é colado).
+  `herois/montar.py`: `estados()` monta os 9 estados (`run_l` = `run_r` espelhado, não se desenha) e `validar()` confere
+  tudo (4-6 quadros, âncoras, 32x32, 3 estágios). `tools/gerar_folhas.py` gera `characters/fantasma/folha1..3.png`
+  (grade 8x9, células de 40 px, 4-6 quadros por estado, células vazias onde faltam quadros) e a prévia
+  `tools/saida/preview_herois.png`. Os PNGs antigos do Fantasma ficam no repo.
+- **Traço do herói** (`"traço"` no `character.json`, objeto com campos de `fx`): vai para `run["traco"]` em `new_run` e soma
+  em `stats()` como um item, mas **sem escalar por raridade**. Chave inválida ou valor não numérico invalida o herói.
+  `run["cont"]` guarda contadores da run (`esquivas`, `bloqueios`, `mortes_veneno`, `mortes_queima`, `horda4`; horda de 4
+  empatada não conta), para conquistas e traços futuros.
 - `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
 - `folha.py`: corte de spritesheet (9 linhas, `ESTADOS`: idle, run_r, run_l, waving, jumping, failed, waiting,
   running, review). Herói = `characters/<pasta>/spritesheet.png` (+ `character.json` opcional) ou pet do Petdex
@@ -140,7 +148,7 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   `masmorra.run_record`, com `masmorra.BALANCE_VERSION` (hash de 8 caracteres só dos números de balanceamento).
   Mudou número, mudou a versão e o histórico real recomeça (`--todas-versoes` mostra tudo).
   O hash não vê fórmulas nem números escritos no código: ao mudar regra/fórmula de combate, suba `masmorra.REGRAS_REV`
-  (hoje 7). Mudar só constante já muda a versão sozinho.
+  (hoje 8). Mudar só constante já muda a versão sozinho.
 - Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 50).
   São julgadas na **calibração** (só slime, igual ao `simular.py`, sem e com conquistas); o "sim" com todos os
   heróis misturados é só informativo. Item verde/vermelho usa `vs_media` (vs esperado menos a média dos itens).

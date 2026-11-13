@@ -433,7 +433,10 @@ def new_meta() -> dict:
             "best": {"floor": 0, "room": 0}, "next_char": "slime"}
 
 
-def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
+CONT_ZERO = {"esquivas": 0, "bloqueios": 0, "mortes_veneno": 0, "mortes_queima": 0, "horda4": 0}
+
+
+def new_run(char_key: str, base_stats: dict, run_id: int, traco: dict | None = None) -> dict:
     hp = int(base_stats.get("hp", 20))
     return {
         "id": run_id, "char": char_key, "floor": 1, "room": 0, "stage": 0,
@@ -443,6 +446,8 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
                  "spd": float(base_stats.get("spd", PET_SPD)),
                  # crit/critdmg só se o herói definir; sem eles, stats() usa PET_CRIT/PET_CRITDMG atuais
                  **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
+        "traco": dict(traco or {}),
+        "cont": dict(CONT_ZERO),
         "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
@@ -486,6 +491,10 @@ def migrate_run(run: dict) -> dict:
         i.setdefault("kills0", 0)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
+    run.setdefault("traco", {})
+    cont = run.setdefault("cont", {})
+    for k, v in CONT_ZERO.items():
+        cont.setdefault(k, v)
     b = run.setdefault("base", {})
     b.setdefault("spd", PET_SPD)
     # saves antigos congelavam os padrões do pet (0.10 e 1.5) na base: sem eles, valem as constantes atuais
@@ -506,10 +515,12 @@ def stats(run: dict) -> dict:
           "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
           "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0,
           "duplo": 0.0, "ajudante": 0, "sorte": 0.0, "desconto": 0.0}
-    for it in run["items"]:
-        for k, v in item_fx(it["key"], it["rar"]).items():
+    # o traço do herói soma como um item, mas sem escalar por raridade
+    for kills0, fx in [(0, run.get("traco", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
+                                                      for it in run["items"]]:
+        for k, v in fx.items():
             if k == "crescer":                        # +1 ATK a cada v kills feitos depois de pegar o item
-                st["atk"] += max(0, run["kills"] - it.get("kills0", 0)) // v
+                st["atk"] += max(0, run["kills"] - kills0) // v
             elif k == "trap":
                 st["trap"] *= v
             elif k == "area":
@@ -794,6 +805,24 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     return True, passos, "", True                        # limite de segurança: empate, sem prêmio
 
 
+def _contar(run: dict, passos: list[dict], foes: list[dict], horda4: bool) -> None:
+    """Contadores de conquista a partir dos passos da luta. Morte por status: o inimigo cruza hp 0 num passo dot."""
+    c = run.setdefault("cont", dict(CONT_ZERO))
+    hp = [x["hp_max"] for x in foes]
+    for p in passos:
+        if p["dodge"]:
+            c["esquivas"] += 1
+        if p["bloqueado"]:
+            c["bloqueios"] += 1
+        i = p["target"]
+        if isinstance(i, int) and (p["who"] in ("pet", "ajudante") or p["dot"]):
+            antes, hp[i] = hp[i], hp[i] - p["dmg"]
+            if p["dot"] and antes > 0 >= hp[i]:
+                c["mortes_veneno" if p["status"] == "veneno" else "mortes_queima"] += 1
+    if horda4:
+        c["horda4"] += 1
+
+
 def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> None:
     """kind: monster|horde|boss|mimic|trap|desistiu; morte por Queimadura/Veneno vira "status"."""
     if killer in ("Queimadura", "Veneno"):
@@ -917,6 +946,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         hp_before = run["hp"]
         won, ev["hits"], killer, empate = combate(run, st, foes, rng, f)
         ev["dmg"] = hp_before - run["hp"]
+        _contar(run, ev["hits"], foes, kind == "horde" and len(foes) == 4 and won and not empate)
         if not won:
             die(run, meta, ev, killer, kind)
             return ev
@@ -1029,7 +1059,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 7
+REGRAS_REV = 8
 
 
 def _balance_version() -> str:

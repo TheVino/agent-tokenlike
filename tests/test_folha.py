@@ -93,4 +93,76 @@ try:
 except ValueError as e:
     assert "formato de PNG não suportado" in str(e)
 
+# ---- herois.montar + gerar_folha 32 px
+import types
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+from herois import montar
+import gerar_folhas as GF
+
+
+def falso(extra=None, anc=(5, 6)):
+    q = ["." * 32 for _ in range(32)]
+    q[10] = "." * 4 + "A" * 6 + "." * 22          # assimétrico, para o espelho valer
+    q[31] = "A" + "." * 31
+    return types.SimpleNamespace(
+        PAL={"A": "#ff0000", "X": "#00ff00"},
+        QUADROS={e: [q, q, q, q] for e in montar.DESENHADOS},
+        ESTAGIOS=[{"title": "a", "floor": 0, "extra": None}, {"title": "b", "floor": 3, "extra": extra},
+                  {"title": "c", "floor": 6, "extra": extra}],
+        ANCORA={e: [anc] * 4 for e in montar.DESENHADOS})
+
+
+h = falso()
+est = montar.estados(h, 0)
+assert tuple(est) == F.ESTADOS
+assert all(est["run_l"][i] == [l[::-1] for l in est["run_r"][i]] for i in range(4))
+
+h = falso(["X"])
+est = montar.estados(h, 1)
+for e, qs in est.items():
+    for q in qs:
+        assert q[6][31 - 5 if e == "run_l" else 5] == "X", e
+
+h = falso(["XX", "XX"], anc=(31, -1))
+est = montar.estados(h, 1)
+assert all(len(q) == 32 and all(len(l) == 32 for l in q) for qs in est.values() for q in qs)
+assert est["idle"][0][0][31] == "X"
+
+montar.validar(falso())
+for ruim in (lambda h: h.QUADROS["idle"].__setitem__(0, h.QUADROS["idle"][0][:31]),
+             lambda h: h.QUADROS["idle"].__setitem__(0, ["." * 32] * 32),
+             lambda h: h.QUADROS.pop("review"),
+             lambda h: h.QUADROS.__setitem__("idle", h.QUADROS["idle"][:3]),
+             lambda h: h.QUADROS.__setitem__("idle", h.QUADROS["idle"] * 2),
+             lambda h: h.ESTAGIOS.pop(),
+             lambda h: h.ESTAGIOS[0].__setitem__("extra", ["X"]),
+             lambda h: h.ANCORA.__setitem__("idle", [(1.5, 2)] * 4)):
+    h = falso(); h.QUADROS = {k: list(v) for k, v in h.QUADROS.items()}
+    ruim(h)
+    try:
+        montar.validar(h); assert False, "validar aceitou"
+    except AssertionError as e:
+        assert "validar aceitou" not in str(e), e
+for n in (5, 6):
+    h = falso(); h.QUADROS["idle"] = h.QUADROS["idle"][:1] * n; h.ANCORA["idle"] = [(0, 0)] * n
+    montar.validar(h)
+
+# folha 32 px com 5 quadros por estado lê de volta (células de 40 px)
+import tokenlike
+h = falso(); h.QUADROS = {e: [h.QUADROS[e][0]] * 5 for e in h.QUADROS}; h.ANCORA = {e: [(0, 0)] * 5 for e in h.ANCORA}
+est = montar.estados(h, 0)
+GF.gerar_folha(tmp / "f32.png", est, h.PAL)
+assert F.ler_png(tmp / "f32.png")[:2] == (320, 360)
+linhas, n, mapas = tokenlike.ler_folha(tmp / "f32.png")
+assert len(linhas) == 9 and all(len(l) == 5 for l in linhas), [len(l) for l in linhas]
+assert all(mapas[c] for l in linhas for c in l)
+assert n == 1 and max(c[3] - c[1] for l in linhas for c in l) <= 32
+
+# Fantasma 32 px: as 3 folhas existem, 9 estados com >= 4 quadros e altura aparada > 16
+RAIZ = Path(__file__).resolve().parent.parent
+for i in (1, 2, 3):
+    linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "fantasma" / f"folha{i}.png")
+    assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+    assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+
 print("test_folha ok")
