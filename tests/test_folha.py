@@ -535,4 +535,31 @@ def test_heroi_freira():
 
 test_heroi_freira()
 
+def test_heroi_espantalho():
+    import herois.espantalho as es
+    import masmorra
+    montar.validar(es)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "espantalho" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["espantalho"]
+    assert c.traco == {"ajudante": 1} and c.unlock == "ajudantes3", (c.traco, c.unlock)
+    assert "ajudantes3" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("espantalho", c.stats, 1, c.traco)
+    assert masmorra.stats(run)["ajudante"] == 1
+    base = montar.estados(es, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(es, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    extra_dentro(es)   # corvinho e lanterna cabem inteiros, inclusive no alto do pulo e no monte de palha
+    for i in range(3):
+        ult = montar.estados(es, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_espantalho()
+
 print("test_folha ok")
