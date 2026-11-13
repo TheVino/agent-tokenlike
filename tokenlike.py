@@ -75,6 +75,8 @@ HURT = "#ff6b81"
 GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
 STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
+MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
+HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -721,6 +723,16 @@ def render_map(pm, s: int, k: int = 1):
     return img, (y1 - 16 * k) * s
 
 
+def map_img(pm, lado):
+    """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
+    x0, y0, x1, y1 = visual.bbox(pm)
+    s = max(1, lado // max(1, x1 - x0, y1 - y0))
+    img = tk.PhotoImage(width=(x1 - x0) * s, height=(y1 - y0) * s)
+    for (x, y), c in pm.items():
+        img.put(c, to=((x - x0) * s, (y - y0) * s, (x - x0 + 1) * s, (y - y0 + 1) * s))
+    return img
+
+
 _ITEM_ARTS = {}
 
 
@@ -1099,59 +1111,236 @@ class PetApp:
         self.update_limits()
 
     def build_menu(self):
-        self.menu = tk.Menu(self.root, tearoff=0)
-        self.menu.add_command(label="Status", command=self.show_stats)
-        self.menu.add_command(label="Cemitério", command=self.show_graveyard)
-        self.menu.add_command(label="Conquistas", command=self.show_achievements)
-        self.char_menu = tk.Menu(self.menu, tearoff=0)
+        """Só as variáveis; o menu (pixel art, `on_menu`) e a grade de heróis (`show_heroes`) nascem ao abrir."""
         self.char_var = tk.StringVar(value=self.meta.get("next_char", "slime"))
-        self.menu.add_cascade(label="Herói da próxima run", menu=self.char_menu)
-        self.fill_char_menu()
-        size_menu = tk.Menu(self.menu, tearoff=0)
         self.size_var = tk.StringVar(value=self.state["size"])
-        for name in SIZES:
-            size_menu.add_radiobutton(label=name, value=name, variable=self.size_var,
-                                      command=self.change_size)
-        self.menu.add_cascade(label="Tamanho", menu=size_menu)
-        mode_menu = tk.Menu(self.menu, tearoff=0)
         self.mode_var = tk.StringVar(value=self.state["mode"])
-        for key, label in MODES.items():
-            mode_menu.add_radiobutton(label=label, value=key, variable=self.mode_var,
-                                      command=self.change_mode)
-        self.menu.add_cascade(label="Modo", menu=mode_menu)
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
-        self.menu.add_checkbutton(label="Sempre por cima", variable=self.top_var,
-                                  command=self.toggle_top)
         self.virar_var = tk.BooleanVar(value=self.virar)
-        self.menu.add_checkbutton(label="Virar herói", variable=self.virar_var, command=self.toggle_virar)
-        self.menu.add_separator()
-        self.menu.add_command(label="Desistir da run (começa outra)", command=self.give_up)
-        self.menu.add_separator()
-        self.menu.add_command(label="Abrir pasta de personagens", command=self.open_chars)
-        self.menu.add_command(label="Recarregar personagens", command=self.reload_chars)
-        self.menu.add_separator()
-        self.menu.add_command(label="Sair", command=self.quit)
-
-    def char_label(self, c):
-        return f"{c.name} — {M.fx_text(c.traco)}" if c.traco else c.name
+        self.menu_win = self.heroes_win = self.thumb_thread = None
+        self.hero_cards, self.hero_thumb_lbl, self.thumbs = {}, {}, {}
 
     def fill_char_menu(self):
-        self.char_menu.delete(0, "end")
-        proprios = [(k, c) for k, c in self.chars.items() if not c.comunidade]
-        comunidade = [(k, c) for k, c in self.chars.items() if c.comunidade]
-        for key, c in proprios:
-            if self.is_unlocked(c):
-                self.char_menu.add_radiobutton(label=self.char_label(c), value=key, variable=self.char_var,
-                                               command=self.change_character)
-            else:
-                self.char_menu.add_command(
-                    label=f"{c.name}  [bloqueado: {M.ACHIEVEMENTS[c.unlock]}]", state="disabled")
-        if comunidade:
-            self.char_menu.add_separator()
-            self.char_menu.add_command(label="Comunidade", state="disabled")
-            for key, c in comunidade:
-                self.char_menu.add_radiobutton(label=c.name, value=key, variable=self.char_var,
-                                               command=self.change_character)
+        """Conquista nova ou personagens recarregados: refaz a grade de heróis se estiver aberta."""
+        if self.heroes_win is not None:
+            self.show_heroes()
+
+    # ------------------------------------------------------- menu em pixel art
+    def pixel_box(self, x, y):
+        """Janela sem borda, moldura dourada de 2 px com cantos recortados; devolve (janela, miolo).
+        Fecha com Esc ou ao perder o foco (clique fora). Quem chama posiciona de novo se crescer."""
+        w = tk.Toplevel(self.root)
+        w.overrideredirect(True)
+        w.attributes("-topmost", True)
+        w.configure(bg=GOLD)
+        try:
+            w.attributes("-transparentcolor", TRANSPARENT)
+            corte = TRANSPARENT
+        except tk.TclError:
+            corte = GOLD                    # fora do Windows: cantos retos
+        miolo = tk.Frame(w, bg=PANEL_BG, padx=6, pady=6, highlightthickness=1, highlightbackground=PANEL_EDGE)
+        miolo.pack(padx=2, pady=2)
+        for rx in (0, 1):
+            for ry in (0, 1):
+                tk.Frame(w, bg=corte, width=2, height=2).place(relx=rx, rely=ry, x=-2 * rx, y=-2 * ry)
+                tk.Frame(w, bg=GOLD, width=2, height=2).place(relx=rx, rely=ry, x=2 - 6 * rx, y=2 - 6 * ry)
+        w.bind("<Escape>", lambda e: self.close_win(w))
+        w.bind("<FocusOut>", lambda e: self.close_win(w) if e.widget is w else None)
+        w.geometry(f"+{x}+{y}")
+        return w, miolo
+
+    def place_win(self, w, x, y):
+        """Põe a janela em (x, y) sem sair da tela (sem espaço embaixo, abre para cima) e pega o foco."""
+        w.update_idletasks()
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        ww, wh = w.winfo_width(), w.winfo_height()
+        x = max(0, min(x, sw - ww))
+        y = max(0, y if y + wh <= sh else y - wh)
+        w.geometry(f"+{x}+{y}")
+        w.focus_force()
+
+    def close_win(self, w):
+        if w is None:
+            return
+        if self.menu_win is w:
+            self.menu_win = None
+        if self.heroes_win is w:
+            self.heroes_win = None
+            self.hero_cards, self.hero_thumb_lbl = {}, {}
+        try:
+            w.destroy()
+        except tk.TclError:
+            pass
+
+    def menu_icon(self, key):
+        ck = ("menu", key)
+        if ck not in self.art:
+            self.art[ck] = render_grid(arte.all_art()[key], arte.PAL, 2)
+        return self.art[ck]
+
+    def hover(self, widgets, texto, fg, on_click):
+        """Hover: fundo mais claro e texto dourado; clique em qualquer parte."""
+        def pintar(on):
+            for wd in widgets:
+                wd.configure(bg=MENU_HOVER if on else PANEL_BG)
+            texto.configure(fg=GOLD if on else fg)
+        for wd in widgets:
+            wd.configure(cursor="hand2")
+            wd.bind("<Enter>", lambda e: pintar(True))
+            wd.bind("<Leave>", lambda e: pintar(False))
+            wd.bind("<Button-1>", lambda e: on_click())
+
+    def menu_row(self, parent, icon, text, cmd, fg=TEXT):
+        row = tk.Frame(parent, bg=PANEL_BG)
+        row.pack(fill="x")
+        ico = tk.Label(row, image=self.menu_icon(icon), bg=PANEL_BG, width=22, height=20)
+        ico.pack(side="left")
+        t = tk.Label(row, text=text, bg=PANEL_BG, fg=fg, font=self.font, anchor="w", padx=4)
+        t.pack(side="left", fill="x", expand=True)
+        self.hover((row, ico, t), t, fg, lambda: self.menu_do(cmd))
+
+    def menu_chips(self, parent, label, opcoes, var, cmd):
+        """Botões segmentados no próprio menu (sem submenu); o escolhido fica dourado."""
+        row = tk.Frame(parent, bg=PANEL_BG)
+        row.pack(fill="x", pady=2)
+        tk.Label(row, text=label, bg=PANEL_BG, fg=MUTED, font=self.font_small, width=8, anchor="w").pack(side="left")
+        for value, text in opcoes.items():
+            sel = var.get() == value
+            chip = tk.Label(row, text=text, bg=GOLD if sel else BAR_BG, fg=PANEL_BG if sel else TEXT,
+                            font=self.font_small, padx=6, pady=1, cursor="hand2")
+            chip.pack(side="left", padx=(0, 3))
+            chip.bind("<Button-1>", lambda e, v=value: (var.set(v), self.menu_do(cmd)))
+
+    def menu_sep(self, parent):
+        tk.Frame(parent, bg=PANEL_EDGE, height=2).pack(fill="x", pady=4)
+
+    def on_menu(self, e):
+        self.close_win(self.menu_win)
+        w, f = self.pixel_box(e.x_root, e.y_root)
+        self.menu_win = w
+        run, st = self.run, M.stats(self.run)
+        head = tk.Frame(f, bg=PANEL_BG)
+        head.pack(fill="x")
+        self.menu_thumb = map_img(self.look_maps[0], 36)     # referência: o tk não guarda a imagem sozinho
+        tk.Label(head, image=self.menu_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 6))
+        tk.Label(head, text=f"{self.char.name}  ·  {self.stage_title}", bg=PANEL_BG, fg=GOLD,
+                 font=self.font, anchor="w").pack(fill="x")
+        tk.Label(head, text=f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
+                 bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+        self.menu_sep(f)
+        for icon, text, cmd in (("grimorio", "Status", self.show_stats),
+                                ("lapide", "Cemitério", self.show_graveyard),
+                                ("coroa", "Conquistas", self.show_achievements),
+                                ("espada_osso", "Heróis…", self.show_heroes)):
+            self.menu_row(f, icon, text, cmd)
+        self.menu_sep(f)
+        self.menu_chips(f, "Tamanho", {n: n for n in SIZES}, self.size_var, self.change_size)
+        self.menu_chips(f, "Modo", MODES, self.mode_var, self.change_mode)
+        for text, var, fn in (("Sempre por cima", self.top_var, self.toggle_top),
+                              ("Virar herói", self.virar_var, self.toggle_virar)):
+            self.menu_row(f, "caixa_ok" if var.get() else "caixa", text,
+                          lambda v=var, fn=fn: (v.set(not v.get()), fn()))
+        self.menu_sep(f)
+        self.menu_row(f, "caveirinha", "Desistir da run", self.give_up, fg=HURT)
+        self.menu_sep(f)
+        self.menu_row(f, "bau", "Abrir pasta de personagens", self.open_chars)
+        self.menu_row(f, "redemoinho", "Recarregar personagens", self.reload_chars)
+        self.menu_row(f, "escada", "Sair", self.quit)
+        self.place_win(w, e.x_root, e.y_root)
+
+    def menu_do(self, cmd):
+        self.close_win(self.menu_win)
+        cmd()
+
+    # ------------------------------------------------------- grade de heróis
+    def hero_thumb(self, c, ok):
+        """Idle do 1º estágio ampliado (bloqueado: silhueta). None enquanto a folha ainda é cortada na thread."""
+        stage = c.stages[0]
+        if not stage.get("frames"):
+            return None
+        ck = (id(stage), ok)
+        if ck not in self.thumbs:
+            pm = spec_to_map(stage["frames"][0])
+            self.thumbs[ck] = map_img(pm if ok else {p: "#0b0b14" for p in pm}, 64)
+        return self.thumbs[ck]
+
+    def cortar_folhas(self):
+        """Corta numa thread as folhas que a grade ainda não tem; depois só troca as miniaturas."""
+        pend = [c.stages[0] for c in self.chars.values()
+                if not c.stages[0].get("frames") and "erro" not in c.stages[0]]
+        if not pend or self.thumb_thread is not None:
+            return
+        self.thumb_thread = threading.Thread(target=lambda: [completar_estagio(s) for s in pend], daemon=True)
+        self.thumb_thread.start()
+
+        def esperar():
+            if self.thumb_thread.is_alive():
+                self.root.after(150, esperar)
+                return
+            self.thumb_thread = None
+            for key, lbl in list(self.hero_thumb_lbl.items()):
+                c = self.chars.get(key)
+                img = c and self.hero_thumb(c, self.is_unlocked(c))
+                if img:
+                    lbl.configure(image=img, text="", height=72)
+        self.root.after(150, esperar)
+
+    def show_heroes(self):
+        self.close_win(self.heroes_win)
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        w, f = self.pixel_box(x, y)
+        self.heroes_win = w
+        top = tk.Frame(f, bg=PANEL_BG)
+        top.pack(fill="x")
+        tk.Label(top, text="Herói da próxima run", bg=PANEL_BG, fg=GOLD, font=self.font).pack(side="left")
+        fechar = tk.Label(top, text=" x ", bg=PANEL_BG, fg=MUTED, font=self.font)
+        fechar.pack(side="right")
+        self.hover((fechar,), fechar, MUTED, lambda: self.close_win(w))
+        secoes = [("", [(k, c) for k, c in self.chars.items() if not c.comunidade]),
+                  ("Comunidade", [(k, c) for k, c in self.chars.items() if c.comunidade])]
+        for titulo, lista in secoes:
+            if not lista:
+                continue
+            if titulo:
+                self.menu_sep(f)
+                tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+            grade = tk.Frame(f, bg=PANEL_BG)
+            grade.pack(pady=(4, 0))
+            for i, (key, c) in enumerate(lista):
+                self.hero_card(grade, key, c).grid(row=i // HERO_COLS, column=i % HERO_COLS, padx=3, pady=3)
+        self.cortar_folhas()
+        w.update_idletasks()
+        left = x - w.winfo_width() - 6          # ao lado do pet: à esquerda, ou à direita se não couber
+        self.place_win(w, left if left >= 0 else x + self.W + 6, y)
+
+    def hero_card(self, parent, key, c):
+        ok, sel = self.is_unlocked(c), key == self.char_var.get()
+        card = tk.Frame(parent, bg=PANEL_BG, width=HERO_CARD_W, height=HERO_CARD_H, highlightthickness=2,
+                        highlightbackground=GOLD if sel else PANEL_EDGE)
+        card.pack_propagate(False)
+        img = self.hero_thumb(c, ok)
+        pic = tk.Label(card, image=img or "", text="" if img else "…", bg=PANEL_BG, fg=MUTED,
+                       font=self.font, height=72 if img else 4)
+        pic.pack(pady=(4, 0))
+        self.hero_thumb_lbl[key] = pic
+        nome = tk.Label(card, text=c.name, bg=PANEL_BG, fg=GOLD if sel else TEXT if ok else MUTED, font=self.font)
+        nome.pack()
+        if ok:
+            info = tk.Label(card, text=M.fx_text(c.traco) if c.traco else "sem traço", bg=PANEL_BG,
+                            fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 12)
+            info.pack()
+
+            def pick():
+                self.close_win(self.heroes_win)
+                self.char_var.set(key)
+                self.change_character()
+            self.hover((card, pic, nome, info), nome, GOLD if sel else TEXT, pick)
+        else:
+            pick = None             # bloqueado: nada clicável
+            tk.Label(card, text=M.ACHIEVEMENTS[c.unlock], image=self.menu_icon("cadeado"), compound="left",
+                     bg=PANEL_BG, fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 24).pack()
+        self.hero_cards[key] = pick
+        return card
 
     # -------------------------------------------------------------- eventos
     def on_press(self, e):
@@ -1172,12 +1361,6 @@ class PetApp:
             self.floater("<3", "#ff8fb1")
             self.estado_tmp = ("waving", time.time() + 1.0)
         self._drag = None
-
-    def on_menu(self, e):
-        try:
-            self.menu.tk_popup(e.x_root, e.y_root)
-        finally:
-            self.menu.grab_release()
 
     def change_character(self):
         key = self.char_var.get()

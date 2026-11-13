@@ -9,6 +9,9 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `tokenlike.py`: app (tkinter). Contém a leitura de tokens (`TokenReader`), o estado/salvamento,
   os personagens (Slime embutido + loader de PNG) e a GUI (`PetApp`). O `tkinter` é importado só em
   `run_gui()`, para o resto do módulo ser testável sem tela.
+  O botão direito abre um menu próprio em pixel art (`on_menu`: `Toplevel` sem borda de `pixel_box`, moldura dourada
+  com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
+  "Heróis…" abre a grade `show_heroes` (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
   `enter_room()` resolve uma sala e devolve um dicionário de evento, que a GUI só anima (`PetApp.play_room`).
 - `arte.py`: toda a pixel art em grades de texto (`'.'` = transparente, letras = cores de `PAL`).

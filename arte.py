@@ -914,6 +914,35 @@ CROWN = [
     "KKKKKKK",
 ]
 
+# ------------------------------------------------------------------- menu
+MENU_ART = {
+    "caixa": [
+        "gggggg",
+        "gKKKKg",
+        "gKKKKg",
+        "gKKKKg",
+        "gKKKKg",
+        "gggggg",
+    ],
+    "caixa_ok": [
+        "yyyyyy",
+        "yKKKey",
+        "yeKeKy",
+        "yKeeKy",
+        "yKKeKy",
+        "yyyyyy",
+    ],
+    "cadeado": [
+        ".ggg.",
+        "g...g",
+        "g...g",
+        "YyyyY",
+        "yyKyy",
+        "yyKyy",
+        "YyyyY",
+    ],
+}
+
 # ----------------------------------------------------------------- salas
 ROOM_ART = {
     "bau": [
@@ -994,7 +1023,7 @@ ROOM_ART = {
 
 def all_art():
     out = {}
-    for group in (ITEM_ART, FOE_ART, ROOM_ART):
+    for group in (ITEM_ART, FOE_ART, ROOM_ART, MENU_ART):
         out.update(group)
     out["coroa"] = CROWN
     return out

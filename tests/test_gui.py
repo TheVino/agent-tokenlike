@@ -450,6 +450,27 @@ app11.refresh_look()
 assert app11.hero_k == 2 and abs(32 * app11.hero_px - 16 * app11.px) <= 2, (app11.hero_px, app11.px)
 app11.run["stage"] = 3; app11.load_images(); app11.refresh_look()   # save antigo de 4 estágios: não quebra
 app11.quit()
+# menu em pixel art: abre, grade lista todos os heróis, bloqueado não troca, liberado troca, sem vazar janelas
+VIVAS = set()
+class Janela(Tk):
+    def __init__(self, *a, **k): VIVAS.add(self)
+    def destroy(self): VIVAS.discard(self)
+tkinter.Toplevel = Janela
+appm = tp.PetApp(Args()); PENDING.clear(); appm.close_choice(); VIVAS.clear()
+appm.meta["achievements"] = ["chefe1"]; appm.meta["next_char"] = "slime"; appm.char_var.set("slime")
+ev = types.SimpleNamespace(x_root=1900, y_root=1070)
+for _ in range(2):
+    appm.on_menu(ev); assert appm.menu_win in VIVAS
+    appm.menu_do(appm.show_heroes); assert appm.menu_win is None and appm.heroes_win in VIVAS
+    assert set(appm.hero_cards) == set(appm.chars)
+    bloq = [k for k, c in appm.chars.items() if not appm.is_unlocked(c)]
+    assert bloq and all(appm.hero_cards[k] is None for k in bloq)
+    appm.show_heroes(); appm.on_menu(ev); assert len(VIVAS) == 2     # reabrir troca a janela, não empilha
+    appm.close_win(appm.menu_win); appm.close_win(appm.heroes_win); assert not VIVAS
+appm.show_heroes(); appm.hero_cards["fantasma"](); assert appm.meta["next_char"] == "fantasma" and not VIVAS - {appm.popup_win}
+for fn in PENDING[:]:
+    if fn and getattr(fn, "__name__", "") == "esperar": fn()    # thread das miniaturas
+PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)
