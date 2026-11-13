@@ -2,9 +2,8 @@
 cabeça de capuz com máscara de bico e óculos verdes, botinhas, braços em linha grossa (com contorno) e objetos
 (lanterna de ervas, frasco de veneno, nuvenzinha). No `failed` a máscara se solta e cai, mostrando o rostinho.
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
-from herois.fantasma import Z_P, Z_G, PERG_P, PERG, LAGRIMA, EXCL, _por
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar
 
-N = 32
 PAL = {
     "K": "#231b33", "C": "#4a3f66", "c": "#342b4c", "H": "#5b4d7d", "h": "#3f3560",
     "M": "#efe6cf", "m": "#bfae8a", "E": "#8ff07a", "e": "#3d9a4a", "W": "#ffffff",
@@ -16,7 +15,7 @@ PAL = {
 LANTERNA = [".KKK.", ".K.K.", "KKKKK", "KVYVK", "KYVvK", "KvVVK", "KKKKK", ".KKK."]
 LANTERNA_APAG = [".KKK.", ".K.K.", "KKKKK", "KSSSK", "KSSSK", "KSSSK", "KKKKK", ".KKK."]
 FRASCO = [".KK.", "KNNK", ".KK.", "KVVK", "KVvK", "KvVK", ".KK."]
-FRASCO_DEITADO = ["...KKKK...", "..KVVVVKK.", "KKKVvVVVVK", "KNKVVVvVVK", "KKKVVvVVVK", "..KVVVVKK.", "...KKKK..."]
+FRASCO_VOANDO = ["..KKKK..", "..KNNK..", "..KNNK..", "..KKKK..", "...KSK..", "..KKSKK.", ".KVVVVVK", "KVVvVVVK", "KVvVVvVK", "KVVVVVVK", ".KKKKKK."]
 NUVEM = ["...KKK.KK.", "..KVVVKVVK", ".KVVvVVVVK", "KVVVVVvVVK", "KVvVVVVVK.", ".KVVVvVVVK", "..KKVVKKK.", "....KK...."]
 NUVEM_P = [".KK.", "KVVK", "KvVK", ".KK."]
 LUVA = [".KKK.", "KNNNK", "KNNNK", "KNNNK", ".KKK."]
@@ -47,7 +46,7 @@ def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", bochecha=True, mascara=
     `atras`: (sprite, x, y) desenhados antes do corpo; `bracos`: ((x0, y0), (x1, y1)) por cima; `por`: sprites no fim."""
     g = [["."] * N for _ in range(N)]
     for s, x, y in atras:
-        _por(g, s, x, y)
+        carimbar(g, s, x, y)
     ctop = base - 1 - ch
     hx, hy = cx + lean, ctop - 5
     casaco = set()
@@ -74,8 +73,8 @@ def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", bochecha=True, mascara=
         for x, y in face | bico:
             g[y][x] = "m" if (x, y + 1) not in face | bico or y == hy + 2 and x > hx + 6 else "M"
     else:
-        for x, y in face:
-            g[y][x] = "F"
+        for x, y in face:                      # rostinho com contorno onde encosta no capuz
+            g[y][x] = "K" if any(n in cabeca and n not in face for n in ((x - 1, y), (x, y - 1))) else "F"
     for x, y in casaco:                      # botões no meio do casaco
         if x == round(cx + lean * 0.4) + 1 and (y - ctop) % 3 == 2 and y < base - 2:
             g[y][x] = "Y"
@@ -93,20 +92,20 @@ def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", bochecha=True, mascara=
         for ox in (hx - 3, hx + 2):
             oy = hy - 2
             if olhos == "fechado":
-                _por(g, ["KKKKK", "K...K", "KKKKK"], ox, oy + 1)
+                carimbar(g, ["KKKKK", "K...K", "KKKKK"], ox, oy + 1)
                 for x in range(ox + 1, ox + 4):
                     g[oy + 2][x] = "e"
             elif olhos == "feliz":
-                _por(g, [".KKK.", "KE.EK", "K...K"], ox, oy + 1)
+                carimbar(g, [".KKK.", "KE.EK", "K...K"], ox, oy + 1)
             else:
-                _por(g, [".KKK.", "KEEEK", "KEEEK", "KeEeK", ".KKK."], ox, oy)
+                carimbar(g, [".KKK.", "KEEEK", "KEEEK", "KeEeK", ".KKK."], ox, oy)
                 g[oy + 1][ox + 1] = "W" if olhos != "cima" else "E"
                 if olhos == "cima":
                     g[oy + 1][ox + 2] = "W"
                 if olhos == "bravo":
-                    _por(g, ["KK...", "..KKK"] if ox < hx else ["KKK..", "...KK"], ox, oy - 1)
+                    carimbar(g, ["KK...", "..KKK"] if ox < hx else ["KKK..", "...KK"], ox, oy - 1)
                 if olhos == "triste":
-                    _por(g, ["...KK", "KKK.."] if ox < hx else ["..KKK", "KK..."], ox, oy - 1)
+                    carimbar(g, ["...KK", "KKK.."] if ox < hx else ["..KKK", "KK..."], ox, oy - 1)
         if bochecha:
             g[hy + 3][hx - 2] = g[hy + 3][hx - 1] = "P"
         g[hy + 1][hx + 9] = "m"               # narina no bico
@@ -121,23 +120,26 @@ def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", bochecha=True, mascara=
                         and g[ny + dy][nx + dx] in ".FHhCck":
                     g[ny + dy][nx + dx] = "K"
         for ox in (hx - 3, hx + 2):
-            _por(g, [".KKK.", "KEEEK", "KeEeK", ".KKK."], ox + dx, hy - 2 + dy)
+            carimbar(g, [".KKK.", "KEEEK", "KeEeK", ".KKK."], ox + dx, hy - 2 + dy)
         ex, ey = hx - 1, hy
         if rosto == "x":
-            _por(g, ["B.B", ".B.", "B.B"], ex - 1, ey - 1); _por(g, ["B.B", ".B.", "B.B"], ex + 3, ey - 1)
+            carimbar(g, ["B.B", ".B.", "B.B"], ex - 1, ey - 1); carimbar(g, ["B.B", ".B.", "B.B"], ex + 3, ey - 1)
         else:
-            for x in (ex, ex + 4):
-                g[ey][x] = g[ey + 1][x] = "B"
-            g[ey + 3][ex + 2] = "B"; g[ey + 3][ex + 1] = g[ey + 3][ex + 3] = "B" if rosto == "triste" else "F"
-            if rosto == "o":
-                g[ey + 3][ex + 1] = g[ey + 3][ex + 3] = "F"; g[ey + 4][ex + 2] = "B"
-        g[ey + 2][ex - 1] = g[ey + 2][ex + 5] = "P"
+            for x in (ex, ex + 4):                # olhos 2x3 com brilho
+                carimbar(g, ["WB", "BB", "BB"], x - 1 + (x > ex), ey - 1)
+            if rosto != "o":                      # sobrancelhas tristes
+                carimbar(g, ["..B", "BB."], ex - 2, ey - 3); carimbar(g, ["B..", ".BB"], ex + 4, ey - 3)
+        if rosto == "o":
+            carimbar(g, [".B.", "B.B", ".B."], ex + 1, ey + 3)
+        else:
+            carimbar(g, [".BBB.", "B...B"], ex, ey + 3)
+        g[ey + 2][ex - 2] = g[ey + 2][ex + 6] = "P"
     for a, b in bracos:
         _braco(g, a, b)
     for s, x, y in por:
         if s is LANTERNA and not lanterna_ok:
             s = LANTERNA_APAG
-        _por(g, s, x, y)
+        carimbar(g, s, x, y)
     top = min(y for _, y in cabeca)
     return ["".join(l) for l in g], (hx - 7, top - 5)
 
@@ -192,14 +194,14 @@ _SPECS = {
     "running": [dict(cx=13, lean=-2, olhos="bravo", bracos=(((12, 22), (6, 18)),), atras=(_lant(5, 18),)),
                 dict(cx=14, lean=2, olhos="bravo", bracos=(((17, 21), (22, 14)),), por=(_lant(22, 14),)),
                 dict(cx=14, lean=3, olhos="bravo", bracos=(((18, 22), (24, 20)),),
-                     por=(_lant(24, 20), (FRASCO_DEITADO, 21, 6), (EXCL, 29, 0))),
+                     por=(_lant(24, 20), (FRASCO_VOANDO, 24, 1))),
                 dict(cx=14, lean=1, olhos="bravo", bracos=(((17, 22), (21, 24)),),
                      por=(_lant(22, 24), (NUVEM, 22, 3), (NUVEM_P, 27, 11), (NUVEM_P, 19, 1)))],
     # luva no queixo do bico, pensando, "?" aparece
     "review": [dict(cx=12, olhos="cima", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16),)),
-               dict(cx=12, olhos="cima", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16), (PERG_P, 25, 2))),
-               dict(cx=12, olhos="cima", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16), (PERG, 25, 0))),
-               dict(cx=12, olhos="normal", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16), (PERG, 25, 0)))],
+               dict(cx=12, olhos="cima", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16), (INTERROG_P, 25, 2))),
+               dict(cx=12, olhos="cima", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16), (INTERROG, 25, 0))),
+               dict(cx=12, olhos="normal", bracos=(((15, 22), (19, 18)),), por=((MAO_ROSTO, 18, 16), (INTERROG, 25, 0)))],
 }
 
 QUADROS, ANCORA = {}, {}

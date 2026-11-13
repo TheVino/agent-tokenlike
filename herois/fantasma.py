@@ -2,8 +2,8 @@
 rosto (olhos, boca, bochechas) e sobreposições (mãozinha de lençol, rastro, "z", "?", buracos, sumiço).
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
 import math
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, EXCLAM, LAGRIMA, espelho, carimbar
 
-N = 32
 PAL = {
     "K": "#2a2140", "G": "#f2f0ff", "D": "#c6c0e8", "L": "#ffffff", "B": "#2a2140", "W": "#ffffff",
     "P": "#ff9ec4", "R": "#c8304a", "H": "#7b5cc9", "h": "#4f3a8f", "Y": "#ffd23f", "y": "#c99a00",
@@ -37,23 +37,8 @@ COCA_A = ["..KKKK..", ".KGGLGK.", "KGGGGGGK", "KGKKKGGK", "KK..KGGK", "....KGGK"
 COCA_B = [".KKKK...", "KGLGGK..", "KGGGGGK.", ".KKKGGGK", "....KGGK", "....KGGK", "....KGGK", "....GGGK", "....KKK."]
 RASTRO_1 = ["KKKKKK", "DDDDDK", "KKKKKK"]
 RASTRO_2 = ["KKK", "DDK", "KKK"]
-Z_P = ["KKKKK", "KTTTK", "KKKTK", "KKTKK", "KTKKK", "KTTTK", "KKKKK"]
-Z_G = ["KKKKKK", "KTTTTK", "KKKKTK", "KKKTKK", "KKTKKK", "KTKKKK", "KTTTTK", "KKKKKK"]
-PERG_P = [".KKK.", "KTTTK", "KKKTK", "..KKK", "..KTK", "..KKK"]
-PERG = [".KKKK.", "KTTTTK", "KTKKTK", "KKKKTK", "..KTTK", "..KTK.", "..KKK.", "..KTK.", "..KKK."]
-LAGRIMA = ["T", "T"]
-EXCL = ["KKK", "KYK", "KYK", "KYK", "KKK", "KYK", "KKK"]
 
 
-def _espelho(s):
-    return [l[::-1] for l in s]
-
-
-def _por(g, s, x, y):
-    for dy, lin in enumerate(s):
-        for dx, ch in enumerate(lin):
-            if ch != "." and 0 <= x + dx < N and 0 <= y + dy < N:
-                g[y + dy][x + dx] = ch
 
 
 def _lencol(w, h, cx, base, lean, fase):
@@ -105,28 +90,28 @@ def quadro(w=20, h=24, cx=16, base=30, lean=0, fase=0.0, olhos="normal", olhar=0
     fx = round(cx + lean * (base - ey) / h) + olhar
     lx, rx = fx - 6, fx + 2
     if olhos == "fechado":
-        _por(g, OLHO_FECHADO, lx, ey); _por(g, OLHO_FECHADO, rx, ey)
+        carimbar(g, OLHO_FECHADO, lx, ey); carimbar(g, OLHO_FECHADO, rx, ey)
     elif olhos == "feliz":
-        _por(g, OLHO_FELIZ, lx, ey + 1); _por(g, OLHO_FELIZ, rx, ey + 1)
+        carimbar(g, OLHO_FELIZ, lx, ey + 1); carimbar(g, OLHO_FELIZ, rx, ey + 1)
     elif olhos == "x":
-        _por(g, OLHO_X, lx, ey); _por(g, OLHO_X, rx, ey)
+        carimbar(g, OLHO_X, lx, ey); carimbar(g, OLHO_X, rx, ey)
     elif olhos == "cima":
-        _por(g, OLHO_CIMA, lx, ey - 1); _por(g, OLHO_CIMA, rx, ey - 1)
+        carimbar(g, OLHO_CIMA, lx, ey - 1); carimbar(g, OLHO_CIMA, rx, ey - 1)
     else:
-        _por(g, OLHO, lx, ey); _por(g, OLHO, rx, ey)
+        carimbar(g, OLHO, lx, ey); carimbar(g, OLHO, rx, ey)
         if olhos == "bravo":
-            _por(g, SOBR_BRAVA, lx - 1, ey - 2); _por(g, _espelho(SOBR_BRAVA), rx, ey - 2)
+            carimbar(g, SOBR_BRAVA, lx - 1, ey - 2); carimbar(g, espelho(SOBR_BRAVA), rx, ey - 2)
         elif olhos == "triste":
-            _por(g, SOBR_TRISTE, lx - 1, ey - 2); _por(g, _espelho(SOBR_TRISTE), rx, ey - 2)
+            carimbar(g, SOBR_TRISTE, lx - 1, ey - 2); carimbar(g, espelho(SOBR_TRISTE), rx, ey - 2)
     if boca:
         b = BOCA[boca]
-        _por(g, b, fx - len(b[0]) // 2, ey + 6)
+        carimbar(g, b, fx - len(b[0]) // 2, ey + 6)
     if bochecha and olhos in ("normal", "feliz", "fechado"):
         for x in (lx - 2, lx - 1, rx + 4, rx + 5):
             if (x, ey + 5) in pts:
                 g[ey + 5][x] = "P"
     for s, x, y in por:
-        _por(g, s, x, y)
+        carimbar(g, s, x, y)
     cxt = (xs_top[0] + xs_top[-1]) // 2
     return ["".join(l) for l in g], (cxt - 7, top - 8)
 
@@ -173,13 +158,13 @@ _SPECS = {
     "running": [dict(cx=14, lean=-3, olhos="bravo", boca="reta"),
                 dict(cx=17, lean=5, olhar=1, olhos="bravo", boca="buu", fase=_F[1], por=((RASTRO_2, 3, 22),)),
                 dict(cx=18, lean=6, olhar=1, w=21, olhos="bravo", boca="buu_g", fase=_F[2],
-                     por=((RASTRO_1, 1, 20), (EXCL, 28, 2))),
-                dict(cx=16, lean=3, olhar=2, olhos="bravo", boca="buu", fase=_F[3], por=((EXCL, 28, 3),))],
+                     por=((RASTRO_1, 1, 20), (EXCLAM, 28, 2))),
+                dict(cx=16, lean=3, olhar=2, olhos="bravo", boca="buu", fase=_F[3], por=((EXCLAM, 28, 3),))],
     # coça a cabeça e o "?" aparece
     "review": [dict(cx=14, olhos="cima", boca="torta"),
-               dict(cx=14, olhos="cima", boca="torta", fase=_F[1], por=((COCA_A, 17, 4), (PERG_P, 26, 4))),
-               dict(cx=14, olhos="cima", boca="o", fase=_F[2], por=((COCA_B, 17, 4), (PERG, 25, 0))),
-               dict(cx=14, olhos="cima", boca="o", fase=_F[3], por=((COCA_A, 17, 4), (PERG, 25, 0)))],
+               dict(cx=14, olhos="cima", boca="torta", fase=_F[1], por=((COCA_A, 17, 4), (INTERROG_P, 26, 4))),
+               dict(cx=14, olhos="cima", boca="o", fase=_F[2], por=((COCA_B, 17, 4), (INTERROG, 25, 0))),
+               dict(cx=14, olhos="cima", boca="o", fase=_F[3], por=((COCA_A, 17, 4), (INTERROG, 25, 0)))],
 }
 
 QUADROS, ANCORA = {}, {}
