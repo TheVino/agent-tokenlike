@@ -57,4 +57,6 @@ assert tipos <= {"monster", "horde", "boss", "mimic", "trap", "status"} and "hor
 assert all((g["kind"] == "status") == (g["killer"] in ("Queimadura", "Veneno")) for g in morre())
 m2 = M.new_meta(); r2 = M.new_run("slime", {"hp": 5, "atk": 1}, 0)
 M.die(r2, m2, {}, "Desistiu", "desistiu"); assert m2["graveyard"][-1]["kind"] == "desistiu"
+r3 = M.new_run("slime", {}, 9); r3["items"] = [{"key": "adaga", "rar": "raro", "floor": 1, "kills0": 0}]; m3 = M.new_meta()
+M.die(r3, m3, {}, "x"); assert m3["graveyard"][-1]["items"] == [{"key": "adaga", "rar": "raro"}]   # lápide guarda a raridade
 print("ok: registro")

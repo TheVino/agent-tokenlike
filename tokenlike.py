@@ -23,16 +23,20 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import math
 import os
 import random
 import shutil
+import struct
 import sys
 import threading
 import time
 import traceback
-from collections import deque
+import zlib
+from collections import Counter, deque
+from functools import lru_cache
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -76,7 +80,12 @@ GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
 STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
 MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
+GOLD_HOVER = "#fff27a"      # polegar da barra de rolagem com o mouse em cima
 HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
+CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
+CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
+ITENS_COLS, ITENS_CARD_W, ITENS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
+JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win", "itens_win")
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -725,12 +734,20 @@ def render_map(pm, s: int, k: int = 1):
 
 def map_img(pm, lado):
     """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
+    if not pm:
+        return tk.PhotoImage(width=1, height=1)
     x0, y0, x1, y1 = visual.bbox(pm)
     s = max(1, lado // max(1, x1 - x0, y1 - y0))
-    img = tk.PhotoImage(width=(x1 - x0) * s, height=(y1 - y0) * s)
-    for (x, y), c in pm.items():
-        img.put(c, to=((x - x0) * s, (y - y0) * s, (x - x0 + 1) * s, (y - y0 + 1) * s))
-    return img
+    w, h =(x1 - x0) * s, (y1 - y0) * s
+    # um PNG montado aqui e lido numa chamada só (um put por pixel levava ~0,4 s para abrir o cemitério)
+    raw = b"".join((b"\0" + b"".join((bytes.fromhex(pm[(x, y)][1:]) + b"\xff" if (x, y) in pm else b"\0" * 4) * s
+                                     for x in range(x0, x1))) * s for y in range(y0, y1))
+
+    def bloco(tipo, d):
+        return struct.pack(">I", len(d)) + tipo + d + struct.pack(">I", zlib.crc32(tipo + d))
+    png = (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+           + bloco(b"IDAT", zlib.compress(raw, 1)) + bloco(b"IEND", b""))
+    return tk.PhotoImage(data=base64.b64encode(png).decode(), format="png", width=w, height=h)
 
 
 def heroi_idle(key):
@@ -742,6 +759,15 @@ def heroi_idle(key):
     except ImportError:
         return None
     return visual.grid_to_map(_montar.estados(mod, 0)["idle"][0], mod.PAL)
+
+
+def heroi_proprio(key):
+    """Herói feito aqui (tem módulo herois/<key>.py); os outros (pasta em characters/, Petdex/Codex) são importados."""
+    import importlib.util
+    try:
+        return importlib.util.find_spec(f"herois.{key}") is not None
+    except (ImportError, ValueError):
+        return False
 
 
 _ITEM_ARTS = {}
@@ -757,6 +783,75 @@ def pet_looks(run):
     tipos = {l["type"] for l, _ in looks}
     st = M.stats(run)
     return looks + [({"type": t}, None) for k, t in ELEMENTO_LOOK.items() if st[k] > 0 and t not in tipos]
+
+
+def _pct(v):
+    return f"{round(v * 100)}%"
+
+
+# janela de Status: (campo de stats(), nome, formato, teto ou None, mostra mesmo zerado)
+STAT_LINHAS = (
+    ("maxhp", "HP máx", str, None, True),
+    ("atk", "Ataque", str, None, True),
+    ("def", "Defesa", str, None, True),
+    ("spd", "Velocidade", lambda v: f"{round(v)}", None, True),
+    ("crit", "Crítico", _pct, M.MAX_CRIT, True),
+    ("critdmg", "Dano crítico", lambda v: f"×{v:g}", None, True),
+    ("dodge", "Esquiva", _pct, M.MAX_DODGE, False),
+    ("lifesteal", "Roubo de vida", lambda v: f"+{v} por vitória", None, False),
+    ("duplo", "Golpe duplo", _pct, M.MAX_DUPLO, False),
+    ("area", "Ataque em área", lambda v: "sim", None, False),
+    ("queimar", "Queimar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("eletrizar", "Eletrizar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("envenenar", "Envenenar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("congelar", "Congelar", _pct, M.MAX_ELEM_CHANCE, False),
+    ("bloqueio", "Bloqueios por luta", str, M.MAX_BLOQUEIO, False),
+    ("espinhos", "Espinhos", _pct, M.MAX_ESPINHOS, False),
+    ("cura_sala", "Cura por sala", lambda v: f"+{v} HP", None, False),
+    ("cura_andar", "Cura por andar", lambda v: f"+{v} HP", None, False),
+    ("custo_ataque", "Custo de ataque", lambda v: f"-{v} HP", None, False),
+    ("furia", "Fúria", lambda v: f"+{v} ATK a cada 10%", None, False),
+    ("ajudante", "Ajudante", lambda v: f"{v} de dano", None, False),
+    ("crescer", "Crescer", lambda v: f"+1 ATK / {v} kills", None, False),
+    ("gold", "Ouro", lambda v: f"+{_pct(v)}", None, False),
+    ("energy", "Energia", lambda v: f"+{_pct(v)}", M.MAX_ENERGY_BONUS, False),
+    ("trap", "Armadilhas", lambda v: f"×{v:g}", None, False),
+    ("sorte", "Sorte", lambda v: f"+{_pct(v)}", M.MAX_SORTE, False),
+    ("desconto", "Desconto", _pct, M.MAX_DESCONTO, False),
+)
+
+
+def stat_linhas(run, st):
+    """[(campo, nome, valor)] da janela de Status: os fixos sempre, os outros só quando mudam algo."""
+    st = dict(st, crescer=min([M.item_fx(i["key"], i["rar"]).get("crescer", 0) for i in run["items"]
+                               if "crescer" in M.ITEMS.get(i["key"], {}).get("fx", {})] or [0]))
+    out = []
+    for k, nome, fmt_, teto, sempre in STAT_LINHAS:
+        v = st[k]
+        if sempre or (v != 1 if k == "trap" else v):
+            out.append((k, nome, fmt_(v) + (f" / {fmt_(teto)}" if teto is not None else "")))
+    return out
+
+
+# página de itens: família pelo 1º campo de fx que aparece nesta ordem (sem nenhum: "Básico")
+FAMILIAS = (("Elemental", ("queimar", "eletrizar", "envenenar", "congelar")), ("Ajudante", ("ajudante",)),
+            ("Crescimento", ("crescer",)), ("Área", ("area",)), ("Sangue", ("custo_ataque", "furia")),
+            ("Golpes", ("crit", "critdmg", "duplo")), ("Defesa", ("bloqueio", "espinhos", "dodge")),
+            ("Regeneração", ("cura_sala", "cura_andar", "lifesteal")), ("Sorte e ouro", ("sorte", "gold", "desconto")))
+
+
+def item_familia(key):
+    fx = M.ITEMS[key]["fx"]
+    return next((nome for nome, campos in FAMILIAS if any(fx.get(c) for c in campos)), "Básico")
+
+
+@lru_cache(maxsize=None)
+def boss_grid(sprite):
+    """Monstro com a coroa de chefe em cima (grade única por sprite: o cache de ícones usa o id)."""
+    foe = arte.FOE_ART[sprite]
+    w = max(len(foe[0]), len(arte.CROWN[0]))
+    pad = lambda r: r.center(w, ".")
+    return tuple(pad(r) for r in arte.CROWN + foe)
 
 
 def item_arts():
@@ -1128,8 +1223,10 @@ class PetApp:
         self.mode_var = tk.StringVar(value=self.state["mode"])
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.virar_var = tk.BooleanVar(value=self.virar)
-        self.menu_win = self.heroes_win = self.thumb_thread = None
-        self.hero_cards, self.hero_thumb_lbl, self.thumbs = {}, {}, {}
+        for attr in JANELAS:
+            setattr(self, attr, None)
+        self.thumb_thread = None
+        self.hero_cards, self.hero_thumb_lbl, self.thumbs, self.icons = {}, {}, {}, {}
 
     def fill_char_menu(self):
         """Conquista nova ou personagens recarregados: refaz a grade de heróis se estiver aberta."""
@@ -1173,10 +1270,10 @@ class PetApp:
     def close_win(self, w):
         if w is None:
             return
-        if self.menu_win is w:
-            self.menu_win = None
-        if self.heroes_win is w:
-            self.heroes_win = None
+        for attr in JANELAS:
+            if getattr(self, attr) is w:
+                setattr(self, attr, None)
+        if self.heroes_win is None:
             self.hero_cards, self.hero_thumb_lbl = {}, {}
         try:
             w.destroy()
@@ -1242,6 +1339,7 @@ class PetApp:
         for icon, text, cmd in (("grimorio", "Status", self.show_stats),
                                 ("lapide", "Cemitério", self.show_graveyard),
                                 ("coroa", "Conquistas", self.show_achievements),
+                                ("pocao", "Itens", self.show_items),
                                 ("espada_osso", "Heróis…", self.show_heroes)):
             self.menu_row(f, icon, text, cmd)
         self.menu_sep(f)
@@ -1264,15 +1362,15 @@ class PetApp:
         cmd()
 
     # ------------------------------------------------------- grade de heróis
-    def hero_thumb(self, c, ok):
+    def hero_thumb(self, c, ok, lado=64):
         """Idle do 1º estágio ampliado (bloqueado: silhueta). None enquanto a folha ainda é cortada na thread."""
         stage = c.stages[0]
-        ck = (id(stage), ok)
+        ck = (id(stage), ok) if lado == 64 else (id(stage), ok, lado)
         if ck not in self.thumbs:
             pm = heroi_idle(c.key) if not stage.get("frames") else spec_to_map(stage["frames"][0])
             if pm is None:
                 return None
-            self.thumbs[ck] = map_img(pm if ok else {p: "#0b0b14" for p in pm}, 64)
+            self.thumbs[ck] = map_img(pm if ok else {p: "#0b0b14" for p in pm}, lado)
         return self.thumbs[ck]
 
     def cortar_folhas(self):
@@ -1297,33 +1395,55 @@ class PetApp:
                     lbl.configure(image=img, text="", height=72)
         self.root.after(150, esperar)
 
-    def show_heroes(self):
-        self.close_win(self.heroes_win)
-        x, y = self.root.winfo_x(), self.root.winfo_y()
-        w, f = self.pixel_box(x, y)
-        self.heroes_win = w
+    def janela(self, attr, titulo):
+        """Janela pixel (fecha a anterior do mesmo tipo) com título dourado e um x; devolve (janela, miolo)."""
+        self.close_win(getattr(self, attr))
+        w, f = self.pixel_box(self.root.winfo_x(), self.root.winfo_y())
+        setattr(self, attr, w)
         top = tk.Frame(f, bg=PANEL_BG)
         top.pack(fill="x")
-        tk.Label(top, text="Herói da próxima run", bg=PANEL_BG, fg=GOLD, font=self.font).pack(side="left")
+        tk.Label(top, text=titulo, bg=PANEL_BG, fg=GOLD, font=self.font).pack(side="left")
         fechar = tk.Label(top, text=" x ", bg=PANEL_BG, fg=MUTED, font=self.font)
         fechar.pack(side="right")
         self.hover((fechar,), fechar, MUTED, lambda: self.close_win(w))
-        secoes = [("", [(k, c) for k, c in self.chars.items() if not c.comunidade]),
-                  ("Comunidade", [(k, c) for k, c in self.chars.items() if c.comunidade])]
-        for titulo, lista in secoes:
-            if not lista:
-                continue
-            if titulo:
+        return w, f
+
+    def ao_lado(self, w):
+        """Ao lado do pet: à esquerda, ou à direita se não couber."""
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        w.update_idletasks()
+        left = x - w.winfo_width() - 6
+        self.place_win(w, left if left >= 0 else x + self.W + 6, y)
+
+    def icon(self, grid, s=2, pal=None, glow=None, dark=False, dim=False):
+        """Grade de arte em escala s (cache): brilho de raridade, silhueta (bloqueado) ou esmaecida (consumido)."""
+        ck = (id(grid), s, id(pal), glow, dark, dim)
+        if ck not in self.icons:
+            pm = visual.grid_to_map(grid, pal or arte.PAL)
+            if glow:
+                pm = visual.contorno(pm, glow)
+            if dark:
+                pm = {p: "#0b0b14" for p in pm}
+            if dim:
+                pm = visual.tingir(pm, PANEL_BG, 0.55)
+            x0, y0, x1, y1 = visual.bbox(pm)
+            self.icons[ck] = map_img(pm, s * max(x1 - x0, y1 - y0))
+        return self.icons[ck]
+
+    def show_heroes(self):
+        w, f = self.janela("heroes_win", "Herói da próxima run")
+        secoes = [("Heróis", [(k, c) for k, c in self.chars.items() if heroi_proprio(k)]),
+                  ("Comunidade", [(k, c) for k, c in self.chars.items() if not heroi_proprio(k)])]
+        for n, (titulo, lista) in enumerate(s for s in secoes if s[1]):
+            if n:
                 self.menu_sep(f)
-                tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+            tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x", pady=(4, 0))
             grade = tk.Frame(f, bg=PANEL_BG)
             grade.pack(pady=(4, 0))
             for i, (key, c) in enumerate(lista):
                 self.hero_card(grade, key, c).grid(row=i // HERO_COLS, column=i % HERO_COLS, padx=3, pady=3)
         self.cortar_folhas()
-        w.update_idletasks()
-        left = x - w.winfo_width() - 6          # ao lado do pet: à esquerda, ou à direita se não couber
-        self.place_win(w, left if left >= 0 else x + self.W + 6, y)
+        self.ao_lado(w)
 
     def hero_card(self, parent, key, c):
         ok, sel = self.is_unlocked(c), key == self.char_var.get()
@@ -2015,55 +2135,271 @@ class PetApp:
     def show_stats(self):
         run, meta = self.run, self.meta
         st = M.stats(run)
-        lines = [f"Run #{run['id']}  -  {self.char.name} ({self.stage_title})"
-                 f"    Modo: {MODES[self.state['mode']]}",
-                 f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
-                 f"ATK {st['atk']}   DEF {st['def']}   Esquiva {int(st['dodge'] * 100)}%"
-                 f"   Ouro {run['gold']}",
-                 f"Velocidade {round(st['spd'])}   Crítico {round(st['crit'] * 100)}%"
-                 f"   Dano crítico ×{st['critdmg']:g}",
-                 "Itens:"]
+        w, f = self.janela("stats_win", f"Status  ·  Run #{run['id']}")
+        head = tk.Frame(f, bg=PANEL_BG)
+        head.pack(fill="x", pady=(4, 0))
+        self.stats_thumb = map_img(self.look_maps[0], 56)    # referência: o tk não guarda a imagem sozinho
+        tk.Label(head, image=self.stats_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
+        col = tk.Frame(head, bg=PANEL_BG)
+        col.pack(side="left", fill="x")
+        tk.Label(col, text=f"{self.char.name}  ·  {self.stage_title}", bg=PANEL_BG, fg=GOLD, font=self.font,
+                 anchor="w").pack(fill="x")
+        tk.Label(col, text=f"Andar {run['floor']}-{run['room']}   ·   Modo {MODES[self.state['mode']]}",
+                 bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+        barra = tk.Canvas(col, width=170, height=8, bg=BAR_BG, highlightthickness=0)
+        barra.pack(anchor="w", pady=3)
+        barra.create_rectangle(0, 0, 170 * min(1, run["hp"] / st["maxhp"]), 8, fill=HURT, width=0)
+        escudo = f"   ·   escudo {run['shield']}" if run["shield"] > 0 else ""
+        tk.Label(col, text=f"♥ {run['hp']}/{st['maxhp']}{escudo}   ·   $ {run['gold']}   ·   {run['kills']} kills"
+                 f"   ·   {run['bosses']} chefe{'s' if run['bosses'] != 1 else ''}", bg=PANEL_BG, fg=TEXT, font=self.font_small,
+                 anchor="w").pack(fill="x")
         if run.get("traco"):
-            lines.insert(-1, f"Traço: {M.fx_text(run['traco'])}")
-        for i in run["items"]:
-            lines.append(f"  {M.ITEMS[i['key']]['name']} ({M.RAR_NAMES[i['rar']]}):"
-                         f" {M.fx_text(M.item_fx(i['key'], i['rar']))}")
-        if not run["items"]:
-            lines.append("  -")
-        if run["shield"] > 0:
-            lines.append(f"Escudo: {run['shield']}")
-        if run["pending"]:
-            lines.append(f"Esperando escolha: {M.ITEMS[run['pending']['key']]['name']}")
-        stored = int(run["energy"] // M.room_cost(run))
+            tk.Label(f, text=f"Traço: {M.fx_text(run['traco'])}", bg=PANEL_BG, fg=MUTED, font=self.font_small,
+                     anchor="w").pack(fill="x", pady=(4, 0))
+        self.menu_sep(f)
+        grade = tk.Frame(f, bg=PANEL_BG)
+        grade.pack(fill="x")
+        for n, (k, nome, valor) in enumerate(stat_linhas(run, st)):
+            r, c = n // 2, (n % 2) * 3
+            tk.Label(grade, image=self.icon(arte.STAT_ART[k], 2), bg=PANEL_BG, width=20, height=18).grid(
+                row=r, column=c)
+            tk.Label(grade, text=nome, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").grid(
+                row=r, column=c + 1, sticky="w", padx=(2, 6))
+            tk.Label(grade, text=valor, bg=PANEL_BG, fg=TEXT, font=self.font_small, anchor="e").grid(
+                row=r, column=c + 2, sticky="e", padx=(0, 14 if c == 0 else 0))
+        self.menu_sep(f)
+        dica = "passe o mouse num item" if run["items"] or run["consumed"] else ""
+        info = tk.Label(f, text=dica, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w", justify="left",
+                        wraplength=330)
+        for titulo, lista, s, dim in ((f"Itens ({len(run['items'])})", run["items"], 3, False),
+                                      (f"Consumidos ({len(run['consumed'])})", run["consumed"], 2, True)):
+            if not lista and dim:
+                continue
+            tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
+            box = tk.Frame(f, bg=PANEL_BG)
+            box.pack(fill="x", pady=(2, 4))
+            if not lista:
+                tk.Label(box, text="nenhum ainda", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(anchor="w")
+            for n, it in enumerate(i for i in lista if i["key"] in M.ITEMS):
+                rar = it.get("rar", "comum")
+                lbl = tk.Label(box, image=self.icon(arte.ITEM_ART[it["key"]], s, glow=M.RAR_COLOR.get(rar), dim=dim),
+                               bg=PANEL_BG, width=s * 9 + 4, height=s * 9 + 4)
+                lbl.grid(row=n // 12, column=n % 12)
+                txt = (f"{M.ITEMS[it['key']]['name']} ({M.RAR_NAMES.get(rar, rar)})"
+                       + ("" if dim else f": {M.fx_text(M.item_fx(it['key'], rar))}"))
+                lbl.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
+                lbl.bind("<Leave>", lambda e: info.configure(text=dica, fg=MUTED))
+        info.pack(fill="x")
+        self.menu_sep(f)
         best = meta["best"]
-        today = self.state["daily"].get(date.today().isoformat(), 0)
-        lines += [f"Energia guardada: {stored} sala(s)",
-                  f"Recorde: andar {best['floor']}-{best['room']}    Runs: {meta['runs']}",
-                  f"Tokens hoje: {fmt(today)}    Total: {fmt(self.state['tokens_total'])}"]
+        rodape = [f"Energia guardada: {int(run['energy'] // M.room_cost(run))} sala(s)",
+                  f"Recorde: andar {best['floor']}-{best['room']}   ·   Runs: {meta['runs']}",
+                  f"Tokens hoje: {fmt(self.state['daily'].get(date.today().isoformat(), 0))}"
+                  f"   ·   Total: {fmt(self.state['tokens_total'])}"]
+        if run["pending"]:
+            rodape.append(f"Esperando escolha: {M.ITEMS[run['pending']['key']]['name']}")
         if self.demo:
-            lines.append("(modo demo)")
-        self.popup(lines, 14000)
+            rodape.append("(modo demo)")
+        tk.Label(f, text="\n".join(rodape), bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w",
+                 justify="left").pack(fill="x")
+        self.ao_lado(w)
+
+    def killer_icon(self, d):
+        """Ícone de quem matou: monstro, chefe com coroa, mímico, status, armadilha ou desistência."""
+        k = d.get("killer", "")
+        boss = next((s for s, n in M.BOSS_NAMES.items() if n == k), None)
+        if boss:
+            return self.icon(boss_grid(boss), 2, pal=arte.BOSS_PAL)
+        spr = "mimico" if k == "Mímico" else next((m[0] for m in M.MONSTERS if m[1] == k), None)
+        if spr:
+            return self.icon(arte.FOE_ART[spr], 2)
+        grid = {"Queimadura": arte.STAT_ART["queimar"], "Veneno": arte.STAT_ART["envenenar"],
+                "Armadilha": arte.ROOM_ART["armadilha"], "Desistiu": arte.ROOM_ART["escada"]}.get(k)
+        return self.icon(grid or arte.ROOM_ART["lapide"], 2)
+
+    def lapide(self, cv, y, d):
+        """Uma lápide do cemitério desenhada no canvas a partir de y."""
+        L, f, fs = CEMI_LAPIDE, self.font, self.font_small
+        cv.create_rectangle(2, y + 2, CEMI_W - 2, y + L - 4, fill=PANEL_BG, outline=PANEL_EDGE, width=2)
+        c = self.chars.get(d.get("char"))
+        img = (c and self.hero_thumb(c, True, 40)) or self.icon(arte.ROOM_ART["lapide"], 4)
+        cv.create_image(30, y + L // 2 - 1, image=img)
+        cv.create_text(60, y + 15, anchor="w", text=f"#{d.get('run', '?')}  {c.name if c else d.get('char', '?')}",
+                       fill=GOLD, font=f)
+        cv.create_text(CEMI_W - 12, y + 15, anchor="e", text=f"andar {d['floor']}-{d['room']}", fill=TEXT, font=f)
+        kimg = self.killer_icon(d)
+        cv.create_image(60, y + 37, anchor="w", image=kimg)
+        quem = "desistiu" if d.get("kind") == "desistiu" else f"morto por {d.get('killer', '?')}"
+        cv.create_text(66 + kimg.width(), y + 37, anchor="w", text=quem, fill=HURT, font=fs)
+        cv.create_text(CEMI_W - 12, y + 37, anchor="e", fill=MUTED, font=fs,
+                       text=f"$ {d.get('gold', 0)}   ·   {d.get('kills', 0)} kills   ·   {d.get('date', '')}")
+        x = 60
+        itens = [(it, None) if isinstance(it, str) else (it["key"], it.get("rar")) for it in d.get("items", [])]
+        itens = [(k, r) for k, r in itens if k in arte.ITEM_ART]
+        for n, (key, rar) in enumerate(itens):
+            im = self.icon(arte.ITEM_ART[key], 2, glow=M.RAR_COLOR.get(rar))
+            if x + im.width() > CEMI_W - 34 and n < len(itens) - 1:
+                cv.create_text(x + 2, y + 64, anchor="w", text=f"+{len(itens) - n}", fill=MUTED, font=fs)
+                break
+            cv.create_image(x, y + 64, anchor="w", image=im)
+            x += im.width() + 3
+        if not itens:
+            cv.create_text(60, y + 64, anchor="w", text="sem itens", fill=MUTED, font=fs)
 
     def show_graveyard(self):
-        g = self.meta["graveyard"]
-        best = self.meta["best"]
-        lines = [f"Cemitério  (recorde: andar {best['floor']}-{best['room']})"]
+        g, meta = self.meta["graveyard"], self.meta
+        w, f = self.janela("cemi_win", "Cemitério")
+        best = meta["best"]
+        resumo = f"{meta['runs']} runs   ·   recorde: andar {best['floor']}-{best['room']}"
+        mortes = Counter(d.get("killer") for d in g if d.get("kind") != "desistiu")
+        if mortes:
+            resumo += f"   ·   quem mais matou: {mortes.most_common(1)[0][0]}"
+        tk.Label(f, text=resumo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
         if not g:
-            lines.append("Ninguém morreu ainda...")
-        for d in reversed(g[-10:]):
-            name = self.chars[d["char"]].name if d["char"] in self.chars else d["char"]
-            lines.append(f"#{d['run']} {name}: andar {d['floor']}-{d['room']}, {d['killer']}"
-                         f" ({len(d['items'])} itens)")
-        self.popup(lines, 14000)
+            tk.Label(f, image=self.icon(arte.ROOM_ART["lapide"], 4), text="Nenhuma lápide ainda...\no herói segue firme!",
+                     compound="left", bg=PANEL_BG, fg=TEXT, font=self.font, padx=10, pady=12,
+                     justify="left").pack()
+            self.ao_lado(w)
+            return
+        alto, vis = len(g) * CEMI_LAPIDE, min(len(g) * CEMI_LAPIDE, CEMI_H)
+        row = tk.Frame(f, bg=PANEL_BG)
+        row.pack(pady=(4, 0))
+        cv = tk.Canvas(row, width=CEMI_W, height=vis, bg=PANEL_BG, highlightthickness=0,
+                       scrollregion=(0, 0, CEMI_W, alto), yscrollincrement=CEMI_LAPIDE // 3)
+        cv.pack(side="left")
+        for n, d in enumerate(reversed(g)):
+            self.lapide(cv, n * CEMI_LAPIDE, d)
+        if alto > vis:
+            self.rolagem(row, w, cv, vis)
+        self.ao_lado(w)
+
+    def rolagem(self, parent, w, cv, vis):
+        """Barra de rolagem em pixel (a nativa não pega as cores) ao lado do Canvas `cv` (com scrollregion):
+        arrastar o polegar rola junto, clicar na trilha centraliza o polegar ali, roda do mouse e setas.
+        O polegar some quando tudo cabe (ex.: depois de um filtro). Devolve a trilha."""
+        tr = tk.Canvas(parent, width=8, height=vis, bg=BAR_BG, highlightthickness=0, cursor="hand2")
+        tr.pack(side="left", padx=(4, 0))
+        dedo = tr.create_rectangle(0, 0, 8, vis, fill=GOLD, width=0)
+        vista = {"a": 0.0, "b": 1.0, "pega": None}      # fração visível (de yscrollcommand) e onde o polegar foi pego
+
+        def mostra(a, b):
+            vista["a"], vista["b"] = float(a), float(b)
+            tr.coords(dedo, 0, vista["a"] * vis, 8, vista["b"] * vis)
+            tr.itemconfigure(dedo, state="hidden" if vista["b"] - vista["a"] >= 0.999 else "normal")
+
+        def vai(y):
+            tam = vista["b"] - vista["a"]
+            cv.yview_moveto(max(0.0, min(1.0 - tam, (y - vista["pega"]) / vis)))
+
+        def aperta(e):
+            y0, y1 = vista["a"] * vis, vista["b"] * vis
+            vista["pega"] = e.y - y0 if y0 <= e.y <= y1 else (y1 - y0) / 2   # fora do polegar: pula para lá
+            vai(e.y)
+
+        def solta(e):
+            vista["pega"] = None
+        cv.configure(yscrollcommand=mostra)
+        tr.bind("<Button-1>", aperta)
+        tr.bind("<B1-Motion>", lambda e: vista["pega"] is not None and vai(e.y))
+        tr.bind("<ButtonRelease-1>", solta)
+        tr.tag_bind(dedo, "<Enter>", lambda e: tr.itemconfigure(dedo, fill=GOLD_HOVER))
+        tr.tag_bind(dedo, "<Leave>", lambda e: tr.itemconfigure(dedo, fill=GOLD))
+        w.bind("<MouseWheel>", lambda e: cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
+        w.bind("<Up>", lambda e: cv.yview_scroll(-1, "units"))
+        w.bind("<Down>", lambda e: cv.yview_scroll(1, "units"))
+        return tr
+
+    def item_liberado(self, key):
+        """Mesma regra do sorteio (M.unlocked_items); no demo tudo liberado, como os heróis."""
+        req = M.ITEMS[key].get("req")
+        return self.demo or not req or req in self.meta["achievements"]
+
+    def item_card(self, cv, x, y, key):
+        """Card de um item no canvas a partir de (x, y); devolve a altura. Bloqueado: silhueta, cadeado, sem valores."""
+        it, ok, fs = M.ITEMS[key], self.item_liberado(key), self.font_small
+        top = next((M.RAR_COLOR[r] for r in reversed(it["rarities"]) if M.RAR_COLOR[r]), None)
+        cv.create_image(x + 26, y + 26, image=self.icon(arte.ITEM_ART[key], 4, glow=ok and top or None, dark=not ok))
+        cv.create_text(x + 54, y + 16, anchor="w", text=it["name"], fill=TEXT if ok else MUTED, font=self.font)
+        cv.create_text(x + 54, y + 33, anchor="w", font=fs, fill=MUTED,
+                       text=item_familia(key) + (f"  ·  consumir: {'cura' if 'heal' in it['consume'] else 'escudo'}" if ok else ""))
+        ty, larg = y + 54, ITENS_CARD_W - 20
+        if not ok:
+            cv.create_image(x + 10, ty + 7, anchor="w", image=self.menu_icon("cadeado"))
+            t = cv.create_text(x + 26, ty, anchor="nw", text=M.ACHIEVEMENTS.get(it["req"], it["req"]), fill=MUTED,
+                               font=fs, width=larg - 16)
+            ty = cv.bbox(t)[3] + 4
+        for r in [] if not ok else it["rarities"]:
+            c = M.consume_fx(key, r)
+            comer = f"cura {c['heal']}" if "heal" in c else f"escudo {c.get('shield', 0)}"
+            t = cv.create_text(x + 10, ty, anchor="nw", fill=M.RAR_COLOR[r] or TEXT, font=fs, width=larg,
+                               text=f"{M.RAR_NAMES[r]}: {M.fx_text(M.item_fx(key, r))}  ·  {comer}")
+            ty = cv.bbox(t)[3] + 3
+        alto = max(ty - y + 6, 60)
+        cv.tag_lower(cv.create_rectangle(x + 1, y + 1, x + ITENS_CARD_W - 1, y + alto - 1, fill=PANEL_BG, width=2,
+                                         outline=PANEL_EDGE))
+        return alto
+
+    def show_items(self):
+        livres = [k for k in M.ITEMS if self.item_liberado(k)]
+        w, f = self.janela("itens_win", f"Itens  ·  {len(livres)} de {len(M.ITEMS)} liberados")
+        self.itens_filtro = getattr(self, "itens_filtro", "todos")
+        chips = tk.Frame(f, bg=PANEL_BG)
+        chips.pack(fill="x", pady=(4, 0))
+        row = tk.Frame(f, bg=PANEL_BG)
+        row.pack(pady=(4, 0))
+        cv = tk.Canvas(row, width=ITENS_COLS * (ITENS_CARD_W + 6), height=ITENS_H, bg=PANEL_BG,
+                       highlightthickness=0, yscrollincrement=40)
+        cv.pack(side="left")
+        self.itens_cv = cv
+        self.rolagem(row, w, cv, ITENS_H)
+        botoes = {}
+
+        def desenha(filtro):
+            self.itens_filtro = filtro
+            for nome, b in botoes.items():
+                b.configure(bg=GOLD if nome == filtro else BAR_BG, fg=PANEL_BG if nome == filtro else TEXT)
+            cv.delete("all")
+            keys = [k for k in M.ITEMS if filtro == "todos" or (k in livres) == (filtro == "liberados")]
+            y = 0
+            for i in range(0, len(keys), ITENS_COLS):
+                y += 6 + max(self.item_card(cv, c * (ITENS_CARD_W + 6), y, k)
+                             for c, k in enumerate(keys[i:i + ITENS_COLS]))
+            if not keys:
+                cv.create_text(10, 20, anchor="w", text="Nenhum item aqui.", fill=MUTED, font=self.font)
+            cv.configure(scrollregion=(0, 0, ITENS_COLS * (ITENS_CARD_W + 6), max(y, ITENS_H)))
+            cv.yview_moveto(0)
+        for nome, texto in (("todos", "Todos"), ("liberados", "Liberados"), ("bloqueados", "Bloqueados")):
+            b = tk.Label(chips, text=texto, font=self.font_small, padx=6, pady=1, cursor="hand2")
+            b.pack(side="left", padx=(0, 3))
+            b.bind("<Button-1>", lambda e, n=nome: desenha(n))
+            botoes[nome] = b
+        desenha(self.itens_filtro)
+        self.ao_lado(w)
 
     def show_achievements(self):
-        have = set(self.meta["achievements"])
-        lines = ["Conquistas"]
-        for k, desc in M.ACHIEVEMENTS.items():
-            mark = "[x]" if k in have else "[  ]"
-            gains = self.unlock_rewards(k)
-            lines.append(f"{mark} {desc}" + (f"  ->  {', '.join(gains)}" if gains else ""))
-        self.popup(lines, 14000)
+        have = set(self.meta["achievements"]) & set(M.ACHIEVEMENTS)
+        w, f = self.janela("conq_win", f"Conquistas  ·  {len(have)} de {len(M.ACHIEVEMENTS)}")
+        grade = tk.Frame(f, bg=PANEL_BG)
+        grade.pack(pady=(4, 0))
+        for n, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
+            ok = k in have
+            card = tk.Frame(grade, bg=PANEL_BG, width=CONQ_CARD_W, height=CONQ_CARD_H, highlightthickness=2,
+                            highlightbackground=GOLD if ok else PANEL_EDGE)
+            card.pack_propagate(False)
+            card.grid(row=n // CONQ_COLS, column=n % CONQ_COLS, padx=3, pady=3)
+            tk.Label(card, image=self.icon(arte.CONQ_ART[k], 3, dark=not ok), bg=PANEL_BG, height=36).pack(pady=(6, 2))
+            tk.Label(card, text=desc, bg=PANEL_BG, fg=TEXT if ok else MUTED, font=self.font_small,
+                     wraplength=CONQ_CARD_W - 14).pack()
+            premios = [self.icon(arte.ITEM_ART[ik], 2, dark=not ok) for ik, it in M.ITEMS.items()
+                       if it.get("req") == k and ik in arte.ITEM_ART]
+            premios += [im for c in self.chars.values() if c.unlock == k for im in [self.hero_thumb(c, ok, 24)] if im]
+            if premios:
+                linha = tk.Frame(card, bg=PANEL_BG)
+                linha.pack(side="bottom", pady=(0, 5))
+                tk.Label(linha, text="libera", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
+                for im in premios[:6]:
+                    tk.Label(linha, image=im, bg=PANEL_BG).pack(side="left", padx=1)
+        self.ao_lado(w)
 
     def save(self):
         try:

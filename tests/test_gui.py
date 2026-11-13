@@ -20,7 +20,10 @@ class Tk(Noop):
 class Canvas(Noop):
     """Guarda posição e texto de cada item para bbox realista (6 px por letra, 10 de altura)."""
     n=0
-    def __init__(self,*a,**k): self.it={}
+    def __init__(self,*a,**k): self.it={}; self.binds={}; self.cfg=dict(k); self.moveto=None
+    def bind(self,seq,fn=None,*a): self.binds[seq]=fn
+    def configure(self,**k): self.cfg.update(k)
+    def yview_moveto(self,f): self.moveto=f
     def _new(self,kind,a,k): Canvas.n+=1; self.it[Canvas.n]=[kind,list(a[:4]),dict(k)]; return Canvas.n
     def create_image(self,*a,**k): return self._new("img",a,k)
     def create_rectangle(self,*a,**k): return self._new("rect",a,k)
@@ -44,7 +47,7 @@ class Canvas(Noop):
             return (x0,c[1]-5,x0+w,c[1]+5)
         return (c[0]-8,c[1]-16,c[0]+8,c[1])
 class PhotoImage(Noop):
-    def __init__(self, width=16, height=16, file=None):
+    def __init__(self, width=16, height=16, file=None, **k):
         self.op=None
         if file:
             assert Path(file).is_file(), file
@@ -470,6 +473,62 @@ for _ in range(2):
 appm.show_heroes(); appm.hero_cards["fantasma"](); assert appm.meta["next_char"] == "fantasma" and not VIVAS - {appm.popup_win}
 for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") == "esperar": fn()    # thread das miniaturas
+# janelas de conquistas, cemitério e status: vazias e cheias, reabrir troca a janela, fechar não vaza
+import arte
+assert set(arte.CONQ_ART) == set(M.ACHIEVEMENTS)
+campos = set(M.stats(appm.run)) | {"crescer"}
+assert campos <= set(arte.STAT_ART) and campos == {k for k, *_ in tp.STAT_LINHAS}
+JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats))
+def abre_fecha():
+    for _ in range(2):
+        for attr, fn in JAN:
+            fn(); fn(); assert getattr(appm, attr) in VIVAS
+        assert len(VIVAS - {appm.popup_win}) == 3
+        for attr, _ in JAN:
+            appm.close_win(getattr(appm, attr)); assert getattr(appm, attr) is None
+        assert not VIVAS - {appm.popup_win}
+appm.meta.update(graveyard=[], achievements=[]); appm.run.update(items=[], consumed=[], traco={})
+abre_fecha()
+mortes = [("Rato", "monster"), ("Rei Rato", "boss"), ("Veneno", "status"), ("Queimadura", "status"), ("Mímico", "mimic"),
+          ("Armadilha", "trap"), ("Desistiu", "desistiu"), ("Coisa Nova", "monster")]
+appm.meta["graveyard"] = [{"run": i, "char": "naoexiste" if i % 3 else "slime", "floor": 9, "room": 2,
+                           "killer": mortes[i % 8][0], "kind": mortes[i % 8][1], "gold": 5, "kills": 3, "date": "2026-11-13",
+                           "items": [k if i % 2 else {"key": k, "rar": "epico"} for k in list(M.ITEMS)[:i]]}
+                          for i in range(50)]
+appm.meta["achievements"] = list(M.ACHIEVEMENTS)[::2]
+appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40, shield=3, traco={"dodge": 0.1},
+                consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
+assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
+abre_fecha()
+# barra de rolagem: arrastar o polegar e clicar na trilha chamam yview_moveto com a fração certa
+cv = tkinter.Canvas(); tr = appm.rolagem(None, Tk(), cv, 100)
+cv.cfg["yscrollcommand"]("0.0", "0.25")                      # 1/4 visível: polegar de 0 a 25 px
+ev = lambda y: types.SimpleNamespace(y=y)
+tr.binds["<Button-1>"](ev(10)); assert cv.moveto == 0.0       # pegou o polegar a 10 px do topo
+tr.binds["<B1-Motion>"](ev(60)); assert abs(cv.moveto - 0.5) < 1e-9
+tr.binds["<ButtonRelease-1>"](ev(60)); tr.binds["<B1-Motion>"](ev(0)); assert abs(cv.moveto - 0.5) < 1e-9   # solto: não arrasta
+tr.binds["<Button-1>"](ev(90)); assert abs(cv.moveto - 0.75) < 1e-9   # trilha embaixo: vai ao fim (limitado a 1 - 0,25)
+tr.binds["<Button-1>"](ev(5)); assert cv.moveto == 0.0
+# página de itens: todo item tem card; bloqueado mostra silhueta e conquista, sem valores; demo libera tudo
+textos = lambda cv: [k.get("text", "") for kind, _, k in cv.it.values() if kind == "text"]
+rar_txt = lambda cv: [t for t in textos(cv) if any(t.startswith(n + ":") for n in M.RAR_NAMES.values())]
+for conqs in ([], list(M.ACHIEVEMENTS)):
+    appm.meta["achievements"] = conqs
+    for filtro in ("todos", "liberados", "bloqueados", "todos"):
+        appm.itens_filtro = filtro; appm.show_items(); assert appm.itens_win in VIVAS
+    nomes = set(textos(appm.itens_cv))
+    assert all(it["name"] in nomes for it in M.ITEMS.values())
+    bloq = [k for k in M.ITEMS if not appm.item_liberado(k)]
+    assert len(bloq) == (len(M.ITEMS) - len(M.unlocked_items(appm.meta)))
+    assert bool(bloq) == (not conqs)
+    for k in M.ITEMS:
+        cv = tkinter.Canvas(); appm.item_card(cv, 0, 0, k)
+        assert len(rar_txt(cv)) == (0 if k in bloq else len(M.ITEMS[k]["rarities"])), k
+    appm.close_win(appm.itens_win); assert not VIVAS - {appm.popup_win}
+appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_liberado(k) for k in M.ITEMS); appm.demo = False
+# grade de heróis: os nossos (módulo em herois/) separados dos importados (characters/ sem módulo, Petdex)
+assert tp.heroi_proprio("slime") and tp.heroi_proprio("fantasma")
+assert not tp.heroi_proprio("bitty-openpets") and not tp.heroi_proprio("naoexiste") and not tp.heroi_proprio("x.y")
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

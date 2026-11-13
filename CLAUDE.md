@@ -11,11 +11,22 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `run_gui()`, para o resto do módulo ser testável sem tela.
   O botão direito abre um menu próprio em pixel art (`on_menu`: `Toplevel` sem borda de `pixel_box`, moldura dourada
   com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
-  "Heróis…" abre a grade `show_heroes` (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
+  "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
+  "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
+  Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
+  `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
+  e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,
+  ícone de `arte.CONQ_ART`, silhueta se não tem, mini-ícones do que libera) e `show_graveyard` (lápides num `Canvas`
+  com rolagem). "Itens" abre `show_items`: cards num `Canvas` (`item_card`), cada raridade possível com `fx_text` e o
+  `consume` na cor de `RAR_COLOR`, família por `item_familia`/`FAMILIAS`, filtro Todos/Liberados/Bloqueados; bloqueado
+  (`item_liberado`, mesma regra do sorteio; demo libera tudo) = silhueta + cadeado + conquista, sem valores.
+  Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
+  carrega numa chamada só (um `put` por pixel deixava a janela lenta).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
   `enter_room()` resolve uma sala e devolve um dicionário de evento, que a GUI só anima (`PetApp.play_room`).
 - `arte.py`: toda a pixel art em grades de texto (`'.'` = transparente, letras = cores de `PAL`).
-  Itens, monstros, salas, coroa de chefe. `BOSS_PAL` recolore os monstros para os chefes.
+  Itens, monstros, salas, coroa de chefe, `STAT_ART` (um por campo de `stats()`, mais `crescer`) e `CONQ_ART`
+  (um por conquista). `BOSS_PAL` recolore os monstros para os chefes.
 - `visual.py`: efeitos puros sobre mapas de pixels `{(x, y): "#rrggbb"}` (sem tkinter): `espinhos`, `gotas`,
   `contorno`, `tingir`, `adesivo`, `objeto` e `compose()`, que monta o pet com os `look` dos itens empilhados
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
@@ -199,7 +210,8 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
   mais os das famílias (`bloqueio`, `espinhos`, `cura_sala`, `cura_andar`, `custo_ataque`, `furia`, `duplo`,
   `ajudante`, `crescer`, `sorte`, `desconto`), descritos em "Como as peças se encaixam".
 - **Tipo de sala novo:** `ROOM_WEIGHTS` + um ramo em `enter_room` + a animação em `PetApp.play_room`.
-- **Conquista nova:** `masmorra.ACHIEVEMENTS` + regra em `_check_achievements`.
+- **Conquista nova:** `masmorra.ACHIEVEMENTS` + regra em `_check_achievements` + ícone em `arte.CONQ_ART` (teste).
+- **Campo de `fx`/`stats()` novo:** ícone em `arte.STAT_ART` e linha em `tokenlike.STAT_LINHAS` (teste).
 - **Herói novo:** de preferência uma pasta em `characters/` com PNGs e `character.json` (`stats` com `spd` opcional, `unlock`, `stages[].floor`).
 
 ## Antes do lançamento
