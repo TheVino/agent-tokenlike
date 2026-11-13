@@ -158,4 +158,11 @@ assert len(linhas) == 9 and all(len(l) == 5 for l in linhas), [len(l) for l in l
 assert all(mapas[c] for l in linhas for c in l)
 assert n == 1 and max(c[3] - c[1] for l in linhas for c in l) <= 32
 
+# Fantasma 32 px: as 3 folhas existem, 9 estados com >= 4 quadros e altura aparada > 16
+RAIZ = Path(__file__).resolve().parent.parent
+for i in (1, 2, 3):
+    linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "fantasma" / f"folha{i}.png")
+    assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+    assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+
 print("test_folha ok")

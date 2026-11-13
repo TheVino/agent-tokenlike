@@ -423,7 +423,7 @@ for st in tp.all_characters()["slime"].stages + tp.all_characters()["fantasma"].
     assert set(st["estados"]) == set(tp.folha.ESTADOS) and all(len(v) >= 4 for v in st["estados"].values())
     base = {e: max(y for sp in v for _, y in tp.spec_to_map(sp, 1)) for e, v in st["estados"].items() if e != "jumping"}
     assert set(base.values()) == {15}, (st["title"], base)
-    assert max(tp.spec_altura(sp) for v in st["estados"].values() for sp in v) <= 16 or not st.get("sheet")
+    assert max(tp.spec_altura(sp) for v in st["estados"].values() for sp in v) > 16 or not st.get("sheet")   # Fantasma 32 px
 app10.run["dead"] = True; app10.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
 app10.on_death(); app10.tick(); assert app10.estado_visto == "failed"
 app10.new_run(); pump(app10, 300); app10.quit()

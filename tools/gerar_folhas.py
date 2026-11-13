@@ -1,95 +1,22 @@
 """Gera as folhas do Fantasma (characters/fantasma/folha1..3.png) e a prévia de todos os estados dos
 heróis embutidos (tools/saida/preview_herois.png). Só biblioteca padrão.
 
-Folha: grade 8 x 9 (linhas na ordem de folha.ESTADOS), células de 40 px (heróis 32 px; o Fantasma antigo ainda usa 20 px/16 px) com o quadro embaixo.
+Folha: grade 8 x 9 (linhas na ordem de folha.ESTADOS), células de 40 px (heróis 32 px) com o quadro embaixo.
 Cada estado tem 4 a 6 quadros; as colunas sobrando ficam vazias (o leitor ignora célula vazia).
 Uso: python tools/gerar_folhas.py [--so-preview]
 """
 import importlib
-import importlib.util
 import sys
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 sys.path.insert(0, str(RAIZ / "tests"))
-import arte_herois as AH  # noqa: E402
 import folha  # noqa: E402
 from herois import montar  # noqa: E402
 from _png import escrever_png  # noqa: E402
 
-FANTASMA_PAL = {
-    "K": "#2a2140", "B": "#2a2140", "G": "#f2f0ff", "D": "#c6c0e8", "L": "#ffffff", "P": "#ff9ec4",
-    "H": "#8f86c9", "Y": "#ffd23f", "O": "#ff9f43", "T": "#8fd8ff",
-}
-
-FANTASMINHA = [
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "................",
-    "......KKKK......",
-    ".....KGGGGK.....",
-    "....KGGGGGGK....",
-    "....KGBGGBGK....",
-    "....KGBGGBGK....",
-    "....KPGKKGPK....",
-    "....KGGGGGDK....",
-    "....KDGGGGDK....",
-    "....KGKGGKGK....",
-    ".....K.KK.K.....",
-]
-
-FANTASMA = [
-    "................",
-    "................",
-    ".....KKKKKK.....",
-    "....KGGGGGGK....",
-    "...KGGGGGGGGK...",
-    "..KGGGGGGGGGGK..",
-    "..KGGBBGGBBGGK..",
-    "..KGGBBGGBBGGK..",
-    "..KGPGGGGGGPGK..",
-    "..KGGGGKKGGGGK..",
-    "..KGGGGGGGGGGK..",
-    "..KDGGGGGGGGDK..",
-    "..KDGGGGGGGGDK..",
-    "..KDDGGGGGGDDK..",
-    "..KGKGGKKGGKGK..",
-    "...K.KK..KK.K...",
-]
-
-FANTASMA_MAGO = [
-    "......KHK.......",
-    ".....KHHHK......",
-    "...KKHHHHHHKK...",
-    "....KKKKKKKK....",
-    "...KGGGGGGGGK...",
-    "..KGGGGGGGGGGK..",
-    "..KGGBBGGBBGGK..",
-    "..KGGBBGGBBGGK..",
-    "..KGPGGGGGGPGKK.",
-    "..KGGGGKKGGGGKYK",
-    "..KGGGGGGGGGGKOK",
-    "..KDGGGGGGGGDKOK",
-    "..KDGGGGGGGGDKKK",
-    "..KDDGGGGGGDDK..",
-    "..KGKGGKKGGKGK..",
-    "...K.KK..KK.K...",
-]
-
-# (arquivo, grade, mão, bolha)
-FANTASMAS = [("folha1.png", FANTASMINHA, (11, 7), (12, 3)),
-             ("folha2.png", FANTASMA, (13, 3), (13, 0)),
-             ("folha3.png", FANTASMA_MAGO, (12, 3), (13, 0))]
-
 CEL = 40
-
-
-def estados_fantasma(grade, mao, bolha):
-    return AH.estados(grade, mao, bolha, teto=16)
 
 
 def _rgba(cor):
@@ -97,7 +24,7 @@ def _rgba(cor):
 
 
 def gerar_folha(path, est, pal, cel=CEL):
-    """Grade 8 x 9, quadro (16 ou 32 px) centrado na célula e com a base no fundo dela."""
+    """Grade 8 x 9, quadro 32 px centrado na célula e com a base no fundo dela."""
     w, h = 8 * cel, 9 * cel
     px = [[b"\0\0\0\0"] * w for _ in range(h)]
     for r, e in enumerate(folha.ESTADOS):
@@ -154,15 +81,6 @@ def main():
                 path = RAIZ / "characters" / k / f"folha{i + 1}.png"
                 gerar_folha(path, est, mod.PAL)
                 print("gerado", path)
-    if "fantasma" not in {k for k in HEROIS if importlib.util.find_spec("herois." + k)}:
-        # ponytail: caminho 16 px antigo até herois/fantasma.py existir (Task 5)
-        pasta = RAIZ / "characters" / "fantasma"
-        for nome, g, m, b in FANTASMAS:
-            est = estados_fantasma(g, m, b)
-            if not sem:
-                gerar_folha(pasta / nome, est, FANTASMA_PAL, cel=20)
-                print("gerado", pasta / nome)
-        faixas += [(estados_fantasma(g, m, b), FANTASMA_PAL) for _, g, m, b in FANTASMAS]
     saida = RAIZ / "tools" / "saida" / "preview_herois.png"
     preview(saida, faixas)
     print("prévia", saida, "| colunas:", ", ".join(folha.ESTADOS))
