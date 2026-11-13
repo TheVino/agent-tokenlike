@@ -107,6 +107,31 @@ for _ in range(50):
     ev = M.enter_room(r, m, rng)
     if r["dead"]: break
 assert r["dead"] and m["runs"] == 10 and "morrer10" in ev["unlocks"] and "morrer10" in m["achievements"]
+# leva 4
+_aju = [k for k, v in M.ITEMS.items() if "ajudante" in v["fx"]]
+assert len(_aju) >= 3
+_ach("ajudantes3", _its(_aju[:2] + comum[:1]), _its(_aju[:3]))
+_ach("sem_consumir10", lambda r: r.__setitem__("floor", 9), lambda r: r.__setitem__("floor", 10))
+def _consumiu(r):
+    r["floor"] = 12; r["consumed"] = [{}]
+m = M.new_meta(); r = M.new_run("slime", {}, 1); _consumiu(r); M._check_achievements(r, m, {"lines": []})
+assert "sem_consumir10" not in m["achievements"]
+_its_rar = lambda n, rar: (lambda r: r.__setitem__("items", [{"key": k, "rar": rar} for k in list(M.ITEMS)[:n]]))
+_ach("lendarios3", _its_rar(3, "epico"), _its_rar(3, "lendario"))
+m = M.new_meta(); r = M.new_run("slime", {}, 1); _its_rar(2, "lendario")(r); M._check_achievements(r, m, {"lines": []})
+assert "lendarios3" not in m["achievements"]
+_ach("veneno3", _cont("mortes_veneno", 2), _cont("mortes_veneno", 3))
+_ach("chefes3run", lambda r: r.__setitem__("bosses", 2), lambda r: r.__setitem__("bosses", 3))
+# andar13: só ao morrer no andar 13
+def _morto(floor):
+    def f(r):
+        r["floor"] = floor; r["dead"] = True
+    return f
+_ach("andar13", _morto(12), _morto(13))
+m = M.new_meta(); r = M.new_run("slime", {}, 1); r["floor"] = 13; M._check_achievements(r, m, {"lines": []})
+assert "andar13" not in m["achievements"]                          # vivo no 13 não vale
+m = M.new_meta(); r = M.new_run("slime", {}, 1); r["floor"] = 14; r["dead"] = True; M._check_achievements(r, m, {"lines": []})
+assert "andar13" not in m["achievements"]                          # morrer no 14 não vale
 # chefe vencido soma em meta["chefes"]
 m = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 999}, 1); r["floor"] = 5; r["room"] = 4; r["energy"] = 1e9
 ev = M.enter_room(r, m, random.Random(1))

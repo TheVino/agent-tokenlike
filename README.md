@@ -113,12 +113,14 @@ elsewhere the pet sits on a dark background.
 - **Rest, never punishment:** not using Claude Code **never kills the pet or removes progress**.
   After 5 idle minutes it rests and heals; after 10 it falls asleep (Zzz).
 - **Achievements and unlocks:** reaching floors 5/10/20, beating a boss, beating a mimic... each one adds new
-  items to the loot pool and unlocks **new heroes**. There are 14 heroes, each with a small passive trait: Slime (starts unlocked),
+  items to the loot pool and unlocks **new heroes**. There are 20 heroes, each with a small passive trait: Slime (starts unlocked),
   Ghost (beat the first boss), Plague Doctor (poison kill), Swamp Witch (3 elemental items in a run),
   Gravedigger (300 gold in a run), Little Reaper (beat a horde of 4), Living Candle (burn kill),
   Cave Mushroom (floor 8 at full HP), Inquisitor (floor 15), Rag Doll (dodge 10 hits in a run),
   Empty Knight (block 10 hits in a run), Messenger Crow (3 bosses in total), Alchemist (consume 10 items
-  in a run) and Ash Nun (die 10 times).
+  in a run), Ash Nun (die 10 times), Scarecrow (3 helper items in a run), Moss Golem (floor 10 without
+  consuming items), Lunar Moth (3 legendary items in a run), Frog Shaman (3 poison kills in a run),
+  Graveyard Cat (die on floor 13) and Well Octopus (3 bosses in one run).
 
 In simulation about 40% of runs get past the first boss and the best reach floors 15–25.
 Balance numbers live at the top of `masmorra.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...).

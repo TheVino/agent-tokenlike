@@ -1087,6 +1087,14 @@ CONQ_ART = {
     "consumir10": ["..KKK..", "...K...", "..KcK..", ".KcccK.", "KcwcccK", "KcccccK", ".KKKKK."],
     "morrer10": ["..KKKKK..", ".KGGGGGK.", "KGGGgGGGK", "KGGgggGGK", "KGGGgGGGK", "KGGGgGGGK", "KGGGGGGGK",
                  "vvvvvvvvv"],
+    "ajudantes3": ["..K.K.K..", ".KwKwKwK.", ".KwKwKwK.", ".KwwwwwwK", "KwwwwwwwK", "KwwwwwwK.", ".KwwwwwK.",
+                   "..KKKKK.."],
+    "sem_consumir10": ["VvVVvVVvV", "gGrGKGrGg", "gGGrcrGGg", "gGKcrcKGg", "gGKrcrKGg", "gGrKKKrGg", "ggggggggg"],
+    "lendarios3": [".y...y...y.", "yey.yey.yey", ".y...y...y.", "YYY.YYY.YYY"],
+    "veneno3": [".v...v...v.", "vvv.vvv.vvv", "vvv.vvv.vvv", ".V...V...V."],
+    "andar13": ["g.g...g.g", "gKgggggKg", "gKKKKKKKg", "gKyKKKyKg", "gKKKrKKKg", "gKwKKwwwg", "gwwKKKKwg",
+                "gKwKKKwwg", "gKwKKKKwg", "gwwwKwwwg", "ggggggggg"],
+    "chefes3run": ["y.y.y", "yyyyy", "y.y.y", "yyryy", "y.y.y", "yyryy"],
 }
 
 
