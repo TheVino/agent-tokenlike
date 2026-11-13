@@ -37,7 +37,7 @@ M.REGRAS_REV = rev; assert M._balance_version() == v0
 sys.path.insert(0, str(ROOT / "tools")); import simular as S
 recs, salas = S.simular(n=40, achs=list(M.ACHIEVEMENTS), seed=3, heroes=S.todos_os_herois())
 assert len(recs) == 40 and len(salas) == 40
-assert {r["char"] for r in recs} == {k for k, _ in S.todos_os_herois()}
+assert {r["char"] for r in recs} == {h[0] for h in S.todos_os_herois()}
 assert all(set(r) == set(M.run_record(M.new_run("slime", {}, 0), "x", False, "auto", [])) for r in recs)
 assert all(i["floor"] is not None for r in recs for i in r["items"])
 a, _ = S.simular(n=20, seed=5); b, _ = S.simular(n=20, seed=5)
