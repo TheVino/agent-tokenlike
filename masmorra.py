@@ -433,7 +433,7 @@ def new_meta() -> dict:
             "best": {"floor": 0, "room": 0}, "next_char": "slime"}
 
 
-def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
+def new_run(char_key: str, base_stats: dict, run_id: int, traco: dict | None = None) -> dict:
     hp = int(base_stats.get("hp", 20))
     return {
         "id": run_id, "char": char_key, "floor": 1, "room": 0, "stage": 0,
@@ -443,6 +443,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int) -> dict:
                  "spd": float(base_stats.get("spd", PET_SPD)),
                  # crit/critdmg só se o herói definir; sem eles, stats() usa PET_CRIT/PET_CRITDMG atuais
                  **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
+        "traco": dict(traco or {}),
         "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
@@ -486,6 +487,7 @@ def migrate_run(run: dict) -> dict:
         i.setdefault("kills0", 0)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
+    run.setdefault("traco", {})
     b = run.setdefault("base", {})
     b.setdefault("spd", PET_SPD)
     # saves antigos congelavam os padrões do pet (0.10 e 1.5) na base: sem eles, valem as constantes atuais
@@ -506,10 +508,12 @@ def stats(run: dict) -> dict:
           "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
           "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0,
           "duplo": 0.0, "ajudante": 0, "sorte": 0.0, "desconto": 0.0}
-    for it in run["items"]:
-        for k, v in item_fx(it["key"], it["rar"]).items():
+    # o traço do herói soma como um item, mas sem escalar por raridade
+    for kills0, fx in [(0, run.get("traco", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
+                                                      for it in run["items"]]:
+        for k, v in fx.items():
             if k == "crescer":                        # +1 ATK a cada v kills feitos depois de pegar o item
-                st["atk"] += max(0, run["kills"] - it.get("kills0", 0)) // v
+                st["atk"] += max(0, run["kills"] - kills0) // v
             elif k == "trap":
                 st["trap"] *= v
             elif k == "area":
@@ -1029,7 +1033,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
-REGRAS_REV = 7
+REGRAS_REV = 8
 
 
 def _balance_version() -> str:

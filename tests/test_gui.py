@@ -312,6 +312,13 @@ for nome, stats in (("ruim1", {"spd": "rapido"}), ("ruim2", {"hp": None}), ("bom
 heroes = tp.load_png_characters(pasta)
 assert [c.key for c in heroes] == ["bom"] and heroes[0].stats["spd"] == 12.0 and heroes[0].stats["hp"] == 18
 assert tp.LOG_FILE.read_text().count("ignorado") >= 2
+# traço: chave inválida ignora o herói (e loga); chave válida chega no CharacterDef
+for nome, tr in (("tr_ruim", {"voar": 1}), ("tr_bom", {"envenenar": 0.1})):
+    (pasta / nome).mkdir(); (pasta / nome / "a.png").write_bytes(b"x")
+    (pasta / nome / "character.json").write_text(json.dumps({"traço": tr, "stages": [{"frames": ["a.png"]}]}))
+heroes = tp.load_png_characters(pasta)
+assert "tr_ruim" not in [c.key for c in heroes] and [c.traco for c in heroes if c.key == "tr_bom"] == [{"envenenar": 0.1}]
+assert "voar" in tp.LOG_FILE.read_text(encoding="utf-8")
 # heróis por spritesheet: folha sintética de 9 linhas x 8 quadros, corpo opaco no meio de cada célula
 sys.path.insert(0, str(ROOT / "tests")); from _png import folha_png   # PNG de verdade: exercita o decodificador
 def pronto(app):   # espera a thread da folha e roda os after pendentes (o Tk falso não tem mainloop)

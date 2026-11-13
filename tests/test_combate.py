@@ -149,7 +149,7 @@ for _ in range(200):
         assert all(set(x) == CHAVES for x in ev["hits"])
     else:
         assert "foes" not in ev
-assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 7
+assert vistos and not hasattr(M, "fight") and M.REGRAS_REV == 8
 # empate via enter_room (chefe): passa a sala, mas sem ouro, kills, bônus de chefe nem item
 rounds = M.MAX_ROUNDS; M.MAX_ROUNDS = 1
 meta = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 1}, 1)

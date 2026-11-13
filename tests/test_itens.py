@@ -208,4 +208,16 @@ for nome, ks in familias.items():
 nrar = [len(it["rarities"]) for it in M.ITEMS.values()]
 assert abs(nrar.count(3) - 70) <= 10 and abs(nrar.count(2) - 20) <= 10 and abs(nrar.count(1) - 10) <= 10
 assert sum(it["rarities"] == ["lendario"] for it in M.ITEMS.values()) >= 8
+# traço passivo do herói: soma sem escalar por raridade; save antigo sem "traco" continua igual
+run = M.new_run("x", {"hp": 20}, 1, traco={"envenenar": 0.1, "maxhp": -4})
+st = M.stats(run)
+assert st["envenenar"] == 0.1 and st["maxhp"] == 16
+M.ITEMS["_tr"] = {"name": "tr", "fx": {"envenenar": 0.05}, "rarities": ["lendario"], "consume": {"heal": 1},
+                  "look": {"type": "obj", "anchor": "topo", "art": "adaga"}}
+run["items"] = [{"key": "_tr", "rar": "lendario", "floor": 1}]
+esperado = min(M.MAX_ELEM_CHANCE, 0.1 + M.item_fx("_tr", "lendario")["envenenar"])
+assert abs(M.stats(run)["envenenar"] - esperado) < 1e-9
+del M.ITEMS["_tr"]
+velho = M.new_run("x", {"hp": 20}, 1); antes = M.stats(velho); del velho["traco"]
+assert M.stats(M.migrate_run(velho)) == antes and velho["traco"] == {}
 print("ok: itens")

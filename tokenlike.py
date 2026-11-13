@@ -420,10 +420,11 @@ def save_state(path: Path, state: dict) -> None:
 
 # ----------------------------------------------------------- personagens
 class CharacterDef:
-    def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None, comunidade=False):
+    def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None, comunidade=False, traco=None):
         self.key, self.name, self.frame_ms = key, name, frame_ms
         self.stats = stats or {"hp": 20, "atk": 3, "def": 0, "dodge": 0}
         self.unlock, self.comunidade = unlock, comunidade
+        self.traco = traco or {}
         # cada estágio: {"floor", "title", "frames": [spec], "blink": spec|None, "sleep": spec|None}
         # e, se vier de spritesheet, "estados": {estado: [spec]} (spec ("sheet", path, box, N))
         self.stages = sorted(stages, key=lambda s: s["floor"])
@@ -595,8 +596,13 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
             unlock = data.get("unlock")
             if unlock and unlock not in M.ACHIEVEMENTS:
                 raise ValueError(f"'unlock' desconhecido: {unlock}")
+            traco = data.get("traço") or data.get("traco") or {}
+            validas = M.stats(M.new_run("x", {}, 0))
+            for k, v in traco.items():
+                if k not in validas or isinstance(v, bool) or not isinstance(v, (int, float)):
+                    raise ValueError(f"'traço' inválido: {k}")
             out.append(CharacterDef(d.name, data.get("name", d.name), stages,
-                                    int(data.get("frame_ms", 600)), stats, unlock))
+                                    int(data.get("frame_ms", 600)), stats, unlock, traco=traco))
         except Exception as e:  # personagem com defeito não derruba o app
             log(f"personagem '{d.name}' ignorado: {e}")
     return out
@@ -838,7 +844,7 @@ class PetApp:
             key, c = "slime", self.chars["slime"]
         # a energia que sobrou passa para a run nova (tokens não se perdem)
         energy = self.state["run"]["energy"] if self.state.get("run") else 0.0
-        self.state["run"] = M.new_run(key, c.stats, self.meta["runs"] + 1)
+        self.state["run"] = M.new_run(key, c.stats, self.meta["runs"] + 1, c.traco)
         self.state["run"]["energy"] = energy
         self.state["run"]["ach_start"] = list(self.meta["achievements"])
         self.respawn_at = None
@@ -1124,13 +1130,16 @@ class PetApp:
         self.menu.add_separator()
         self.menu.add_command(label="Sair", command=self.quit)
 
+    def char_label(self, c):
+        return f"{c.name} — {M.fx_text(c.traco)}" if c.traco else c.name
+
     def fill_char_menu(self):
         self.char_menu.delete(0, "end")
         proprios = [(k, c) for k, c in self.chars.items() if not c.comunidade]
         comunidade = [(k, c) for k, c in self.chars.items() if c.comunidade]
         for key, c in proprios:
             if self.is_unlocked(c):
-                self.char_menu.add_radiobutton(label=c.name, value=key, variable=self.char_var,
+                self.char_menu.add_radiobutton(label=self.char_label(c), value=key, variable=self.char_var,
                                                command=self.change_character)
             else:
                 self.char_menu.add_command(
@@ -1817,6 +1826,8 @@ class PetApp:
                  f"Velocidade {round(st['spd'])}   Crítico {round(st['crit'] * 100)}%"
                  f"   Dano crítico ×{st['critdmg']:g}",
                  "Itens:"]
+        if run.get("traco"):
+            lines.insert(-1, f"Traço: {M.fx_text(run['traco'])}")
         for i in run["items"]:
             lines.append(f"  {M.ITEMS[i['key']]['name']} ({M.RAR_NAMES[i['rar']]}):"
                          f" {M.fx_text(M.item_fx(i['key'], i['rar']))}")
