@@ -675,4 +675,32 @@ def test_heroi_gato():
 
 test_heroi_gato()
 
+def test_heroi_polvo():
+    import herois.polvo as po
+    import masmorra
+    montar.validar(po)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "polvo" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["polvo"]
+    assert c.traco == {"duplo": 0.06, "congelar": 0.04} and c.unlock == "chefes3run", (c.traco, c.unlock)
+    assert "chefes3run" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("polvo", c.stats, 1, c.traco)
+    st = masmorra.stats(run)
+    assert st["duplo"] == 0.06 and st["congelar"] == 0.04, st
+    base = montar.estados(po, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(po, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    extra_dentro(po)   # balde e âncora cabem inteiros, inclusive no alto do pulo e dentro do balde
+    for i in range(3):
+        ult = montar.estados(po, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_polvo()
+
 print("test_folha ok")
