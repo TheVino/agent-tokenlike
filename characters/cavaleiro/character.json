@@ -1,0 +1,31 @@
+{
+  "name": "Cavaleiro Oco",
+  "unlock": "bloqueio10",
+  "stats": {
+    "hp": 20,
+    "atk": 2,
+    "def": 0,
+    "spd": 8
+  },
+  "traço": {
+    "bloqueio": 1
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Armadura Vazia",
+      "floor": 1,
+      "sheet": "folha1.png"
+    },
+    {
+      "title": "Cavaleiro Oco",
+      "floor": 4,
+      "sheet": "folha2.png"
+    },
+    {
+      "title": "Paladino Oco",
+      "floor": 10,
+      "sheet": "folha3.png"
+    }
+  ]
+}

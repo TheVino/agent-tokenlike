@@ -371,4 +371,36 @@ def test_heroi_boneca():
 
 test_heroi_boneca()
 
+
+def test_heroi_cavaleiro():
+    import herois.cavaleiro as cv
+    import masmorra
+    montar.validar(cv)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "cavaleiro" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["cavaleiro"]
+    assert c.traco == {"bloqueio": 1} and c.unlock == "bloqueio10", (c.traco, c.unlock)
+    assert "bloqueio10" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    assert c.stats["spd"] == 8, c.stats
+    run = masmorra.new_run("cavaleiro", c.stats, 1, c.traco)
+    st = masmorra.stats(run)
+    assert st["spd"] == 8 and st["bloqueio"] == 1, st
+    base = montar.estados(cv, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(cv, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    # pluma e estandarte cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
+    w, h = len(cv.PLUMA_ESTANDARTE[0]), len(cv.PLUMA_ESTANDARTE)
+    assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in cv.ANCORA.values() for a in qs)
+    for i in range(3):
+        ult = montar.estados(cv, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_cavaleiro()
+
 print("test_folha ok")
