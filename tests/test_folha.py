@@ -212,4 +212,27 @@ def test_heroi_bruxa():
 
 test_heroi_bruxa()
 
+
+def test_heroi_coveiro():
+    import herois.coveiro as cv
+    montar.validar(cv)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "coveiro" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["coveiro"]
+    assert c.traco == {"gold": 0.4} and c.unlock == "ouro300", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    base = montar.estados(cv, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(cv, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(cv, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_coveiro()
+
 print("test_folha ok")

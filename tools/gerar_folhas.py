@@ -61,7 +61,7 @@ def preview(path, herois, esc=4):
     escrever_png(path, w * esc, h * esc, linhas)
 
 
-HEROIS = ["slime", "fantasma", "medico", "bruxa"]
+HEROIS = ["slime", "fantasma", "medico", "bruxa", "coveiro"]
 
 
 def main():
