@@ -44,7 +44,7 @@ class Canvas(Noop):
             return (x0,c[1]-5,x0+w,c[1]+5)
         return (c[0]-8,c[1]-16,c[0]+8,c[1])
 class PhotoImage(Noop):
-    def __init__(self, width=16, height=16, file=None):
+    def __init__(self, width=16, height=16, file=None, **k):
         self.op=None
         if file:
             assert Path(file).is_file(), file
@@ -470,6 +470,30 @@ for _ in range(2):
 appm.show_heroes(); appm.hero_cards["fantasma"](); assert appm.meta["next_char"] == "fantasma" and not VIVAS - {appm.popup_win}
 for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") == "esperar": fn()    # thread das miniaturas
+# janelas de conquistas, cemitério e status: vazias e cheias, reabrir troca a janela, fechar não vaza
+import arte
+assert set(arte.CONQ_ART) == set(M.ACHIEVEMENTS)
+JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements))
+def abre_fecha():
+    for _ in range(2):
+        for attr, fn in JAN:
+            fn(); fn(); assert getattr(appm, attr) in VIVAS
+        assert len(VIVAS - {appm.popup_win}) == 2
+        for attr, _ in JAN:
+            appm.close_win(getattr(appm, attr)); assert getattr(appm, attr) is None
+        assert not VIVAS - {appm.popup_win}
+appm.meta.update(graveyard=[], achievements=[]); appm.run.update(items=[], consumed=[], traco={})
+abre_fecha()
+mortes = [("Rato", "monster"), ("Rei Rato", "boss"), ("Veneno", "status"), ("Queimadura", "status"), ("Mímico", "mimic"),
+          ("Armadilha", "trap"), ("Desistiu", "desistiu"), ("Coisa Nova", "monster")]
+appm.meta["graveyard"] = [{"run": i, "char": "naoexiste" if i % 3 else "slime", "floor": 9, "room": 2,
+                           "killer": mortes[i % 8][0], "kind": mortes[i % 8][1], "gold": 5, "kills": 3, "date": "2026-11-13",
+                           "items": [k if i % 2 else {"key": k, "rar": "epico"} for k in list(M.ITEMS)[:i]]}
+                          for i in range(50)]
+appm.meta["achievements"] = list(M.ACHIEVEMENTS)[::2]
+appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40, shield=3, traco={"dodge": 0.1},
+                consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
+abre_fecha()
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

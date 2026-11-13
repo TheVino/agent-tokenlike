@@ -23,16 +23,20 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import math
 import os
 import random
 import shutil
+import struct
 import sys
 import threading
 import time
 import traceback
-from collections import deque
+import zlib
+from collections import Counter, deque
+from functools import lru_cache
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -77,6 +81,9 @@ CYAN = "#6fd6ff"
 STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
 MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
 HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
+CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
+CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
+JANELAS = ("menu_win", "heroes_win", "conq_win", "cemi_win")
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -725,12 +732,20 @@ def render_map(pm, s: int, k: int = 1):
 
 def map_img(pm, lado):
     """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
+    if not pm:
+        return tk.PhotoImage(width=1, height=1)
     x0, y0, x1, y1 = visual.bbox(pm)
     s = max(1, lado // max(1, x1 - x0, y1 - y0))
-    img = tk.PhotoImage(width=(x1 - x0) * s, height=(y1 - y0) * s)
-    for (x, y), c in pm.items():
-        img.put(c, to=((x - x0) * s, (y - y0) * s, (x - x0 + 1) * s, (y - y0 + 1) * s))
-    return img
+    w, h =(x1 - x0) * s, (y1 - y0) * s
+    # um PNG montado aqui e lido numa chamada só (um put por pixel levava ~0,4 s para abrir o cemitério)
+    raw = b"".join((b"\0" + b"".join((bytes.fromhex(pm[(x, y)][1:]) + b"\xff" if (x, y) in pm else b"\0" * 4) * s
+                                     for x in range(x0, x1))) * s for y in range(y0, y1))
+
+    def bloco(tipo, d):
+        return struct.pack(">I", len(d)) + tipo + d + struct.pack(">I", zlib.crc32(tipo + d))
+    png = (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+           + bloco(b"IDAT", zlib.compress(raw, 1)) + bloco(b"IEND", b""))
+    return tk.PhotoImage(data=base64.b64encode(png).decode(), format="png", width=w, height=h)
 
 
 def heroi_idle(key):
@@ -757,6 +772,15 @@ def pet_looks(run):
     tipos = {l["type"] for l, _ in looks}
     st = M.stats(run)
     return looks + [({"type": t}, None) for k, t in ELEMENTO_LOOK.items() if st[k] > 0 and t not in tipos]
+
+
+@lru_cache(maxsize=None)
+def boss_grid(sprite):
+    """Monstro com a coroa de chefe em cima (grade única por sprite: o cache de ícones usa o id)."""
+    foe = arte.FOE_ART[sprite]
+    w = max(len(foe[0]), len(arte.CROWN[0]))
+    pad = lambda r: r.center(w, ".")
+    return tuple(pad(r) for r in arte.CROWN + foe)
 
 
 def item_arts():
@@ -1128,8 +1152,10 @@ class PetApp:
         self.mode_var = tk.StringVar(value=self.state["mode"])
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.virar_var = tk.BooleanVar(value=self.virar)
-        self.menu_win = self.heroes_win = self.thumb_thread = None
-        self.hero_cards, self.hero_thumb_lbl, self.thumbs = {}, {}, {}
+        for attr in JANELAS:
+            setattr(self, attr, None)
+        self.thumb_thread = None
+        self.hero_cards, self.hero_thumb_lbl, self.thumbs, self.icons = {}, {}, {}, {}
 
     def fill_char_menu(self):
         """Conquista nova ou personagens recarregados: refaz a grade de heróis se estiver aberta."""
@@ -1173,10 +1199,10 @@ class PetApp:
     def close_win(self, w):
         if w is None:
             return
-        if self.menu_win is w:
-            self.menu_win = None
-        if self.heroes_win is w:
-            self.heroes_win = None
+        for attr in JANELAS:
+            if getattr(self, attr) is w:
+                setattr(self, attr, None)
+        if self.heroes_win is None:
             self.hero_cards, self.hero_thumb_lbl = {}, {}
         try:
             w.destroy()
@@ -1264,15 +1290,15 @@ class PetApp:
         cmd()
 
     # ------------------------------------------------------- grade de heróis
-    def hero_thumb(self, c, ok):
+    def hero_thumb(self, c, ok, lado=64):
         """Idle do 1º estágio ampliado (bloqueado: silhueta). None enquanto a folha ainda é cortada na thread."""
         stage = c.stages[0]
-        ck = (id(stage), ok)
+        ck = (id(stage), ok) if lado == 64 else (id(stage), ok, lado)
         if ck not in self.thumbs:
             pm = heroi_idle(c.key) if not stage.get("frames") else spec_to_map(stage["frames"][0])
             if pm is None:
                 return None
-            self.thumbs[ck] = map_img(pm if ok else {p: "#0b0b14" for p in pm}, 64)
+            self.thumbs[ck] = map_img(pm if ok else {p: "#0b0b14" for p in pm}, lado)
         return self.thumbs[ck]
 
     def cortar_folhas(self):
@@ -1297,17 +1323,43 @@ class PetApp:
                     lbl.configure(image=img, text="", height=72)
         self.root.after(150, esperar)
 
-    def show_heroes(self):
-        self.close_win(self.heroes_win)
-        x, y = self.root.winfo_x(), self.root.winfo_y()
-        w, f = self.pixel_box(x, y)
-        self.heroes_win = w
+    def janela(self, attr, titulo):
+        """Janela pixel (fecha a anterior do mesmo tipo) com título dourado e um x; devolve (janela, miolo)."""
+        self.close_win(getattr(self, attr))
+        w, f = self.pixel_box(self.root.winfo_x(), self.root.winfo_y())
+        setattr(self, attr, w)
         top = tk.Frame(f, bg=PANEL_BG)
         top.pack(fill="x")
-        tk.Label(top, text="Herói da próxima run", bg=PANEL_BG, fg=GOLD, font=self.font).pack(side="left")
+        tk.Label(top, text=titulo, bg=PANEL_BG, fg=GOLD, font=self.font).pack(side="left")
         fechar = tk.Label(top, text=" x ", bg=PANEL_BG, fg=MUTED, font=self.font)
         fechar.pack(side="right")
         self.hover((fechar,), fechar, MUTED, lambda: self.close_win(w))
+        return w, f
+
+    def ao_lado(self, w):
+        """Ao lado do pet: à esquerda, ou à direita se não couber."""
+        x, y = self.root.winfo_x(), self.root.winfo_y()
+        w.update_idletasks()
+        left = x - w.winfo_width() - 6
+        self.place_win(w, left if left >= 0 else x + self.W + 6, y)
+
+    def icon(self, grid, s=2, pal=None, glow=None, dark=False, dim=False):
+        """Grade de arte em escala s (cache): brilho de raridade, silhueta (bloqueado) ou esmaecida (consumido)."""
+        ck = (id(grid), s, id(pal), glow, dark, dim)
+        if ck not in self.icons:
+            pm = visual.grid_to_map(grid, pal or arte.PAL)
+            if glow:
+                pm = visual.contorno(pm, glow)
+            if dark:
+                pm = {p: "#0b0b14" for p in pm}
+            if dim:
+                pm = visual.tingir(pm, PANEL_BG, 0.55)
+            x0, y0, x1, y1 = visual.bbox(pm)
+            self.icons[ck] = map_img(pm, s * max(x1 - x0, y1 - y0))
+        return self.icons[ck]
+
+    def show_heroes(self):
+        w, f = self.janela("heroes_win", "Herói da próxima run")
         secoes = [("", [(k, c) for k, c in self.chars.items() if not c.comunidade]),
                   ("Comunidade", [(k, c) for k, c in self.chars.items() if c.comunidade])]
         for titulo, lista in secoes:
@@ -1321,9 +1373,7 @@ class PetApp:
             for i, (key, c) in enumerate(lista):
                 self.hero_card(grade, key, c).grid(row=i // HERO_COLS, column=i % HERO_COLS, padx=3, pady=3)
         self.cortar_folhas()
-        w.update_idletasks()
-        left = x - w.winfo_width() - 6          # ao lado do pet: à esquerda, ou à direita se não couber
-        self.place_win(w, left if left >= 0 else x + self.W + 6, y)
+        self.ao_lado(w)
 
     def hero_card(self, parent, key, c):
         ok, sel = self.is_unlocked(c), key == self.char_var.get()
@@ -2044,26 +2094,105 @@ class PetApp:
             lines.append("(modo demo)")
         self.popup(lines, 14000)
 
+    def killer_icon(self, d):
+        """Ícone de quem matou: monstro, chefe com coroa, mímico, status, armadilha ou desistência."""
+        k = d.get("killer", "")
+        boss = next((s for s, n in M.BOSS_NAMES.items() if n == k), None)
+        if boss:
+            return self.icon(boss_grid(boss), 2, pal=arte.BOSS_PAL)
+        spr = "mimico" if k == "Mímico" else next((m[0] for m in M.MONSTERS if m[1] == k), None)
+        if spr:
+            return self.icon(arte.FOE_ART[spr], 2)
+        grid = {"Queimadura": arte.CONQ_ART["queima1"], "Veneno": arte.CONQ_ART["veneno1"],
+                "Armadilha": arte.ROOM_ART["armadilha"], "Desistiu": arte.ROOM_ART["escada"]}.get(k)
+        return self.icon(grid or arte.ROOM_ART["lapide"], 2)
+
+    def lapide(self, cv, y, d):
+        """Uma lápide do cemitério desenhada no canvas a partir de y."""
+        L, f, fs = CEMI_LAPIDE, self.font, self.font_small
+        cv.create_rectangle(2, y + 2, CEMI_W - 2, y + L - 4, fill=PANEL_BG, outline=PANEL_EDGE, width=2)
+        c = self.chars.get(d.get("char"))
+        img = (c and self.hero_thumb(c, True, 40)) or self.icon(arte.ROOM_ART["lapide"], 4)
+        cv.create_image(30, y + L // 2 - 1, image=img)
+        cv.create_text(60, y + 15, anchor="w", text=f"#{d.get('run', '?')}  {c.name if c else d.get('char', '?')}",
+                       fill=GOLD, font=f)
+        cv.create_text(CEMI_W - 12, y + 15, anchor="e", text=f"andar {d['floor']}-{d['room']}", fill=TEXT, font=f)
+        kimg = self.killer_icon(d)
+        cv.create_image(60, y + 37, anchor="w", image=kimg)
+        quem = "desistiu" if d.get("kind") == "desistiu" else f"morto por {d.get('killer', '?')}"
+        cv.create_text(66 + kimg.width(), y + 37, anchor="w", text=quem, fill=HURT, font=fs)
+        cv.create_text(CEMI_W - 12, y + 37, anchor="e", fill=MUTED, font=fs,
+                       text=f"$ {d.get('gold', 0)}   ·   {d.get('kills', 0)} kills   ·   {d.get('date', '')}")
+        x = 60
+        itens = [(it, None) if isinstance(it, str) else (it["key"], it.get("rar")) for it in d.get("items", [])]
+        itens = [(k, r) for k, r in itens if k in arte.ITEM_ART]
+        for n, (key, rar) in enumerate(itens):
+            im = self.icon(arte.ITEM_ART[key], 2, glow=M.RAR_COLOR.get(rar))
+            if x + im.width() > CEMI_W - 34 and n < len(itens) - 1:
+                cv.create_text(x + 2, y + 64, anchor="w", text=f"+{len(itens) - n}", fill=MUTED, font=fs)
+                break
+            cv.create_image(x, y + 64, anchor="w", image=im)
+            x += im.width() + 3
+        if not itens:
+            cv.create_text(60, y + 64, anchor="w", text="sem itens", fill=MUTED, font=fs)
+
     def show_graveyard(self):
-        g = self.meta["graveyard"]
-        best = self.meta["best"]
-        lines = [f"Cemitério  (recorde: andar {best['floor']}-{best['room']})"]
+        g, meta = self.meta["graveyard"], self.meta
+        w, f = self.janela("cemi_win", "Cemitério")
+        best = meta["best"]
+        resumo = f"{meta['runs']} runs   ·   recorde: andar {best['floor']}-{best['room']}"
+        mortes = Counter(d.get("killer") for d in g if d.get("kind") != "desistiu")
+        if mortes:
+            resumo += f"   ·   quem mais matou: {mortes.most_common(1)[0][0]}"
+        tk.Label(f, text=resumo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
         if not g:
-            lines.append("Ninguém morreu ainda...")
-        for d in reversed(g[-10:]):
-            name = self.chars[d["char"]].name if d["char"] in self.chars else d["char"]
-            lines.append(f"#{d['run']} {name}: andar {d['floor']}-{d['room']}, {d['killer']}"
-                         f" ({len(d['items'])} itens)")
-        self.popup(lines, 14000)
+            tk.Label(f, image=self.icon(arte.ROOM_ART["lapide"], 4), text="Nenhuma lápide ainda...\no herói segue firme!",
+                     compound="left", bg=PANEL_BG, fg=TEXT, font=self.font, padx=10, pady=12,
+                     justify="left").pack()
+            self.ao_lado(w)
+            return
+        alto, vis = len(g) * CEMI_LAPIDE, min(len(g) * CEMI_LAPIDE, CEMI_H)
+        row = tk.Frame(f, bg=PANEL_BG)
+        row.pack(pady=(4, 0))
+        cv = tk.Canvas(row, width=CEMI_W, height=vis, bg=PANEL_BG, highlightthickness=0,
+                       scrollregion=(0, 0, CEMI_W, alto), yscrollincrement=CEMI_LAPIDE // 3)
+        cv.pack(side="left")
+        for n, d in enumerate(reversed(g)):
+            self.lapide(cv, n * CEMI_LAPIDE, d)
+        if alto > vis:       # barrinha em pixel (a scrollbar nativa não pega as cores); rola com a roda e as setas
+            trilho = tk.Canvas(row, width=6, height=vis, bg=BAR_BG, highlightthickness=0)
+            trilho.pack(side="left", padx=(4, 0))
+            dedo = trilho.create_rectangle(0, 0, 6, vis * vis / alto, fill=GOLD, width=0)
+            cv.configure(yscrollcommand=lambda a, b: trilho.coords(dedo, 0, float(a) * vis, 6, float(b) * vis))
+            w.bind("<MouseWheel>", lambda e: cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
+            w.bind("<Up>", lambda e: cv.yview_scroll(-1, "units"))
+            w.bind("<Down>", lambda e: cv.yview_scroll(1, "units"))
+        self.ao_lado(w)
 
     def show_achievements(self):
-        have = set(self.meta["achievements"])
-        lines = ["Conquistas"]
-        for k, desc in M.ACHIEVEMENTS.items():
-            mark = "[x]" if k in have else "[  ]"
-            gains = self.unlock_rewards(k)
-            lines.append(f"{mark} {desc}" + (f"  ->  {', '.join(gains)}" if gains else ""))
-        self.popup(lines, 14000)
+        have = set(self.meta["achievements"]) & set(M.ACHIEVEMENTS)
+        w, f = self.janela("conq_win", f"Conquistas  ·  {len(have)} de {len(M.ACHIEVEMENTS)}")
+        grade = tk.Frame(f, bg=PANEL_BG)
+        grade.pack(pady=(4, 0))
+        for n, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
+            ok = k in have
+            card = tk.Frame(grade, bg=PANEL_BG, width=CONQ_CARD_W, height=CONQ_CARD_H, highlightthickness=2,
+                            highlightbackground=GOLD if ok else PANEL_EDGE)
+            card.pack_propagate(False)
+            card.grid(row=n // CONQ_COLS, column=n % CONQ_COLS, padx=3, pady=3)
+            tk.Label(card, image=self.icon(arte.CONQ_ART[k], 3, dark=not ok), bg=PANEL_BG, height=36).pack(pady=(6, 2))
+            tk.Label(card, text=desc, bg=PANEL_BG, fg=TEXT if ok else MUTED, font=self.font_small,
+                     wraplength=CONQ_CARD_W - 14).pack()
+            premios = [self.icon(arte.ITEM_ART[ik], 2, dark=not ok) for ik, it in M.ITEMS.items()
+                       if it.get("req") == k and ik in arte.ITEM_ART]
+            premios += [im for c in self.chars.values() if c.unlock == k for im in [self.hero_thumb(c, ok, 24)] if im]
+            if premios:
+                linha = tk.Frame(card, bg=PANEL_BG)
+                linha.pack(side="bottom", pady=(0, 5))
+                tk.Label(linha, text="libera", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
+                for im in premios[:6]:
+                    tk.Label(linha, image=im, bg=PANEL_BG).pack(side="left", padx=1)
+        self.ao_lado(w)
 
     def save(self):
         try:
