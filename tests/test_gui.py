@@ -509,6 +509,23 @@ tr.binds["<B1-Motion>"](ev(60)); assert abs(cv.moveto - 0.5) < 1e-9
 tr.binds["<ButtonRelease-1>"](ev(60)); tr.binds["<B1-Motion>"](ev(0)); assert abs(cv.moveto - 0.5) < 1e-9   # solto: não arrasta
 tr.binds["<Button-1>"](ev(90)); assert abs(cv.moveto - 0.75) < 1e-9   # trilha embaixo: vai ao fim (limitado a 1 - 0,25)
 tr.binds["<Button-1>"](ev(5)); assert cv.moveto == 0.0
+# página de itens: todo item tem card; bloqueado mostra silhueta e conquista, sem valores; demo libera tudo
+textos = lambda cv: [k.get("text", "") for kind, _, k in cv.it.values() if kind == "text"]
+rar_txt = lambda cv: [t for t in textos(cv) if any(t.startswith(n + ":") for n in M.RAR_NAMES.values())]
+for conqs in ([], list(M.ACHIEVEMENTS)):
+    appm.meta["achievements"] = conqs
+    for filtro in ("todos", "liberados", "bloqueados", "todos"):
+        appm.itens_filtro = filtro; appm.show_items(); assert appm.itens_win in VIVAS
+    nomes = set(textos(appm.itens_cv))
+    assert all(it["name"] in nomes for it in M.ITEMS.values())
+    bloq = [k for k in M.ITEMS if not appm.item_liberado(k)]
+    assert len(bloq) == (len(M.ITEMS) - len(M.unlocked_items(appm.meta)))
+    assert bool(bloq) == (not conqs)
+    for k in M.ITEMS:
+        cv = tkinter.Canvas(); appm.item_card(cv, 0, 0, k)
+        assert len(rar_txt(cv)) == (0 if k in bloq else len(M.ITEMS[k]["rarities"])), k
+    appm.close_win(appm.itens_win); assert not VIVAS - {appm.popup_win}
+appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_liberado(k) for k in M.ITEMS); appm.demo = False
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

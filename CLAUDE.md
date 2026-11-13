@@ -16,7 +16,10 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
   e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,
   ícone de `arte.CONQ_ART`, silhueta se não tem, mini-ícones do que libera) e `show_graveyard` (lápides num `Canvas`
-  com rolagem pela roda/setas e barrinha dourada). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
+  com rolagem). "Itens" abre `show_items`: cards num `Canvas` (`item_card`), cada raridade possível com `fx_text` e o
+  `consume` na cor de `RAR_COLOR`, família por `item_familia`/`FAMILIAS`, filtro Todos/Liberados/Bloqueados; bloqueado
+  (`item_liberado`, mesma regra do sorteio; demo libera tudo) = silhueta + cadeado + conquista, sem valores.
+  Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
   carrega numa chamada só (um `put` por pixel deixava a janela lenta).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
   `enter_room()` resolve uma sala e devolve um dicionário de evento, que a GUI só anima (`PetApp.play_room`).

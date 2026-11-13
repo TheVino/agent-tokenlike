@@ -84,7 +84,8 @@ GOLD_HOVER = "#fff27a"      # polegar da barra de rolagem com o mouse em cima
 HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
 CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
-JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win")
+ITENS_COLS, ITENS_CARD_W, ITENS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
+JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win", "itens_win")
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -823,6 +824,18 @@ def stat_linhas(run, st):
     return out
 
 
+# página de itens: família pelo 1º campo de fx que aparece nesta ordem (sem nenhum: "Básico")
+FAMILIAS = (("Elemental", ("queimar", "eletrizar", "envenenar", "congelar")), ("Ajudante", ("ajudante",)),
+            ("Crescimento", ("crescer",)), ("Área", ("area",)), ("Sangue", ("custo_ataque", "furia")),
+            ("Golpes", ("crit", "critdmg", "duplo")), ("Defesa", ("bloqueio", "espinhos", "dodge")),
+            ("Regeneração", ("cura_sala", "cura_andar", "lifesteal")), ("Sorte e ouro", ("sorte", "gold", "desconto")))
+
+
+def item_familia(key):
+    fx = M.ITEMS[key]["fx"]
+    return next((nome for nome, campos in FAMILIAS if any(fx.get(c) for c in campos)), "Básico")
+
+
 @lru_cache(maxsize=None)
 def boss_grid(sprite):
     """Monstro com a coroa de chefe em cima (grade única por sprite: o cache de ícones usa o id)."""
@@ -1317,6 +1330,7 @@ class PetApp:
         for icon, text, cmd in (("grimorio", "Status", self.show_stats),
                                 ("lapide", "Cemitério", self.show_graveyard),
                                 ("coroa", "Conquistas", self.show_achievements),
+                                ("pocao", "Itens", self.show_items),
                                 ("espada_osso", "Heróis…", self.show_heroes)):
             self.menu_row(f, icon, text, cmd)
         self.menu_sep(f)
@@ -2287,6 +2301,73 @@ class PetApp:
         w.bind("<Up>", lambda e: cv.yview_scroll(-1, "units"))
         w.bind("<Down>", lambda e: cv.yview_scroll(1, "units"))
         return tr
+
+    def item_liberado(self, key):
+        """Mesma regra do sorteio (M.unlocked_items); no demo tudo liberado, como os heróis."""
+        req = M.ITEMS[key].get("req")
+        return self.demo or not req or req in self.meta["achievements"]
+
+    def item_card(self, cv, x, y, key):
+        """Card de um item no canvas a partir de (x, y); devolve a altura. Bloqueado: silhueta, cadeado, sem valores."""
+        it, ok, fs = M.ITEMS[key], self.item_liberado(key), self.font_small
+        top = next((M.RAR_COLOR[r] for r in reversed(it["rarities"]) if M.RAR_COLOR[r]), None)
+        cv.create_image(x + 26, y + 26, image=self.icon(arte.ITEM_ART[key], 4, glow=ok and top or None, dark=not ok))
+        cv.create_text(x + 54, y + 16, anchor="w", text=it["name"], fill=TEXT if ok else MUTED, font=self.font)
+        cv.create_text(x + 54, y + 33, anchor="w", font=fs, fill=MUTED,
+                       text=item_familia(key) + (f"  ·  consumir: {'cura' if 'heal' in it['consume'] else 'escudo'}" if ok else ""))
+        ty, larg = y + 54, ITENS_CARD_W - 20
+        if not ok:
+            cv.create_image(x + 10, ty + 7, anchor="w", image=self.menu_icon("cadeado"))
+            t = cv.create_text(x + 26, ty, anchor="nw", text=M.ACHIEVEMENTS.get(it["req"], it["req"]), fill=MUTED,
+                               font=fs, width=larg - 16)
+            ty = cv.bbox(t)[3] + 4
+        for r in [] if not ok else it["rarities"]:
+            c = M.consume_fx(key, r)
+            comer = f"cura {c['heal']}" if "heal" in c else f"escudo {c.get('shield', 0)}"
+            t = cv.create_text(x + 10, ty, anchor="nw", fill=M.RAR_COLOR[r] or TEXT, font=fs, width=larg,
+                               text=f"{M.RAR_NAMES[r]}: {M.fx_text(M.item_fx(key, r))}  ·  {comer}")
+            ty = cv.bbox(t)[3] + 3
+        alto = max(ty - y + 6, 60)
+        cv.tag_lower(cv.create_rectangle(x + 1, y + 1, x + ITENS_CARD_W - 1, y + alto - 1, fill=PANEL_BG, width=2,
+                                         outline=PANEL_EDGE))
+        return alto
+
+    def show_items(self):
+        livres = [k for k in M.ITEMS if self.item_liberado(k)]
+        w, f = self.janela("itens_win", f"Itens  ·  {len(livres)} de {len(M.ITEMS)} liberados")
+        self.itens_filtro = getattr(self, "itens_filtro", "todos")
+        chips = tk.Frame(f, bg=PANEL_BG)
+        chips.pack(fill="x", pady=(4, 0))
+        row = tk.Frame(f, bg=PANEL_BG)
+        row.pack(pady=(4, 0))
+        cv = tk.Canvas(row, width=ITENS_COLS * (ITENS_CARD_W + 6), height=ITENS_H, bg=PANEL_BG,
+                       highlightthickness=0, yscrollincrement=40)
+        cv.pack(side="left")
+        self.itens_cv = cv
+        self.rolagem(row, w, cv, ITENS_H)
+        botoes = {}
+
+        def desenha(filtro):
+            self.itens_filtro = filtro
+            for nome, b in botoes.items():
+                b.configure(bg=GOLD if nome == filtro else BAR_BG, fg=PANEL_BG if nome == filtro else TEXT)
+            cv.delete("all")
+            keys = [k for k in M.ITEMS if filtro == "todos" or (k in livres) == (filtro == "liberados")]
+            y = 0
+            for i in range(0, len(keys), ITENS_COLS):
+                y += 6 + max(self.item_card(cv, c * (ITENS_CARD_W + 6), y, k)
+                             for c, k in enumerate(keys[i:i + ITENS_COLS]))
+            if not keys:
+                cv.create_text(10, 20, anchor="w", text="Nenhum item aqui.", fill=MUTED, font=self.font)
+            cv.configure(scrollregion=(0, 0, ITENS_COLS * (ITENS_CARD_W + 6), max(y, ITENS_H)))
+            cv.yview_moveto(0)
+        for nome, texto in (("todos", "Todos"), ("liberados", "Liberados"), ("bloqueados", "Bloqueados")):
+            b = tk.Label(chips, text=texto, font=self.font_small, padx=6, pady=1, cursor="hand2")
+            b.pack(side="left", padx=(0, 3))
+            b.bind("<Button-1>", lambda e, n=nome: desenha(n))
+            botoes[nome] = b
+        desenha(self.itens_filtro)
+        self.ao_lado(w)
 
     def show_achievements(self):
         have = set(self.meta["achievements"]) & set(M.ACHIEVEMENTS)
