@@ -590,4 +590,32 @@ def test_heroi_golem():
 
 test_heroi_golem()
 
+def test_heroi_mariposa():
+    import herois.mariposa as ma
+    import masmorra
+    montar.validar(ma)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "mariposa" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["mariposa"]
+    assert c.traco == {"dodge": 0.05, "eletrizar": 0.06} and c.unlock == "lendarios3", (c.traco, c.unlock)
+    assert "lendarios3" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("mariposa", c.stats, 1, c.traco)
+    st = masmorra.stats(run)
+    assert st["eletrizar"] == 0.06 and st["dodge"] >= 0.05, st
+    base = montar.estados(ma, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(ma, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    extra_dentro(ma)   # antenas e lua cabem inteiras, inclusive no alto do pulo e caída no chão (asas: assert em quadro())
+    for i in range(3):
+        ult = montar.estados(ma, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_mariposa()
+
 print("test_folha ok")
