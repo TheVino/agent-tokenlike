@@ -41,6 +41,10 @@ ACHIEVEMENTS = {
     "colecionador": "Pegar 10 itens numa run",
     "andar10": "Chegar ao andar 10",
     "andar20": "Chegar ao andar 20",
+    "veneno1": "Matar um inimigo com veneno",
+    "elementos3": "Pegar 3 itens elementais numa run",
+    "ouro300": "Juntar 300 de ouro numa run",
+    "horda4": "Vencer uma horda de 4 inimigos",
 }
 
 RARITIES = ("comum", "raro", "epico", "lendario")
@@ -855,6 +859,13 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("mimico", ev.get("kind") == "mimic" and ev.get("won"))
     grant("rico", run["gold"] >= 100)
     grant("colecionador", len(run["items"]) >= 10)
+    cont = run.get("cont", {})
+    grant("veneno1", cont.get("mortes_veneno", 0) >= 1)
+    grant("ouro300", run["gold"] >= 300)
+    grant("horda4", cont.get("horda4", 0) >= 1)
+    if "elementos3" not in have:
+        elem = set(ELEMENTOS.values())
+        grant("elementos3", sum(1 for it in run["items"] if elem & set(ITEMS[it["key"]]["fx"])) >= 3)
     if new:
         meta["achievements"].extend(new)
         ev["unlocks"] = new

@@ -434,6 +434,14 @@ for st in sl.stages:
     assert set(st["estados"]) == set(tp.folha.ESTADOS)
     assert all(len(sp[1]) == 32 and all(len(l) == 32 for l in sp[1]) for v in st["estados"].values() for sp in v)
     assert len(st["blink"][1]) == 32 and st["blink"][1] != st["frames"][0][1]
+# herói com unlock: bloqueado sem a conquista; next_char nele cai no Slime
+app12 = tp.PetApp(Args()); PENDING.clear()
+fake = tp.CharacterDef("fakeouro", "Fake", app12.chars["slime"].stages, unlock="ouro300"); app12.chars["fakeouro"] = fake
+app12.meta["achievements"] = [a for a in app12.meta["achievements"] if a != "ouro300"]
+assert not app12.is_unlocked(fake) and M.ACHIEVEMENTS["ouro300"]
+app12.meta["next_char"] = "fakeouro"; app12.new_run(announce=False); assert app12.run["char"] == "slime"
+app12.meta["achievements"].append("ouro300"); assert app12.is_unlocked(fake)
+app12.new_run(announce=False); assert app12.run["char"] == "fakeouro"; app12.quit()
 # test_heroi32_mesmo_tamanho: k = 2 e o quadro desenhado fica do tamanho do 16 px antigo
 app11 = tp.PetApp(Args()); PENDING.clear(); app11.char_var.set("slime"); app11.change_character(); app11.new_run()
 app11.refresh_look()
