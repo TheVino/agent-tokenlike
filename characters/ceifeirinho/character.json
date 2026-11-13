@@ -1,0 +1,30 @@
+{
+  "name": "Ceifeirinho",
+  "unlock": "horda4",
+  "stats": {
+    "hp": 16,
+    "atk": 3,
+    "def": 0
+  },
+  "traço": {
+    "crit": 0.08
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Ceifeirinho",
+      "floor": 1,
+      "sheet": "folha1.png"
+    },
+    {
+      "title": "Ceifador",
+      "floor": 4,
+      "sheet": "folha2.png"
+    },
+    {
+      "title": "Ceifador Ancião",
+      "floor": 10,
+      "sheet": "folha3.png"
+    }
+  ]
+}

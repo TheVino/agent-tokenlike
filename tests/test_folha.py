@@ -235,4 +235,27 @@ def test_heroi_coveiro():
 
 test_heroi_coveiro()
 
+def test_heroi_ceifeirinho():
+    import herois.ceifeirinho as cf
+    montar.validar(cf)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "ceifeirinho" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["ceifeirinho"]
+    assert c.traco == {"crit": 0.08} and c.unlock == "horda4", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    assert c.stats["hp"] == 16, c.stats
+    base = montar.estados(cf, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(cf, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(cf, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_ceifeirinho()
+
 print("test_folha ok")
