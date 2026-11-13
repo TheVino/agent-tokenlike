@@ -221,6 +221,7 @@ th.ord{cursor:pointer}th.ord:hover{color:var(--ouro)}
 .ic{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;margin-right:8px;
 background:#14121f;border:2px solid #4b4680;border-radius:4px;flex:none}
 .ic img{image-rendering:pixelated}
+.ic.grande{width:72px;height:72px}
 .nome{display:inline-flex;align-items:center;font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;vertical-align:middle}
 .barras{list-style:none;padding:0;margin:0 0 12px}
 .barras li{display:grid;grid-template-columns:minmax(90px,40%) 1fr 48px;gap:8px;align-items:center;margin:3px 0}
@@ -289,7 +290,7 @@ def _icone_heroi(key) -> str:
         pm = visual.grid_to_map(montar.estados(mod, 0)["idle"][0], mod.PAL)
     except (ImportError, AttributeError, KeyError):
         return ""
-    return f'<span class="ic">{_img(pm)}</span>'
+    return f'<span class="ic grande">{_img(pm, 64)}</span>'
 
 
 def _nome_item(key, itens) -> str:
