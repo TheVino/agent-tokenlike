@@ -1,0 +1,30 @@
+{
+  "name": "Cogumelo de Caverna",
+  "unlock": "andar8cheio",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0
+  },
+  "traço": {
+    "cura_sala": 1
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Esporinho",
+      "floor": 1,
+      "sheet": "folha1.png"
+    },
+    {
+      "title": "Cogumelo de Caverna",
+      "floor": 4,
+      "sheet": "folha2.png"
+    },
+    {
+      "title": "Ancião do Micélio",
+      "floor": 10,
+      "sheet": "folha3.png"
+    }
+  ]
+}
