@@ -80,6 +80,7 @@ GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
 STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
 MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
+GOLD_HOVER = "#fff27a"      # polegar da barra de rolagem com o mouse em cima
 HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
 CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
@@ -2247,15 +2248,45 @@ class PetApp:
         cv.pack(side="left")
         for n, d in enumerate(reversed(g)):
             self.lapide(cv, n * CEMI_LAPIDE, d)
-        if alto > vis:       # barrinha em pixel (a scrollbar nativa não pega as cores); rola com a roda e as setas
-            trilho = tk.Canvas(row, width=6, height=vis, bg=BAR_BG, highlightthickness=0)
-            trilho.pack(side="left", padx=(4, 0))
-            dedo = trilho.create_rectangle(0, 0, 6, vis * vis / alto, fill=GOLD, width=0)
-            cv.configure(yscrollcommand=lambda a, b: trilho.coords(dedo, 0, float(a) * vis, 6, float(b) * vis))
-            w.bind("<MouseWheel>", lambda e: cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
-            w.bind("<Up>", lambda e: cv.yview_scroll(-1, "units"))
-            w.bind("<Down>", lambda e: cv.yview_scroll(1, "units"))
+        if alto > vis:
+            self.rolagem(row, w, cv, vis)
         self.ao_lado(w)
+
+    def rolagem(self, parent, w, cv, vis):
+        """Barra de rolagem em pixel (a nativa não pega as cores) ao lado do Canvas `cv` (com scrollregion):
+        arrastar o polegar rola junto, clicar na trilha centraliza o polegar ali, roda do mouse e setas.
+        O polegar some quando tudo cabe (ex.: depois de um filtro). Devolve a trilha."""
+        tr = tk.Canvas(parent, width=8, height=vis, bg=BAR_BG, highlightthickness=0, cursor="hand2")
+        tr.pack(side="left", padx=(4, 0))
+        dedo = tr.create_rectangle(0, 0, 8, vis, fill=GOLD, width=0)
+        vista = {"a": 0.0, "b": 1.0, "pega": None}      # fração visível (de yscrollcommand) e onde o polegar foi pego
+
+        def mostra(a, b):
+            vista["a"], vista["b"] = float(a), float(b)
+            tr.coords(dedo, 0, vista["a"] * vis, 8, vista["b"] * vis)
+            tr.itemconfigure(dedo, state="hidden" if vista["b"] - vista["a"] >= 0.999 else "normal")
+
+        def vai(y):
+            tam = vista["b"] - vista["a"]
+            cv.yview_moveto(max(0.0, min(1.0 - tam, (y - vista["pega"]) / vis)))
+
+        def aperta(e):
+            y0, y1 = vista["a"] * vis, vista["b"] * vis
+            vista["pega"] = e.y - y0 if y0 <= e.y <= y1 else (y1 - y0) / 2   # fora do polegar: pula para lá
+            vai(e.y)
+
+        def solta(e):
+            vista["pega"] = None
+        cv.configure(yscrollcommand=mostra)
+        tr.bind("<Button-1>", aperta)
+        tr.bind("<B1-Motion>", lambda e: vista["pega"] is not None and vai(e.y))
+        tr.bind("<ButtonRelease-1>", solta)
+        tr.tag_bind(dedo, "<Enter>", lambda e: tr.itemconfigure(dedo, fill=GOLD_HOVER))
+        tr.tag_bind(dedo, "<Leave>", lambda e: tr.itemconfigure(dedo, fill=GOLD))
+        w.bind("<MouseWheel>", lambda e: cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
+        w.bind("<Up>", lambda e: cv.yview_scroll(-1, "units"))
+        w.bind("<Down>", lambda e: cv.yview_scroll(1, "units"))
+        return tr
 
     def show_achievements(self):
         have = set(self.meta["achievements"]) & set(M.ACHIEVEMENTS)

@@ -20,7 +20,10 @@ class Tk(Noop):
 class Canvas(Noop):
     """Guarda posição e texto de cada item para bbox realista (6 px por letra, 10 de altura)."""
     n=0
-    def __init__(self,*a,**k): self.it={}
+    def __init__(self,*a,**k): self.it={}; self.binds={}; self.cfg=dict(k); self.moveto=None
+    def bind(self,seq,fn=None,*a): self.binds[seq]=fn
+    def configure(self,**k): self.cfg.update(k)
+    def yview_moveto(self,f): self.moveto=f
     def _new(self,kind,a,k): Canvas.n+=1; self.it[Canvas.n]=[kind,list(a[:4]),dict(k)]; return Canvas.n
     def create_image(self,*a,**k): return self._new("img",a,k)
     def create_rectangle(self,*a,**k): return self._new("rect",a,k)
@@ -497,6 +500,15 @@ appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40
                 consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
 assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
 abre_fecha()
+# barra de rolagem: arrastar o polegar e clicar na trilha chamam yview_moveto com a fração certa
+cv = tkinter.Canvas(); tr = appm.rolagem(None, Tk(), cv, 100)
+cv.cfg["yscrollcommand"]("0.0", "0.25")                      # 1/4 visível: polegar de 0 a 25 px
+ev = lambda y: types.SimpleNamespace(y=y)
+tr.binds["<Button-1>"](ev(10)); assert cv.moveto == 0.0       # pegou o polegar a 10 px do topo
+tr.binds["<B1-Motion>"](ev(60)); assert abs(cv.moveto - 0.5) < 1e-9
+tr.binds["<ButtonRelease-1>"](ev(60)); tr.binds["<B1-Motion>"](ev(0)); assert abs(cv.moveto - 0.5) < 1e-9   # solto: não arrasta
+tr.binds["<Button-1>"](ev(90)); assert abs(cv.moveto - 0.75) < 1e-9   # trilha embaixo: vai ao fim (limitado a 1 - 0,25)
+tr.binds["<Button-1>"](ev(5)); assert cv.moveto == 0.0
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
