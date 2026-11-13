@@ -217,8 +217,8 @@ _SPECS = {
                 dict(hr=5, cai=1, lean=1, olhos="fechado", bracos=(((19, 24), (21, 28)), ((11, 24), (10, 28))),
                      por=((Z_G, 26, 0),))],
     # golpe de agulha: ergue, espeta com tudo (brilho), puxa a linha dando um ponto em X, espeta de novo
-    "running": [dict(cx=14, lean=-1, olhos="bravo", bracos=(((20, 23), (25, 14)),),
-                     agulhas=(((25, 13), (30, 4)),), fios=([(24, 15), (28, 19), (27, 23)],)),
+    "running": [dict(cx=14, lean=-1, olhos="bravo", bracos=(((20, 23), (22, 17)),),
+                     agulhas=(((23, 15), (31, 11)),), fios=([(22, 17), (26, 21), (25, 25)],)),
                 dict(cx=13, lean=2, olhos="bravo", boca="grito", bracos=(((17, 23), (21, 24)),),
                      agulhas=(((22, 24), (31, 24)),), fios=([(20, 25), (14, 29), (8, 27)],),
                      por=((BRILHO, 25, 16),)),
