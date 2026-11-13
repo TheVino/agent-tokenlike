@@ -360,6 +360,9 @@ def test_heroi_inquisidor():
                 assert q != base[e][j], (i, e, j)
     # a mitra cabe inteira no quadro mesmo no alto do pulo (âncora nunca acima do topo)
     assert all(a[1] >= 0 and 0 <= a[0] <= 32 - len(iq.MITRA_SINO[0]) for qs in iq.ANCORA.values() for a in qs)
+    for i in (1, 2):   # no waiting o sino da cintura não cobre o livro deitado ao lado
+        for j, q in enumerate(montar.estados(iq, i)["waiting"]):
+            assert [l[20:31] for l in q[27:32]] == [l[20:31] for l in base["waiting"][j][27:32]], (i, j)
     for i in range(3):
         ult = montar.estados(iq, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
