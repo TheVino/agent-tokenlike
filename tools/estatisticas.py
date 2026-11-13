@@ -1,8 +1,9 @@
 """Métricas de balanceamento a partir das linhas de run (formato de masmorra.run_record)."""
-import sys, json, html, statistics, collections, itertools
+import sys, json, html, statistics, collections, itertools, base64, struct, zlib, importlib
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import masmorra as M
+import arte, visual
 
 # Metas de balanceamento: (mínimo, máximo); None = sem limite.
 METAS = {"passou_chefe1": (0.35, 0.45), "p90": (13, 16), "max": (None, 50)}
@@ -194,16 +195,37 @@ def coletar(n_sim: int, pasta_real: Path, todas_versoes: bool, seed: int = 1) ->
 
 
 CSS = """
-:root{--bg:#1d1b2b;--bd:#4b4680;--tx:#f2f0ff;--mu:#a9a4d6;--ok:#7ee081;--ruim:#ff6b81;--ouro:#ffd23f}
+:root{--bg:#1d1b2b;--cx:#25223a;--zb:#2b2844;--bd:#3d3866;--tx:#f2f0ff;--mu:#a9a4d6;--ok:#7ee081;--ruim:#ff6b81;
+--ouro:#ffd23f;--roxo:#7a73d6;--roxo2:#b48cff}
 *{box-sizing:border-box}
-body{background:var(--bg);color:var(--tx);font:14px/1.45 Consolas,"Courier New",monospace;padding:16px;max-width:1200px;margin:auto}
-h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;color:var(--ouro);margin:28px 0 8px;border-bottom:1px solid var(--bd);padding-bottom:4px}
+body{background:var(--bg);color:var(--tx);font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:24px 16px;max-width:1200px;margin:auto}
+td{font-family:Consolas,"Cascadia Mono","Courier New",monospace;font-size:13px}
+header{border:2px solid var(--roxo);background:linear-gradient(135deg,#2a2545,#1d1b2b);padding:16px 20px;border-radius:6px;
+box-shadow:4px 4px 0 #0b0b14}
+h1{font-size:22px;margin:0 0 4px;color:var(--ouro);letter-spacing:.04em;text-shadow:2px 2px 0 #6a3fb5}
+h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--ouro);margin:32px 0 10px;padding-left:10px;
+border-left:4px solid var(--roxo2)}
 .mu{color:var(--mu)}.ok{color:var(--ok)}.ruim{color:var(--ruim)}.aviso{color:var(--ouro)}.fraco{opacity:.5}
-.rolar{overflow-x:auto}table{border-collapse:collapse;width:100%}
-th,td{border:1px solid var(--bd);padding:4px 8px;text-align:right;white-space:nowrap}
-th:first-child,td:first-child{text-align:left}th{color:var(--mu);font-weight:normal}
-th.ord{cursor:pointer}th.ord:hover{color:var(--tx)}
-.cols{display:flex;gap:16px;flex-wrap:wrap}.cols>div{flex:1 1 320px}
+.rolar{overflow-x:auto;border:1px solid var(--bd);border-radius:6px}
+table{border-collapse:collapse;width:100%;background:var(--cx)}
+th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--bd)}
+tbody tr:nth-child(even){background:var(--zb)}tbody tr:hover{background:#363159}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--mu);font-weight:600;font-size:12px;background:#221f36}
+th.ord{cursor:pointer}th.ord:hover{color:var(--ouro)}
+.cols{display:flex;gap:16px;flex-wrap:wrap}.cols>div{flex:1 1 320px;min-width:0}
+.cartao{background:var(--cx);border:1px solid var(--bd);border-radius:6px;padding:12px 14px}
+.fonte{color:var(--roxo2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:12px;margin:0 0 6px}
+.badge{display:inline-block;padding:0 6px;border-radius:9px;font-size:11px;font-weight:700;margin-left:4px}
+.badge.ok{background:#1f3d2a;border:1px solid #3d7a4f}.badge.ruim{background:#4a1f2a;border:1px solid #8f3a4d}
+.ic{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;margin-right:8px;
+background:#14121f;border:2px solid #4b4680;border-radius:4px;flex:none}
+.ic img{image-rendering:pixelated}
+.nome{display:inline-flex;align-items:center;font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;vertical-align:middle}
+.barras{list-style:none;padding:0;margin:0 0 12px}
+.barras li{display:grid;grid-template-columns:minmax(90px,40%) 1fr 48px;gap:8px;align-items:center;margin:3px 0}
+.barras .b{background:#14121f;height:12px;border-radius:2px;overflow:hidden}.barras .b span{display:block;height:100%;background:var(--roxo)}
+.barras .v{text-align:right;font-family:Consolas,monospace;font-size:12px;color:var(--mu)}
 svg{max-width:100%;height:auto}
 """
 
@@ -230,11 +252,56 @@ def _pct(x) -> str:
     return "—" if x is None else f"{x * 100:.0f}%"
 
 
+def _img(pm, lado=28) -> str:
+    """Mapa de pixels {(x, y): "#rrggbb"} -> <img> PNG RGBA (aparado na caixa) em data URI, ampliado por inteiro."""
+    x0, y0, x1, y1 = visual.bbox(pm)
+    raw = bytearray()
+    for y in range(y0, y1):
+        raw.append(0)  # filtro 0 na linha
+        for x in range(x0, x1):
+            c = pm.get((x, y))
+            raw += bytes.fromhex(c[1:]) + b"\xff" if c else b"\0\0\0\0"
+    def bloco(n, d):
+        return struct.pack(">I", len(d)) + n + d + struct.pack(">I", zlib.crc32(n + d))
+    png = (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", struct.pack(">IIBBBBB", x1 - x0, y1 - y0, 8, 6, 0, 0, 0))
+           + bloco(b"IDAT", zlib.compress(bytes(raw), 9)) + bloco(b"IEND", b""))
+    k = max(1, lado // max(x1 - x0, y1 - y0))
+    return (f'<img alt="" width="{(x1 - x0) * k}" height="{(y1 - y0) * k}" '
+            f'src="data:image/png;base64,{base64.b64encode(png).decode()}">')
+
+
+def _icone_item(key) -> str:
+    """Ícone do item, com a borda na cor da raridade mais alta que ele pode ter."""
+    art = arte.ITEM_ART.get(key)
+    if not art:
+        return ""
+    rars = M.ITEMS[key].get("rarities") or []
+    cor = next((M.RAR_COLOR[r] for r in reversed(list(M.RAR_COLOR)) if r in rars and M.RAR_COLOR[r]), None)
+    borda = f' style="border-color:{cor}"' if cor else ""
+    return f'<span class="ic"{borda}>{_img(visual.grid_to_map(art, arte.PAL))}</span>'
+
+
+def _icone_heroi(key) -> str:
+    """Quadro idle do 1º estágio (herois/<chave>.py); herói sem módulo (ex.: Petdex) fica sem ícone."""
+    try:
+        mod = importlib.import_module("herois." + key)
+        from herois import montar
+        pm = visual.grid_to_map(montar.estados(mod, 0)["idle"][0], mod.PAL)
+    except (ImportError, AttributeError, KeyError):
+        return ""
+    return f'<span class="ic">{_img(pm)}</span>'
+
+
+def _nome_item(key, itens) -> str:
+    nome = itens[key]["nome"] if key in itens else key
+    return f'<span class="nome">{_icone_item(key) if key in M.ITEMS else ""}{_e(nome)}</span>'
+
+
 def _resumo_linha(nome, r, metas=None) -> str:
     """Linha da tabela Resumo; sem `metas` (ou meta None) não mostra ✓/✗."""
     def cel(k, txt):
         m = (metas or {}).get(k)
-        sinal = "" if m is None else (' <span class="ok">✓</span>' if m else ' <span class="ruim">✗</span>')
+        sinal = "" if m is None else (' <span class="badge ok">✓</span>' if m else ' <span class="badge ruim">✗</span>')
         return f"<td>{txt}{sinal}</td>"
     aviso = ' <span class="aviso">(menos de 10 runs, pouco confiável)</span>' if 0 < r["n"] < 10 else ""
     return (f"<tr><td>{_e(nome)}{aviso}</td><td>{r['n']}</td><td>{_n(r['mediana'])}</td>"
@@ -261,13 +328,14 @@ def _tabela_itens(itens) -> str:
     out = ['<div class="rolar"><table id="itens"><thead><tr>']
     out += [f'<th class="ord">{_e(t)}{"<br>sim / real" if k else ""}</th>' for t, k in cab]
     out.append("</tr></thead><tbody>")
-    for it in sorted(itens.values(), key=lambda x: x["nome"]):
+    for key, it in sorted(itens.items(), key=lambda x: x[1]["nome"]):
         s, r = it["sim"], it["real"]
         fraco = r["n"] < 10
         raros = ", ".join(f'<span style="color:{M.RAR_COLOR[x]}">{_e(M.RAR_NAMES[x])}</span>' if M.RAR_COLOR.get(x)
                           else _e(M.RAR_NAMES[x]) for x in (it["raridades"] or []) if x in M.RAR_NAMES)
         aviso = f' <span class="aviso" title="menos de 10 runs reais">⚠ n={r["n"]}</span>' if fraco and r["n"] else ""
-        out.append(f'<tr><td data-v="{_e(it["nome"])}">{_e(it["nome"])}<br><small class="mu">{raros}</small>{aviso}</td>')
+        out.append(f'<tr><td data-v="{_e(it["nome"])}"><span class="nome">{_icone_item(key)}<span>{_e(it["nome"])}'
+                   f'<br><small class="mu">{raros}</small>{aviso}</span></span></td>')
         for _, k in cab[1:]:
             ordem = "" if s[k] is None else s[k]
             modos, fr = "", None
@@ -287,13 +355,12 @@ def _tabela_itens(itens) -> str:
 def _tabela_pares(lista, itens) -> str:
     if not lista:
         return '<p class="mu">Poucos pares com amostra suficiente.</p>'
-    nome = lambda k: itens[k]["nome"] if k in itens else k
     cor = lambda g: "ok" if g > 1 else "ruim" if g < -1 else ""
-    linhas = "".join(f'<tr><td>{_e(nome(p["a"]))} + {_e(nome(p["b"]))}</td><td>{p["n"]}</td>'
+    linhas = "".join(f'<tr><td>{_nome_item(p["a"], itens)} <span class="mu">+</span> {_nome_item(p["b"], itens)}</td><td>{p["n"]}</td>'
                      f'<td>{_n(p["vs_esperado"], 2)}</td><td class="{cor(p["ganho"])}">{_n(p["ganho"], 2)}</td></tr>'
                      for p in lista)
-    return ("<table><thead><tr><th>Par</th><th>n</th><th>vs esperado</th><th>Ganho do par</th></tr></thead>"
-            f"<tbody>{linhas}</tbody></table>")
+    return ('<div class="rolar">' "<table><thead><tr><th>Par</th><th>n</th><th>vs esperado</th><th>Ganho do par</th></tr></thead>"
+            f"<tbody>{linhas}</tbody></table></div>")
 
 
 def _histograma(por_andar, titulo) -> str:
@@ -305,18 +372,27 @@ def _histograma(por_andar, titulo) -> str:
     for a in range(1, ate + 1):
         v = por_andar.get(a, por_andar.get(str(a), 0))  # chave int (memória) ou str (JSON)
         h, x = alt * v / maxv, (a - 1) * larg
-        barras.append(f'<rect x="{x + 2}" y="{alt - h:.1f}" width="{larg - 4}" height="{h:.1f}" fill="#7a73d6">'
+        barras.append(f'<rect x="{x + 2}" y="{alt - h:.1f}" width="{larg - 4}" height="{h:.1f}" fill="{"#ffd23f" if a % M.BOSS_EVERY == 0 else "#7a73d6"}" rx="2">'
                       f'<title>andar {a}: {v} ({v / total * 100:.0f}%)</title></rect>'
                       f'<text x="{x + larg / 2}" y="{alt + esp}" fill="#a9a4d6" font-size="10" text-anchor="middle">{a}</text>')
-    return (f'<p class="mu">{_e(titulo)}: andar em que morreram ({total} runs)</p>'
+    return (f'<p class="mu">Andar em que morreram ({total} runs; dourado = andar de chefe)</p>'
             f'<svg viewBox="0 0 {ate * larg} {alt + esp + 2}" width="{ate * larg}" role="img" aria-label="{_e(titulo)}">'
             + "".join(barras) + "</svg>")
+
+
+def _barras(pares) -> str:
+    """Barras horizontais em CSS: rótulo, barra proporcional ao maior e valor."""
+    pares = list(pares)
+    topo = max(c for _, c in pares) or 1
+    return '<ul class="barras">' + "".join(
+        f'<li><span>{_e(n)}</span><span class="b"><span style="width:{c / topo * 100:.0f}%"></span></span>'
+        f'<span class="v">{c}</span></li>' for n, c in pares) + "</ul>"
 
 
 def _matadores(lista) -> str:
     if not lista:
         return '<p class="mu">sem dados</p>'
-    return "<ul>" + "".join(f"<li>{_e(n)}: {c}</li>" for n, c in lista) + "</ul>"
+    return _barras(lista)
 
 
 TIPOS = {"monster": "Monstro", "horde": "Horda", "boss": "Chefe", "mimic": "Mímico", "trap": "Armadilha",
@@ -326,7 +402,7 @@ TIPOS = {"monster": "Monstro", "horde": "Horda", "boss": "Chefe", "mimic": "Mím
 def _tipos(d) -> str:
     if not d:
         return '<p class="mu">sem dados</p>'
-    return "<ul>" + "".join(f"<li>{_e(TIPOS.get(k, k))}: {c}</li>" for k, c in d.items()) + "</ul>"
+    return _barras((TIPOS.get(k, k), c) for k, c in d.items())
 
 
 def gerar_html(dados: dict) -> str:
@@ -335,16 +411,17 @@ def gerar_html(dados: dict) -> str:
     p = ['<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">',
          '<meta name="viewport" content="width=device-width,initial-scale=1">',
          f"<title>Estatísticas da masmorra</title><style>{CSS}</style></head><body>",
-         f'<h1>Estatísticas de balanceamento</h1><p class="mu">Versão {_e(dados["versao"])} · '
-         f'gerado em {_e(dados["gerado_em"])} · ferramenta de desenvolvimento</p>',
+         f'<header><h1>Masmorra de Tokens · estatísticas de balanceamento</h1><p class="mu">Versão {_e(dados["versao"])} · '
+         f'gerado em {_e(dados["gerado_em"])} · ferramenta de desenvolvimento</p></header>',
          "<h2>Resumo</h2>"]
     if real_vazio:
         p.append('<p class="aviso">sem runs reais: a coluna real fica vazia até acabarem runs (runs.jsonl em ~/.tokenlike).</p>')
     modos = ", ".join(f"{m}: {c}" for m, c in sorted(info["modos"].items())) or "nenhuma"
     p.append(f'<p class="mu">Runs reais por modo: {_e(modos)} · {info["desistencias"]} desistências fora das contas · '
              f'{info["ignoradas"]} linhas ignoradas · {info["outras_versoes"]} linhas de outras versões.</p>')
-    p.append('<div class="rolar"><table><thead><tr><th>Fonte</th><th>Runs</th><th>Mediana</th><th>p90 (13–16)</th>'
-             '<th>Máx (até 25)</th><th>Passou do 1º chefe (35–45%)</th><th>Itens (mediana)</th></tr></thead><tbody>')
+    p.append(f'<div class="rolar"><table><thead><tr><th>Fonte</th><th>Runs</th><th>Mediana</th><th>p90 ({METAS["p90"][0]}–{METAS["p90"][1]})</th>'
+             f'<th>Máx (até {METAS["max"][1]})</th><th>Passou do 1º chefe '
+             f'({METAS["passou_chefe1"][0] * 100:.0f}–{METAS["passou_chefe1"][1] * 100:.0f}%)</th><th>Itens (mediana)</th></tr></thead><tbody>')
     cal, metas = dados["calibracao"], dados["metas"]
     for chave, nome in (("sem_conquistas", "calibração (slime) sem conquistas"),
                         ("com_conquistas", "calibração (slime) com conquistas")):
@@ -359,23 +436,29 @@ def gerar_html(dados: dict) -> str:
              "Embaixo, o vs esperado bruto. Real esmaecido: menos de 10 runs reais com o item.</p>")
     p.append(_tabela_itens(itens))
     for rot, chave in (("Melhores pares", "melhores"), ("Piores pares", "piores")):
-        p.append(f'<h2>{rot}</h2><div class="cols">')
+        p.append(f'<h2>{rot}</h2><div>')  # empilhado: os nomes com ícone não cabem lado a lado
         for fonte in ("sim", "real"):
             lista = dados["pares"][fonte][chave]
             corpo = '<p class="mu">sem runs reais</p>' if fonte == "real" and real_vazio else _tabela_pares(lista, itens)
-            p.append(f'<div><p class="mu">{fonte}</p>{corpo}</div>')
+            p.append(f'<div><p class="fonte">{fonte}</p>{corpo}</div>')
         p.append("</div>")
     p.append('<h2>Onde as runs morrem</h2><div class="cols">')
     for fonte in ("sim", "real"):
         m = dados["mortes"][fonte]
-        p.append(f'<div>{_histograma(m["por_andar"], fonte)}<p class="mu">Quem mais mata</p>{_matadores(m["matadores"])}<p class="mu">Por tipo de morte</p>{_tipos(m["por_tipo"])}</div>')
+        p.append(f'<div class="cartao"><p class="fonte">{fonte}</p>{_histograma(m["por_andar"], fonte)}<p class="mu">Quem mais mata</p>{_matadores(m["matadores"])}<p class="mu">Por tipo de morte</p>{_tipos(m["por_tipo"])}</div>')
     p.append('</div><h2>Heróis</h2><div class="rolar"><table><thead><tr><th>Herói</th><th>Runs sim / real</th>'
              "<th>Mediana sim / real</th><th>p90 sim / real</th></tr></thead><tbody>")
     hs, hr = dados["herois"]["sim"], dados["herois"]["real"]
     g = lambda d, k, f=_n: f(d[k]) if d else "—"
+    try:
+        import tokenlike
+        nomes = {k: c.name for k, c in tokenlike.all_characters().items()}
+    except Exception:  # só o nome bonito; a chave serve
+        nomes = {}
     for c in sorted(set(hs) | set(hr)):
         s, r = hs.get(c), hr.get(c)
-        p.append(f"<tr><td>{_e(c)}</td><td>{g(s, 'n', str)} / {g(r, 'n', str)}</td>"
+        nome = f'<span class="nome">{_icone_heroi(c)}{_e(nomes.get(c, c))}</span>'
+        p.append(f"<tr><td>{nome}</td><td>{g(s, 'n', str)} / {g(r, 'n', str)}</td>"
                  f"<td>{g(s, 'mediana')} / {g(r, 'mediana')}</td><td>{g(s, 'p90')} / {g(r, 'p90')}</td></tr>")
     p.append(f"</tbody></table></div><script>{JS}</script></body></html>")
     return "".join(p)
