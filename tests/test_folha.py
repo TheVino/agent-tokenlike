@@ -341,4 +341,34 @@ def test_heroi_inquisidor():
 
 test_heroi_inquisidor()
 
+
+def test_heroi_boneca():
+    import herois.boneca as bn
+    import masmorra
+    montar.validar(bn)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "boneca" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["boneca"]
+    assert c.traco == {"dodge": 0.1} and c.unlock == "esquiva10", (c.traco, c.unlock)
+    assert "esquiva10" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("boneca", {"hp": 20, "atk": 3, "def": 0}, 1, c.traco)
+    assert masmorra.stats(run)["dodge"] >= 0.1, masmorra.stats(run)
+    base = montar.estados(bn, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(bn, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    # laço e agulha cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
+    w, h = len(bn.LACO_AGULHA[0]), len(bn.LACO_AGULHA)
+    assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in bn.ANCORA.values() for a in qs)
+    for i in range(3):
+        ult = montar.estados(bn, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_boneca()
+
 print("test_folha ok")
