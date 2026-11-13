@@ -80,11 +80,11 @@ def quadro(w=20, h=24, cx=16, base=30, lean=0, fase=0.0, olhos="normal", olhar=0
     for x, y in ((bx, by), (bx + 1, by - 1), (bx, by + 1), (bx, by + 2)):
         if (x, y) in pts and g[y][x] == "G":
             g[y][x] = "L"
-    if some:   # sumindo (antes do rosto, que fica nítido): xadrez de baixo para cima (1/4, 1/2); some >= 3 apaga o fim
+    if some:   # sumindo (antes do rosto, que fica nítido): xadrez de baixo para cima (1/4, 1/2); some >= 3 deixa o fim ralo (1 em 4)
         corte = base - h * min(some, 2) // 4
         for y in range(N):
             for x in range(N):
-                if g[y][x] != "." and y > corte and ((x + y) % 2 or (some >= 3 and y > corte + 4)):
+                if g[y][x] != "." and y > corte and ((x + y) % 2 or (some >= 3 and y > corte + 4 and y % 2)):
                     g[y][x] = "."
     ey = top + max(3, int(h * 0.27))
     fx = round(cx + lean * (base - ey) / h) + olhar
@@ -113,7 +113,7 @@ def quadro(w=20, h=24, cx=16, base=30, lean=0, fase=0.0, olhos="normal", olhar=0
     for s, x, y in por:
         carimbar(g, s, x, y)
     cxt = (xs_top[0] + xs_top[-1]) // 2
-    return ["".join(l) for l in g], (cxt - 7, top - 8)
+    return ["".join(l) for l in g], (cxt - 7, ey - 11)
 
 
 def _estado(specs):
@@ -137,9 +137,9 @@ _SPECS = {
                dict(cx=13, olhos="feliz", boca="buu", fase=_F[2], por=((MAO_ALTA, 22, 8),)),
                dict(cx=13, olhos="feliz", boca="buu", fase=_F[3], por=((MAO_CIMA, 22, 6),))],
     # encolhe, dispara para cima, no alto abre os braços, desce, pousa
-    "jumping": [dict(w=24, h=19, olhos="fechado", boca="reta"),
+    "jumping": [dict(w=24, h=22, olhos="fechado", boca="reta"),
                 dict(w=16, h=24, base=30, boca="o", fase=_F[1]),
-                dict(w=20, h=19, base=26, olhos="feliz", boca="buu", fase=_F[2]),
+                dict(w=20, h=21, base=27, olhos="feliz", boca="buu", fase=_F[2]),
                 dict(w=18, h=22, base=29, boca="o", fase=_F[3]),
                 dict(w=23, h=20, olhos="feliz")],
     # triste, abre buracos no lençol e some aos poucos
@@ -148,11 +148,11 @@ _SPECS = {
                dict(olhos="triste", boca="reta", fase=_F[2], buracos=((12, 27, 2), (21, 24, 1.8), (16, 20, 1)), some=1),
                dict(olhos="fechado", boca=None, bochecha=False, fase=_F[3],
                     buracos=((12, 27, 2.5), (21, 24, 2.2), (16, 20, 1.5)), some=2),
-               dict(olhos="x", boca=None, bochecha=False, base=28, buracos=((21, 22, 2),), some=3)],
+               dict(olhos="x", boca=None, bochecha=False, base=30, buracos=((21, 22, 2),), some=3)],
     # cochila flutuando de lado, "z" subindo
     "waiting": [dict(cx=14, lean=-2, olhos="fechado", boca=None, base=30),
                 dict(cx=14, lean=-3, olhos="fechado", boca=None, base=29, fase=_F[1], por=((Z_P, 22, 6),)),
-                dict(cx=14, lean=-3, olhos="fechado", boca="o", base=28, fase=_F[2], por=((Z_P, 22, 6), (Z_G, 26, 0))),
+                dict(cx=14, lean=-3, olhos="fechado", boca="o", base=29, fase=_F[2], por=((Z_P, 22, 6), (Z_G, 26, 0))),
                 dict(cx=14, lean=-2, olhos="fechado", boca=None, base=29, fase=_F[3], por=((Z_G, 26, 0),))],
     # recua e avança de boca aberta: "Buu!"
     "running": [dict(cx=14, lean=-3, olhos="bravo", boca="reta"),
@@ -171,21 +171,19 @@ QUADROS, ANCORA = {}, {}
 for _e, _s in _SPECS.items():
     QUADROS[_e], ANCORA[_e] = _estado(_s)
 
+# chapéu: 5 linhas de cone acima da cabeça + aba (âncora = olhos - 11; no lençol alto a aba cai no topo)
 CHAPEU = [
-    "..........KK..",
-    "........KKHK..",
-    "......KKHHK...",
-    ".....KHHHHK...",
-    ".....KHYHHK...",
-    "....KHHHHHHK..",
-    "....KHHHHYHK..",
+    ".........KK...",
+    ".......KKHK...",
+    ".....KKHHYK...",
+    "....KHHYHHHK..",
     "...KHHhhhhHHK.",
     ".KKhhhhhhhhhhK",
     "KhhhhhhhhhhhhK",
     ".KKKKKKKKKKKK.",
 ]
-# correntinha no pescoço (abaixo da boca), presa pela âncora do topo da cabeça
-CORRENTE = ["." * 14] * 24 + [
+# correntinha no pescoço, logo abaixo da boca mais aberta ("buu"), presa na mesma âncora
+CORRENTE = ["." * 14] * 22 + [
     "KsKsKsKsKsKsKs",
     "......KK......",
     ".....KYYK.....",

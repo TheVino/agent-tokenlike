@@ -165,6 +165,26 @@ for i in (1, 2, 3):
     assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
     assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
 
+
+def extra_dentro(mod, folga=0):
+    """Todo pixel do `extra` de cada estágio cai dentro do quadro (com `folga` px de margem), em todo quadro."""
+    for s in mod.ESTAGIOS[1:]:
+        ex = s["extra"]
+        for e, ancs in mod.ANCORA.items():
+            for j, (ax, ay) in enumerate(ancs):
+                for dy, lin in enumerate(ex):
+                    for dx, ch in enumerate(lin):
+                        if ch != ".":
+                            x, y = ax + dx, ay + dy
+                            assert folga <= x < 32 - folga and folga <= y < 32 - folga, (s["title"], e, j, x, y)
+
+
+import herois.fantasma as _fa
+extra_dentro(_fa, folga=1)   # chapéu com folga real até no alto do pulo
+for i in range(3):
+    ult = montar.estados(_fa, i)["failed"][-1]
+    assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
 # Médico da Peste (leva 1): validar, folhas, carregador, acréscimo em todo quadro, failed visível
 def test_heroi_medico():
     import herois.medico as med
@@ -208,6 +228,7 @@ def test_heroi_bruxa():
     for i in range(3):
         ult = montar.estados(bx, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
+    extra_dentro(bx)   # caldeirão (e vagalumes) inteiros no quadro, inclusive no failed
 
 
 test_heroi_bruxa()
@@ -231,6 +252,10 @@ def test_heroi_coveiro():
     for i in range(3):
         ult = montar.estados(cv, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
+    for i in (1, 2):   # lampião aceso de pé, apagado na cova fechada
+        est = montar.estados(cv, i)
+        assert "Y" in "".join(est["idle"][0]) and "Y" in "".join(est["failed"][0]), i
+        assert not any("Y" in "".join(q) or "O" in "".join(q) for q in est["failed"][3:]), i
 
 
 test_heroi_coveiro()
@@ -308,6 +333,7 @@ def test_heroi_cogumelo():
     for i in range(3):
         ult = montar.estados(cg, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
+    extra_dentro(cg)   # esporos laterais inteiros, mesmo com o corpo indo para a esquerda
 
 
 test_heroi_cogumelo()
@@ -334,6 +360,9 @@ def test_heroi_inquisidor():
                 assert q != base[e][j], (i, e, j)
     # a mitra cabe inteira no quadro mesmo no alto do pulo (âncora nunca acima do topo)
     assert all(a[1] >= 0 and 0 <= a[0] <= 32 - len(iq.MITRA_SINO[0]) for qs in iq.ANCORA.values() for a in qs)
+    for i in (1, 2):   # no waiting o sino da cintura não cobre o livro deitado ao lado
+        for j, q in enumerate(montar.estados(iq, i)["waiting"]):
+            assert [l[20:31] for l in q[27:32]] == [l[20:31] for l in base["waiting"][j][27:32]], (i, j)
     for i in range(3):
         ult = montar.estados(iq, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
@@ -427,6 +456,12 @@ def test_heroi_corvo():
     # bolsa e capuz cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
     w, h = len(co.BOLSA_CAPUZ[0]), len(co.BOLSA_CAPUZ)
     assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in co.ANCORA.values() for a in qs)
+    conta = lambda q, c: sum(l.count(c) for l in q)
+    for i in (1, 2):   # a bolsa não cobre a asa esticada (review e 3º quadro do running)
+        est = montar.estados(co, i)
+        for e, j in [("review", k) for k in range(4)] + [("running", 2)]:
+            assert conta(est[e][j], "A") == conta(base[e][j], "A"), (i, e, j)
+    assert all(conta(q, "N") for qs in base.values() for q in qs)   # brilho azulado nas penas em todo quadro
     for i in range(3):
         ult = montar.estados(co, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
@@ -457,6 +492,12 @@ def test_heroi_alquimista():
     # cinto e óculos cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
     w, h = len(aq.CINTO_OCULOS[0]), len(aq.CINTO_OCULOS)
     assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in aq.ANCORA.values() for a in qs)
+    for e, ancs in aq.ANCORA.items():   # os óculos ficam dentro da copa: não cobrem o contorno do chapéu
+        for j, (ax, ay) in enumerate(ancs):
+            for dy, lin in enumerate(aq.CINTO_OCULOS[:8]):
+                for dx, ch in enumerate(lin):
+                    if ch != ".":
+                        assert base[e][j][ay + dy][ax + dx] != "K", (e, j, dx, dy)
     for i in range(3):
         ult = montar.estados(aq, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i

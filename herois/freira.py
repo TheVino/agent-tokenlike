@@ -69,15 +69,19 @@ def _terco(g, mao, ponta):
 def _monte(g, cx, base, fase):
     """Montinho de cinza com brasas e o véu caído por cima (fase 1 = ainda desmanchando, 2 = só o montinho)."""
     px = {}
-    alt = 6
-    for y in range(base - alt, base + 1):
-        w = 9 - (base - y) * (1 if y > base - 4 else 2)
-        for x in range(cx - w, cx + w + 1):
-            px[(x, y)] = "q" if (x + y) % 5 == 0 else "Q"
-    hx, hy = cx, base - 5                        # o véu caído e amassado em cima do montinho
+    # montes de tamanhos diferentes (centro x, centro y, raio x, raio y) somados: contorno de cima irregular
+    for mx, my, rx, ry in ((cx - 6, base, 4, 3), (cx, base - 1, 5, 3), (cx + 6, base - 1, 4, 5),
+                           (cx + 10, base + 1, 2, 2), (cx - 10, base + 1, 1, 1)):
+        for x in range(mx - rx, mx + rx + 1):
+            for y in range(my - ry, min(my + ry, base) + 1):
+                if (x - mx) ** 2 / (rx + 0.5) ** 2 + (y - my) ** 2 / (ry + 0.5) ** 2 <= 1:
+                    px[(x, y)] = "q" if (3 * x + 7 * y) % 11 < 2 else "Q"
+    for x, y in ((cx - 12, base), (cx + 13, base), (cx + 3, base - 6)):   # farelos soltos
+        px[(x, y)] = "Q"
+    hx, hy = cx - 1, base - 5                    # o véu caído e amassado em cima do montinho, escorregando à direita
     for x in range(hx - 6, hx + 7):
         for y in range(hy - 4, hy + 3):
-            if (x - hx) ** 2 / 36 + (y - hy - 1) ** 2 / 22 <= 1:
+            if (x - hx) ** 2 / 26 + (y - hy - 1 - (x - hx) // 3) ** 2 / 9 <= 1:
                 px[(x, y)] = "v" if x <= hx - 3 else "V"
     for x in range(hx - 1, hx + 6):              # pontinha da touca aparecendo debaixo do véu
         px[(x, hy + 3)] = "C"
