@@ -126,4 +126,14 @@ assert dados["calibracao"]["sem_conquistas"] == cal
 assert "calibração (slime) sem conquistas" in page and "calibração (slime) com conquistas" in page
 pg3 = E.gerar_html(E.coletar(n_sim=10, pasta_real=d3, todas_versoes=False))
 assert "auto: 1" in pg3 and "linhas ignoradas" in pg3
+# herói com traço: o traço chega na run simulada
+import tokenlike as _tk
+_hs = S.todos_os_herois()
+assert all(len(h) == 3 for h in _hs) and any(h[2] for h in _hs), _hs
+# unlock de todo herói real existe em ACHIEVEMENTS
+for _c in _tk.all_characters().values():
+    assert not _c.unlock or _c.unlock in M.ACHIEVEMENTS, (_c.key, _c.unlock)
+_tr = {"crit": 0.08}
+_run = M.new_run("x", {"hp": 20, "atk": 3}, 1, _tr)
+assert _run["traco"] == _tr
 print("ok: estatisticas")

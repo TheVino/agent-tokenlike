@@ -17,10 +17,12 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `contorno`, `tingir`, `adesivo`, `objeto` e `compose()`, que monta o pet com os `look` dos itens empilhados
   (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
   inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
-- `herois/`: heróis embutidos 32 px, um módulo por herói (`slime.py`, `fantasma.py`) com: `PAL` (letra -> cor), `QUADROS`
+- `herois/`: heróis embutidos 32 px, um módulo por herói (`slime.py`, `fantasma.py`, `medico.py`, `bruxa.py`, `coveiro.py`, `ceifeirinho.py`) com: `PAL` (letra -> cor), `QUADROS`
   (8 estados desenhados: idle, run_r, waving, jumping, failed, waiting, running, review; 4 a 6 quadros 32x32 cada),
   `ESTAGIOS` (exatamente 3: `title`, `floor`, `extra`; o 1º com `extra=None`; o Slime evolui nos andares 1/4/10: Gotinha,
   Slime, Rei Slime) e `ANCORA` (por estado e quadro, `(x, y)` inteiros onde o `extra` do estágio é colado).
+  `herois/comum.py`: peças repartidas (`z`, `?`, lágrima, `carimbar`, `linha`, `contornar`, `traco`).
+  Desbloqueio por conquista: Fantasma `chefe1`, Médico `veneno1`, Bruxa `elementos3`, Coveiro `ouro300`, Ceifeirinho `horda4`.
   `herois/montar.py`: `estados()` monta os 9 estados (`run_l` = `run_r` espelhado, não se desenha) e `validar()` confere
   tudo (4-6 quadros, âncoras, 32x32, 3 estágios). `tools/gerar_folhas.py` gera `characters/fantasma/folha1..3.png`
   (grade 8x9, células de 40 px, 4-6 quadros por estado, células vazias onde faltam quadros) e a prévia

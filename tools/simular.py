@@ -6,21 +6,21 @@ import masmorra as M
 
 def todos_os_herois():
     import tokenlike  # importar não abre janela (tkinter só em run_gui)
-    return [(c.key, c.stats) for c in tokenlike.all_characters().values()]
+    return [(c.key, c.stats, c.traco) for c in tokenlike.all_characters().values()]
 
 def simular(n=2000, achs=(), seed=1, heroes=None):
     """Devolve (registros no formato das runs reais, salas jogadas por run)."""
     stage = {}
     if heroes is None:
-        heroes = [("slime", {"hp": 20, "atk": 3})]  # caminho padrão: sem stage_floors
+        heroes = [("slime", {"hp": 20, "atk": 3}, {})]  # caminho padrão: sem stage_floors
     else:
         import tokenlike
         stage = {k: c.stage_floors for k, c in tokenlike.all_characters().items()}
     rng = random.Random(seed); recs = []; rooms = []
     for i in range(n):
-        key, stats = heroes[i % len(heroes)]
+        key, stats, traco = heroes[i % len(heroes)]
         meta = M.new_meta(); meta["achievements"] = list(achs)
-        run = M.new_run(key, stats, i); r = 0
+        run = M.new_run(key, stats, i, traco); r = 0
         while not run["dead"] and r < 2000:
             run["energy"] = 1e9; M.enter_room(run, meta, rng, stage_floors=stage.get(key), mode="auto"); r += 1
         g = meta["graveyard"][-1] if run["dead"] else {"killer": "—", "kind": ""}

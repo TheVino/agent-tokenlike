@@ -165,4 +165,97 @@ for i in (1, 2, 3):
     assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
     assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
 
+# Médico da Peste (leva 1): validar, folhas, carregador, acréscimo em todo quadro, failed visível
+def test_heroi_medico():
+    import herois.medico as med
+    montar.validar(med)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "medico" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["medico"]
+    assert c.traco == {"envenenar": 0.10} and c.unlock == "veneno1", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    base = montar.estados(med, 0)
+    for i in (1, 2):
+        est = montar.estados(med, i)
+        for e, qs in est.items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(med, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_medico()
+
+
+def test_heroi_bruxa():
+    import herois.bruxa as bx
+    montar.validar(bx)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "bruxa" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["bruxa"]
+    assert c.traco == {"queimar": 0.08, "sorte": 0.2} and c.unlock == "elementos3", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    base = montar.estados(bx, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(bx, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(bx, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_bruxa()
+
+
+def test_heroi_coveiro():
+    import herois.coveiro as cv
+    montar.validar(cv)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "coveiro" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["coveiro"]
+    assert c.traco == {"gold": 0.4} and c.unlock == "ouro300", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    base = montar.estados(cv, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(cv, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(cv, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_coveiro()
+
+def test_heroi_ceifeirinho():
+    import herois.ceifeirinho as cf
+    montar.validar(cf)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "ceifeirinho" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["ceifeirinho"]
+    assert c.traco == {"crit": 0.08} and c.unlock == "horda4", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    assert c.stats["hp"] == 16, c.stats
+    base = montar.estados(cf, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(cf, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(cf, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_ceifeirinho()
+
 print("test_folha ok")

@@ -61,6 +61,22 @@ sem = M.migrate_run({"hp": 3}); assert sem["items"] == [] and sem["pending"] is 
 # colecionador
 r = M.new_run("slime", {}, 6); r["items"] = [{"key": k, "rar": "comum"} for k in list(M.ITEMS)[:10]]
 ev = {"lines": []}; M._check_achievements(r, meta, ev); assert "colecionador" in meta["achievements"]
+# conquistas dos heróis da leva 1: logo abaixo do limite não concede, no limite concede uma vez só
+elem = [k for k, v in M.ITEMS.items() if set(M.ELEMENTOS.values()) & set(v["fx"])]
+comum = [k for k, v in M.ITEMS.items() if not set(M.ELEMENTOS.values()) & set(v["fx"])]
+def _ach(key, abaixo, limite):
+    m = M.new_meta(); ev = {"lines": []}
+    r = M.new_run("slime", {}, 1); abaixo(r); M._check_achievements(r, m, ev)
+    assert key not in m["achievements"] and key not in ev.get("unlocks", []), key
+    r = M.new_run("slime", {}, 1); limite(r); ev = {"lines": []}; M._check_achievements(r, m, ev)
+    assert key in m["achievements"] and key in ev["unlocks"], key
+    ev = {"lines": []}; M._check_achievements(r, m, ev); assert key not in ev.get("unlocks", []) and m["achievements"].count(key) == 1
+def _cont(k, v): return lambda r: r["cont"].__setitem__(k, v)
+_ach("veneno1", _cont("mortes_veneno", 0), _cont("mortes_veneno", 1))
+_ach("horda4", _cont("horda4", 0), _cont("horda4", 1))
+_ach("ouro300", lambda r: r.__setitem__("gold", 299), lambda r: r.__setitem__("gold", 300))
+_its = lambda ks: (lambda r: r.__setitem__("items", [{"key": k, "rar": "comum"} for k in ks]))
+_ach("elementos3", _its(elem[:2] + comum[:1]), _its(elem[:3]))
 # muitas salas nos dois modos, sem exceção; pendência resolvida antes de cada sala
 for mode in ("auto", "interativo"):
     rng = random.Random(7); meta = M.new_meta(); run = M.new_run("slime", {"hp": 20, "atk": 3}, 1)

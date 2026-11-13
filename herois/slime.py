@@ -1,8 +1,8 @@
 """Slime embutido, 32 px. Cada quadro sai de partes: corpo (domo paramétrico com contorno, sombra e brilho),
 rosto (olhos, boca, bochechas) e sobreposições (gotinha, bracinho, "z", "?", poça).
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, espelho, carimbar
 
-N = 32
 PAL = {
     "K": "#1b1b2f", "G": "#57d36b", "L": "#b4f5a8", "D": "#2f9a4a",
     "W": "#ffffff", "B": "#1b1b2f", "P": "#ff8fb1", "R": "#c8304a",
@@ -33,22 +33,8 @@ BRACO_BAIXO = ["KKK......", "KGGKK....", "KGGGGKK..", ".KKGGGGK.", "...KKGGLK", 
 BRACO_HOR = ["......KKK.", "KKKKKKGGLK", "KGGGGGGGGK", "KGGGGGGGDK", "KKKKKKKKK."]
 BRACO_DIAG = [".....KKK", "....KGLK", "...KGGGK", "..KGGGK.", ".KGGGK..", "KGGGK...", "KGGK....", "KKK....."]
 BRACO_CIMA = [".KKK.", "KGLGK", "KGGGK", "KGGGK", "KGGK.", "KGGK.", "KGGK.", "KKK.."]
-Z_P = ["KKKKK", "KTTTK", "KKKTK", "KKTKK", "KTKKK", "KTTTK", "KKKKK"]
-Z_G = ["KKKKKK", "KTTTTK", "KKKKTK", "KKKTKK", "KKTKKK", "KTKKKK", "KTTTTK", "KKKKKK"]
-PERG_P = [".KKK.", "KTTTK", "KKKTK", "..KKK", "..KTK", "..KKK"]
-PERG = [".KKKK.", "KTTTTK", "KTKKTK", "KKKKTK", "..KTTK", "..KTK.", "..KKK.", "..KTK.", "..KKK."]
-LAGRIMA = ["T", "T"]
 
 
-def _espelho(s):
-    return [l[::-1] for l in s]
-
-
-def _por(g, s, x, y):
-    for dy, lin in enumerate(s):
-        for dx, ch in enumerate(lin):
-            if ch != "." and 0 <= x + dx < N and 0 <= y + dy < N:
-                g[y + dy][x + dx] = ch
 
 
 def _corpo(w, h, cx, base, lean):
@@ -87,28 +73,28 @@ def quadro(w, h, cx=16, base=30, lean=0, olhos="normal", olhar=0, boca="sorriso"
     fx = round(cx + lean * (base - ey) / h) + olhar
     lx, rx = fx - 5, fx + 3
     if olhos == "fechado":
-        _por(g, OLHO_FECHADO, lx - 1, ey); _por(g, OLHO_FECHADO, rx, ey)
+        carimbar(g, OLHO_FECHADO, lx - 1, ey); carimbar(g, OLHO_FECHADO, rx, ey)
     elif olhos == "feliz":
-        _por(g, OLHO_FELIZ, lx - 1, ey + 1); _por(g, OLHO_FELIZ, rx, ey + 1)
+        carimbar(g, OLHO_FELIZ, lx - 1, ey + 1); carimbar(g, OLHO_FELIZ, rx, ey + 1)
     elif olhos == "x":
-        _por(g, OLHO_X, lx - 1, ey); _por(g, OLHO_X, rx, ey)
+        carimbar(g, OLHO_X, lx - 1, ey); carimbar(g, OLHO_X, rx, ey)
     elif olhos == "cima":
-        _por(g, OLHO_CIMA, lx, ey - 1); _por(g, OLHO_CIMA, rx, ey - 1)
+        carimbar(g, OLHO_CIMA, lx, ey - 1); carimbar(g, OLHO_CIMA, rx, ey - 1)
     else:
-        _por(g, OLHO, lx, ey); _por(g, OLHO, rx, ey)
+        carimbar(g, OLHO, lx, ey); carimbar(g, OLHO, rx, ey)
         if olhos == "bravo":
-            _por(g, SOBR_BRAVA, lx - 2, ey - 3); _por(g, _espelho(SOBR_BRAVA), rx, ey - 3)
+            carimbar(g, SOBR_BRAVA, lx - 2, ey - 3); carimbar(g, espelho(SOBR_BRAVA), rx, ey - 3)
         elif olhos == "triste":
-            _por(g, SOBR_TRISTE, lx - 2, ey - 3); _por(g, _espelho(SOBR_TRISTE), rx, ey - 3)
+            carimbar(g, SOBR_TRISTE, lx - 2, ey - 3); carimbar(g, espelho(SOBR_TRISTE), rx, ey - 3)
     if boca:
         b = BOCA[boca]
-        _por(g, b, fx - len(b[0]) // 2, ey + 5)
+        carimbar(g, b, fx - len(b[0]) // 2, ey + 5)
     if bochecha and olhos in ("normal", "feliz", "fechado"):
         for x in (lx - 3, lx - 2, rx + 3, rx + 4):
             if (x, ey + 4) in pts:
                 g[ey + 4][x] = "P"
     for s, x, y in por:
-        _por(g, s, x, y)
+        carimbar(g, s, x, y)
     cxt = (xs_top[0] + xs_top[-1]) // 2
     return ["".join(l) for l in g], (cxt - 5, top - 4)
 
@@ -155,9 +141,9 @@ _SPECS = {
                 dict(w=24, h=18, cx=15, lean=1, olhar=1, olhos="bravo", boca="aberta")],
     # olha para cima e o "?" aparece
     "review": [dict(w=24, h=18, cx=14, olhos="cima", boca="reta"),
-               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((PERG_P, 24, 7),)),
-               dict(w=23, h=19, cx=14, olhos="cima", boca="o", por=((PERG, 24, 3),)),
-               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((PERG, 24, 1),))],
+               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((INTERROG_P, 24, 7),)),
+               dict(w=23, h=19, cx=14, olhos="cima", boca="o", por=((INTERROG, 24, 3),)),
+               dict(w=24, h=18, cx=14, olhos="cima", boca="o", por=((INTERROG, 24, 1),))],
 }
 
 QUADROS, ANCORA = {}, {}
