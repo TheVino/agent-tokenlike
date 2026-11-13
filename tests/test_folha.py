@@ -165,6 +165,26 @@ for i in (1, 2, 3):
     assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
     assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
 
+
+def extra_dentro(mod, folga=0):
+    """Todo pixel do `extra` de cada estágio cai dentro do quadro (com `folga` px de margem), em todo quadro."""
+    for s in mod.ESTAGIOS[1:]:
+        ex = s["extra"]
+        for e, ancs in mod.ANCORA.items():
+            for j, (ax, ay) in enumerate(ancs):
+                for dy, lin in enumerate(ex):
+                    for dx, ch in enumerate(lin):
+                        if ch != ".":
+                            x, y = ax + dx, ay + dy
+                            assert folga <= x < 32 - folga and folga <= y < 32 - folga, (s["title"], e, j, x, y)
+
+
+import herois.fantasma as _fa
+extra_dentro(_fa, folga=1)   # chapéu com folga real até no alto do pulo
+for i in range(3):
+    ult = montar.estados(_fa, i)["failed"][-1]
+    assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
 # Médico da Peste (leva 1): validar, folhas, carregador, acréscimo em todo quadro, failed visível
 def test_heroi_medico():
     import herois.medico as med
