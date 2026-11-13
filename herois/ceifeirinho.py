@@ -4,8 +4,7 @@ ele dá um golpe largo com rastro em arco; no `failed` o manto desaba vazio no c
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
 import math
 
-from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar
-from herois.coveiro import _linha, _contornar, _traco
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar, linha, contornar, traco
 
 PAL = {
     "K": "#1a1820", "H": "#3a3354", "h": "#28233d", "M": "#4a4266", "m": "#332d4a", "k": "#0b0a12",
@@ -19,7 +18,7 @@ ALMA = [".A.", "AWA", ".A.", "..A"]          # fiapo de alma subindo
 
 def _foice(g, cabo, ponta, lado=1):
     """Foice: cabo de `cabo` até `ponta` e lâmina curva saindo da ponta para o `lado` (+1 direita do cabo)."""
-    px = {p: ("n" if i % 3 == 2 else "N") for i, p in enumerate(_linha(*cabo, *ponta))}
+    px = {p: ("n" if i % 3 == 2 else "N") for i, p in enumerate(linha(*cabo, *ponta))}
     ux, uy = ponta[0] - cabo[0], ponta[1] - cabo[1]
     d = math.hypot(ux, uy) or 1
     ux, uy = ux / d, uy / d
@@ -31,7 +30,7 @@ def _foice(g, cabo, ponta, lado=1):
             y = round(ponta[1] + pyy * i - uy * (cv + esp))
             px[(x, y)] = "s" if esp else "S"
     px[(round(ponta[0] + pxx * 2), round(ponta[1] + pyy * 2))] = "W"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def _arco(g, cx, cy, r, a0, a1, cor="A"):
@@ -77,7 +76,7 @@ def _capuz(g, hx, hy, ry=5.5, vazio=False):
         for y in range(hy - 4, hy + 5):
             if ((x - hx - 1.5) / 3.6) ** 2 + ((y - hy - 0.5) / min(3.3, ry - 1.6)) ** 2 <= 1:
                 px[(x, y)] = "k"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def _manto(g, cx, base, ch, lean):
@@ -92,7 +91,7 @@ def _manto(g, cx, base, ch, lean):
                 continue
             borda = x >= round(c + meia) - 1 or y >= base - 2
             px[(x, y)] = "m" if borda else "M"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def _monte(g, cx, y):
@@ -103,7 +102,7 @@ def _monte(g, cx, y):
             if dy == 4 and (x - cx) % 3 == 0:
                 continue
             px[(x, y + dy)] = "m" if dy >= 3 else "M"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", bracos=(), foices=(), por=(), arcos=(), ry=5.5,
@@ -130,7 +129,7 @@ def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", bracos=(), foices=(), p
     for f in foices:
         _foice(g, *f)
     for a, b in bracos:
-        _traco(g, a, b, "M")
+        traco(g, a, b, "M")
         carimbar(g, MAO, b[0] - 1, b[1] - 1)
     for s, x, y in por:
         carimbar(g, s, x, y)

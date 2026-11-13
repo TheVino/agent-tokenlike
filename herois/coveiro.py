@@ -2,7 +2,7 @@
 redonda e clara com boné chato (aba para a frente), botas, braços em linha grossa e a pá (cabo de pau, lâmina de
 ferro). No `failed` ele escorrega para dentro da própria cova; sobra o monte de terra com a pá fincada e o boné.
 Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
-from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar
+from herois.comum import N, Z_P, Z_G, INTERROG_P, INTERROG, LAGRIMA, carimbar, linha, contornar, traco
 
 PAL = {
     "K": "#1a1820", "C": "#6b4a32", "c": "#4a321f", "Q": "#9a8a55", "q": "#d8c98f", "F": "#efdcc4",
@@ -17,31 +17,9 @@ TERRA_P = ["KK", "KK"]
 FUMACA = [".G.", "G.G", ".G.", "G..", ".G."]       # fumacinha do lampião apagando
 
 
-def _linha(x0, y0, x1, y1):
-    n = max(abs(x1 - x0), abs(y1 - y0), 1)
-    return [(round(x0 + (x1 - x0) * i / n), round(y0 + (y1 - y0) * i / n)) for i in range(n + 1)]
-
-
-def _contornar(g, px):
-    for (x, y) in px:
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if (nx, ny) not in px and 0 <= nx < N and 0 <= ny < N:
-                g[ny][nx] = "K"
-    for (x, y), c in px.items():
-        if 0 <= x < N and 0 <= y < N:
-            g[y][x] = c
-
-
-def _traco(g, a, b, cor):
-    px = {}
-    for x, y in _linha(*a, *b):
-        px[(x, y)] = cor
-    _contornar(g, px)
-
-
 def _pa(g, cabo, ponta):
     """Pá: cabo de pau de `cabo` até `ponta` e lâmina de ferro (5x5 arredondada) na ponta, apontando para fora."""
-    px = {p: "N" for p in _linha(*cabo, *ponta)}
+    px = {p: "N" for p in linha(*cabo, *ponta)}
     cx, cy = cabo
     px[(cx, cy)] = "N"
     px[(cx + (1 if cx <= ponta[0] else -1), cy)] = "N"     # puxador em T
@@ -54,7 +32,7 @@ def _pa(g, cabo, ponta):
             if (x - bx) ** 2 + (y - by) ** 2 <= 5:
                 px[(x, y)] = "s" if (x - bx) + (y - by) > 1 else "S"
     px[(bx - 1, by - 1)] = "W"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def _bone(g, hx, hy):
@@ -66,7 +44,7 @@ def _bone(g, hx, hy):
             px[(x, y)] = "d" if y == hy - 3 else "D"
     for x in range(hx + 3, hx + 8):
         px[(x, hy - 3)] = "d"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def _rosto(g, hx, hy, olhos):
@@ -100,7 +78,7 @@ def _cova(g, cx, y, meia):
     for x in range(cx - meia, cx + meia + 1):
         for yy in range(y, N - 1):
             px[(x, yy)] = "e" if yy < y + 1 else "E"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def _monte(g, cx, y):
@@ -111,7 +89,7 @@ def _monte(g, cx, y):
             px[(x, y + dy)] = "e" if dy == 3 else "E"
     for x in range(cx - 7, cx + 8, 4):
         px[(x, y + 1)] = "e"
-    _contornar(g, px)
+    contornar(g, px)
 
 
 def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", pes=(0, 0), atras=(), bracos=(), pas=(), por=(),
@@ -161,11 +139,11 @@ def quadro(cx=14, base=30, ch=9, lean=0, olhos="normal", pes=(0, 0), atras=(), b
             for x in range(x0, x0 + 3):
                 for y in (base - 2, base - 1):
                     px[(x, y)] = "k"
-    _contornar(g, px)
+    contornar(g, px)
     _rosto(g, hx, hy, olhos)
     _bone(g, hx, hy)
     for a, b in bracos:
-        _traco(g, a, b, "C")
+        traco(g, a, b, "C")
         carimbar(g, MAO, b[0] - 1, b[1] - 1)
     for cabo, ponta in pas:
         _pa(g, cabo, ponta)

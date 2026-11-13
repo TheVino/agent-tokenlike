@@ -19,3 +19,25 @@ def carimbar(g, s, x, y):
         for dx, ch in enumerate(lin):
             if ch != "." and 0 <= x + dx < N and 0 <= y + dy < N:
                 g[y + dy][x + dx] = ch
+
+
+def linha(x0, y0, x1, y1):
+    n = max(abs(x1 - x0), abs(y1 - y0), 1)
+    return [(round(x0 + (x1 - x0) * i / n), round(y0 + (y1 - y0) * i / n)) for i in range(n + 1)]
+
+
+def contornar(g, px):
+    for (x, y) in px:
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if (nx, ny) not in px and 0 <= nx < N and 0 <= ny < N:
+                g[ny][nx] = "K"
+    for (x, y), c in px.items():
+        if 0 <= x < N and 0 <= y < N:
+            g[y][x] = c
+
+
+def traco(g, a, b, cor):
+    px = {}
+    for x, y in linha(*a, *b):
+        px[(x, y)] = cor
+    contornar(g, px)
