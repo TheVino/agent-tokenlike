@@ -45,6 +45,10 @@ ACHIEVEMENTS = {
     "elementos3": "Pegar 3 itens elementais numa run",
     "ouro300": "Juntar 300 de ouro numa run",
     "horda4": "Vencer uma horda de 4 inimigos",
+    "queima1": "Matar um inimigo com queimadura",
+    "andar8cheio": "Chegar ao andar 8 com o HP cheio",
+    "andar15": "Chegar ao andar 15",
+    "esquiva10": "Esquivar 10 golpes numa run",
 }
 
 RARITIES = ("comum", "raro", "epico", "lendario")
@@ -863,6 +867,11 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("veneno1", cont.get("mortes_veneno", 0) >= 1)
     grant("ouro300", run["gold"] >= 300)
     grant("horda4", cont.get("horda4", 0) >= 1)
+    grant("queima1", cont.get("mortes_queima", 0) >= 1)
+    grant("esquiva10", cont.get("esquivas", 0) >= 10)
+    grant("andar15", run["floor"] >= 15)
+    if run["floor"] >= 8 and "andar8cheio" not in have:
+        grant("andar8cheio", run["hp"] >= stats(run)["maxhp"])
     if "elementos3" not in have:
         elem = set(ELEMENTOS.values())
         grant("elementos3", sum(1 for it in run["items"] if elem & set(ITEMS[it["key"]]["fx"])) >= 3)

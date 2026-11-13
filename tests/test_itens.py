@@ -77,6 +77,16 @@ _ach("horda4", _cont("horda4", 0), _cont("horda4", 1))
 _ach("ouro300", lambda r: r.__setitem__("gold", 299), lambda r: r.__setitem__("gold", 300))
 _its = lambda ks: (lambda r: r.__setitem__("items", [{"key": k, "rar": "comum"} for k in ks]))
 _ach("elementos3", _its(elem[:2] + comum[:1]), _its(elem[:3]))
+# leva 2
+_ach("queima1", _cont("mortes_queima", 0), _cont("mortes_queima", 1))
+_ach("esquiva10", _cont("esquivas", 9), _cont("esquivas", 10))
+_ach("andar15", lambda r: r.__setitem__("floor", 14), lambda r: r.__setitem__("floor", 15))
+def _cheio(floor, falta):
+    def f(r):
+        r["floor"] = floor; r["hp"] = M.stats(r)["maxhp"] - falta
+    return f
+_ach("andar8cheio", _cheio(8, 1), _cheio(8, 0))
+_ach("andar8cheio", _cheio(7, 0), _cheio(9, 0))
 # muitas salas nos dois modos, sem exceção; pendência resolvida antes de cada sala
 for mode in ("auto", "interativo"):
     rng = random.Random(7); meta = M.new_meta(); run = M.new_run("slime", {"hp": 20, "atk": 3}, 1)

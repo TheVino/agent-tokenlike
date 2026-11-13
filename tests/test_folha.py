@@ -258,4 +258,117 @@ def test_heroi_ceifeirinho():
 
 test_heroi_ceifeirinho()
 
+
+def test_heroi_vela():
+    import herois.vela as vl
+    import masmorra
+    montar.validar(vl)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "vela" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["vela"]
+    assert c.traco == {"queimar": 0.12, "maxhp": -4} and c.unlock == "queima1", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("vela", {"hp": 20, "atk": 3, "def": 0}, 1, c.traco)
+    assert masmorra.stats(run)["maxhp"] == 16
+    run["traco"] = {"maxhp": -100}
+    assert masmorra.stats(run)["maxhp"] >= 1
+    base = montar.estados(vl, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(vl, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(vl, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_vela()
+
+
+def test_heroi_cogumelo():
+    import herois.cogumelo as cg
+    import masmorra
+    montar.validar(cg)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "cogumelo" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["cogumelo"]
+    assert c.traco == {"cura_sala": 1} and c.unlock == "andar8cheio", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("cogumelo", {"hp": 20, "atk": 3, "def": 0}, 1, c.traco)
+    assert masmorra.stats(run)["cura_sala"] == 1
+    base = montar.estados(cg, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(cg, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    for i in range(3):
+        ult = montar.estados(cg, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_cogumelo()
+
+
+def test_heroi_inquisidor():
+    import herois.inquisidor as iq
+    import masmorra
+    montar.validar(iq)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "inquisidor" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["inquisidor"]
+    assert c.traco == {"def": 1, "espinhos": 0.1} and c.unlock == "andar15", (c.traco, c.unlock)
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("inquisidor", {"hp": 20, "atk": 3, "def": 0}, 1, c.traco)
+    st = masmorra.stats(run)
+    assert st["def"] == 1 and st["espinhos"] == 0.1, st
+    base = montar.estados(iq, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(iq, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    # a mitra cabe inteira no quadro mesmo no alto do pulo (âncora nunca acima do topo)
+    assert all(a[1] >= 0 and 0 <= a[0] <= 32 - len(iq.MITRA_SINO[0]) for qs in iq.ANCORA.values() for a in qs)
+    for i in range(3):
+        ult = montar.estados(iq, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_inquisidor()
+
+
+def test_heroi_boneca():
+    import herois.boneca as bn
+    import masmorra
+    montar.validar(bn)
+    for i in (1, 2, 3):
+        linhas, n, mapas = tokenlike.ler_folha(RAIZ / "characters" / "boneca" / f"folha{i}.png")
+        assert len(linhas) == 9 and all(len(l) >= 4 for l in linhas), (i, [len(l) for l in linhas])
+        assert max(c[3] - c[1] for l in linhas for c in l) > 16, i
+    c = {c.key: c for c in tokenlike.load_png_characters()}["boneca"]
+    assert c.traco == {"dodge": 0.1} and c.unlock == "esquiva10", (c.traco, c.unlock)
+    assert "esquiva10" in masmorra.ACHIEVEMENTS
+    assert [s["floor"] for s in c.stages] == [1, 4, 10]
+    run = masmorra.new_run("boneca", {"hp": 20, "atk": 3, "def": 0}, 1, c.traco)
+    assert masmorra.stats(run)["dodge"] >= 0.1, masmorra.stats(run)
+    base = montar.estados(bn, 0)
+    for i in (1, 2):
+        for e, qs in montar.estados(bn, i).items():
+            for j, q in enumerate(qs):
+                assert q != base[e][j], (i, e, j)
+    # laço e agulha cabem inteiros no quadro em todos os quadros (inclusive no alto do pulo)
+    w, h = len(bn.LACO_AGULHA[0]), len(bn.LACO_AGULHA)
+    assert all(0 <= a[0] <= 32 - w and 0 <= a[1] <= 32 - h for qs in bn.ANCORA.values() for a in qs)
+    for i in range(3):
+        ult = montar.estados(bn, i)["failed"][-1]
+        assert sum(ch != "." for l in ult for ch in l) >= 40, i
+
+
+test_heroi_boneca()
+
 print("test_folha ok")
