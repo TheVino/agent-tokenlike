@@ -286,4 +286,22 @@ assert won and not empate and steps[-1]["who"] == "ajudante" and all(x["hp"] <= 
 assert sum(1 for x in steps if x["who"] == "ajudante") == 3
 M.ITEMS.pop("_t", None)
 assert M.fx_text({"duplo": 0.2, "ajudante": 3}) == "20% golpe duplo, ajudante 3 de dano"
+# Task 2: contadores de conquista (esquivas, bloqueios, morte por status, horda de 4)
+def soma(evs, k): return sum(1 for ev in evs for h in ev.get("hits", []) if h[k])
+r = pet(dodge=0.5, bloqueio=2); r["shield"] = 10**6; r["hp"] = 10**6
+r["base"]["maxhp"] = 10**6; r["base"]["atk"] = 1
+meta = M.new_meta(); rng = random.Random(21); evs = []
+for _ in range(15):
+    r["energy"] = 10**6; evs.append(M.enter_room(r, meta, rng))
+assert r["cont"]["esquivas"] == soma(evs, "dodge") > 0 and r["cont"]["bloqueios"] == soma(evs, "bloqueado") > 0
+# morte por veneno e por queimadura: inimigo com 1 HP e status ativo morre no tique
+for nome, chave in (("veneno", "mortes_veneno"), ("queimadura", "mortes_queima")):
+    r = pet(); x = foe(hp=1, atk=0, spd=1); x["status"] = {nome: [0] if nome == "veneno" else 2}
+    won, steps, _, _ = M.combate(r, M.stats(r), [x], random.Random(1), 1)
+    M._contar(r, steps, [x], False)
+    assert won and r["cont"][chave] == 1 and sum(r["cont"].values()) == 1, (nome, r["cont"])
+# horda de 4 vencida conta; save antigo ganha os zeros
+r = pet(); M._contar(r, [], [foe()], True); assert r["cont"]["horda4"] == 1
+velho = {"items": [], "hp": 10, "base": {"maxhp": 20, "atk": 3, "def": 0, "dodge": 0}}
+assert M.migrate_run(velho)["cont"] == M.CONT_ZERO and velho["cont"] is not M.CONT_ZERO
 print("ok: combate")
