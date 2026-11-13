@@ -187,8 +187,8 @@ _SPECS = {
     "failed": [dict(olhos="triste", pas=(((21, 22), (26, 28)),), por=((LAGRIMA, 20, 17),)),
                dict(olhos="triste", afunda=4, cova=(14, 28, 9), por=((LAGRIMA, 20, 21),)),
                dict(olhos="x", afunda=7, cova=(14, 28, 9)),
-               dict(monte=(14, 26), por=((FUMACA, 9, 5),)),
-               dict(monte=(14, 26), por=((FUMACA, 8, 2),))],
+               dict(monte=(14, 26), por=((FUMACA, 28, 14),)),
+               dict(monte=(14, 26), por=((FUMACA, 29, 10),))],
     # cochila apoiado na pá, cabeça pende, "z" subindo
     "waiting": [dict(ch=8, lean=-1, olhos="fechado", bracos=(((15, 23), (19, 22)),), pas=(((20, 19), (21, 26)),)),
                 dict(ch=8, lean=-2, olhos="fechado", bracos=(((15, 23), (19, 22)),), pas=(((20, 19), (21, 26)),),
@@ -218,32 +218,45 @@ QUADROS, ANCORA = {}, {}
 for _e, _s in _SPECS.items():
     QUADROS[_e], ANCORA[_e] = _estado(_s)
 
-# lampião pendurado num gancho, flutuando atrás (à esquerda); âncora = cabeça - 12
-_VAZIO = "." * 25
-LAMPIAO = [_VAZIO] * 12 + [
-    "..KK.....................",
-    ".K..K....................",
-    "KKKKKK...................",
-    "KYOOYK...................",
-    "KYWYYK...................",
-    "KOYYOK...................",
-    "KKKKKK...................",
-    ".KssK....................",
-    "..KK.....................",
-]
+# O extra tem duas cópias lado a lado: a normal (colunas 0-24, presa em cabeça - 12) e, a partir da coluna _COVA,
+# a da cova fechada (32x32, coordenadas do próprio quadro): lampião apagado no chão à direita do monte (a fumaça
+# do quadro base sai dele) e, no estágio 3, o chapéu alto largado no monte. Nos 2 últimos quadros do failed a âncora
+# vai para (-_COVA, 0): a cópia normal sai pela esquerda (cortada) e só a da cova aparece; no resto a da cova sai pela direita.
+_COVA = 40
+ANCORA["failed"][3:] = [(-_COVA, 0)] * 2
+_VAZIO = "." * _COVA
+
+# lampião pendurado num gancho, flutuando atrás (à esquerda); âncora = cabeça - 12; apagado na cova
+_LAMP = ["..KK..", ".K..K.", "KKKKKK", "KYOOYK", "KYWYYK", "KOYYOK", "KKKKKK", ".KssK.", "..KK.."]
+_LAMP_APAG = ["..KK..", ".K..K.", "KKKKKK", "KddddK", "KdDddK", "KddddK", "KKKKKK", ".KssK.", "..KK.."]
 # chapéu alto de guardião com fita vinho, por cima do boné
-GUARDIAO = LAMPIAO[:]
-for _i, _lin in {
-    0: "........KKKKKKK..........",
-    1: "........KHHHHHK..........",
-    2: "........KHHHHHK..........",
-    3: "........KHHHHHK..........",
-    4: "........KRRRRRK..........",
-    5: "......KKKKKKKKKKK........",
-    6: "......KHHHHHHHHHK........",
-    7: "......KKKKKKKKKKK........",
-}.items():
-    GUARDIAO[_i] = _lin
+_CARTOLA = [
+    "..KKKKKKK..",
+    "..KHHHHHK..",
+    "..KHHHHHK..",
+    "..KHHHHHK..",
+    "..KRRRRRK..",
+    "KKKKKKKKKKK",
+    "KHHHHHHHHHK",
+    "KKKKKKKKKKK",
+]
+
+
+def _extra(cartola):
+    g = [["."] * (_COVA + N) for _ in range(N)]
+    pecas = [(_LAMP, 0, 12), (_LAMP_APAG, _COVA + 26, 22)]
+    if cartola:
+        pecas += [(_CARTOLA, 6, 0), (_CARTOLA, _COVA + 5, 18)]   # na cova: largado no ombro esquerdo do monte
+    for sp, x, y in pecas:
+        for dy, lin in enumerate(sp):
+            for dx, ch in enumerate(lin):
+                if ch != ".":
+                    g[y + dy][x + dx] = ch
+    return ["".join(l) for l in g]
+
+
+LAMPIAO = _extra(False)
+GUARDIAO = _extra(True)
 ESTAGIOS = [
     {"title": "Ajudante de Coveiro", "floor": 1, "extra": None},
     {"title": "Coveiro", "floor": 4, "extra": LAMPIAO},

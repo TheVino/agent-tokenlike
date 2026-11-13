@@ -252,6 +252,10 @@ def test_heroi_coveiro():
     for i in range(3):
         ult = montar.estados(cv, i)["failed"][-1]
         assert sum(ch != "." for l in ult for ch in l) >= 40, i
+    for i in (1, 2):   # lampião aceso de pé, apagado na cova fechada
+        est = montar.estados(cv, i)
+        assert "Y" in "".join(est["idle"][0]) and "Y" in "".join(est["failed"][0]), i
+        assert not any("Y" in "".join(q) or "O" in "".join(q) for q in est["failed"][3:]), i
 
 
 test_heroi_coveiro()
