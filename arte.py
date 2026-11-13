@@ -1021,11 +1021,49 @@ ROOM_ART = {
 }
 
 
+def _escada(n, c):
+    """Escada de n degraus (2x2 px cada) subindo para a direita."""
+    return ["".join(c if 2 * n - 1 - y < 2 * (x // 2 + 1) else "." for x in range(2 * n)) for y in range(2 * n)]
+
+
+# --------------------------------------------------- conquistas (uma por chave de masmorra.ACHIEVEMENTS)
+CONQ_ART = {
+    "andar5": _escada(2, "G"),
+    "chefe1": ["y...x...y", "yy.yxy.yy", "yyyyyxyyy", "yryyxyyry", "yyyyyxyyy", "KKKKxKKKK"],
+    "mimico": [".KKKKKKK.", "KbBBBBBbK", "KwKwKwKwK", "KrrrrrrrK", "KrRRRRRrK", "KwKwKwKwK", "KbByyyBbK",
+               "KKKKKKKKK"],
+    "rico": ["..yyyy.", ".yeeyyy", ".YYYYYY", "yyyyyy.", "yeeyyyy", "YYYYYY.", ".yyyyyy", ".yeeyyy", ".YYYYYY"],
+    "colecionador": ["rr.cc.yy", "rr.cc.yy", "........", "PP.vv.oo", "PP.vv.oo", "........", "ii.ww.nn",
+                     "ii.ww.nn"],
+    "andar10": _escada(3, "B"),
+    "andar20": _escada(5, "y"),
+    "veneno1": ["...V...", "..VvV..", ".VvvvV.", "VvKvKvV", "VvvvvvV", "VvKKKvV", "VvvvvvV", ".VVVVV."],
+    "elementos3": [".OO..YY.", "OooOYeeY", "OooOYeeY", ".OO..YY.", ".VV..cc.", "VvvVciic", "VvvVciic", ".VV..cc."],
+    "ouro300": ["...KK....", "..KbbK...", "...KK....", ".KBBBBK..", "KBByBBBK.", "KByyyBBK.", "KBByBBBK.",
+                ".KKKKKK.."],
+    "horda4": [".nnn...nnn.", "nxnxn.nxnxn", "nnnnn.nnnnn", ".n.n...n.n.", "...........", ".nnn...nnn.",
+               "nxnxn.nxnxn", "nnnnn.nnnnn", ".n.n...n.n."],
+    "queima1": ["....r....", "...rr....", "...ror...", "..rooor..", "..roeor.r", ".rooeeorr", ".roeeeeor",
+                "roeeyyeor", "roeyyyeor", ".roeeeor.", "..rrrrr.."],
+    "andar8cheio": [".rr.rr...", "rrrrrrr..", "rwrrrrr..", ".rrrrr...", "..rrr..GG", "...r...GG", ".....GGGG",
+                    ".....GGGG", "...GGGGGG", "...GGGGGG"],
+    "andar15": _escada(4, "P"),
+    "esquiva10": [".g..G..w.", "gggGGGwww", ".g..G..w.", "g.gG.Gw.w"],
+    "bloqueio10": [".KKKKKKK.", "KGGGyGGGK", "KGGyyyGGK", "KGyyyyyGK", "KGGyyyGGK", ".KGGyGGK.", "..KGGGK..",
+                   "...KKK..."],
+    "chefes3": ["...y.y.y...", "...yyyyy...", "...yyryy...", "y.y.y.y.y.y", "yyyyy.yyyyy", "yyryy.yyryy"],
+    "consumir10": ["..KKK..", "...K...", "..KcK..", ".KcccK.", "KcwcccK", "KcccccK", ".KKKKK."],
+    "morrer10": ["..KKKKK..", ".KGGGGGK.", "KGGGgGGGK", "KGGgggGGK", "KGGGgGGGK", "KGGGgGGGK", "KGGGGGGGK",
+                 "vvvvvvvvv"],
+}
+
+
 def all_art():
     out = {}
     for group in (ITEM_ART, FOE_ART, ROOM_ART, MENU_ART):
         out.update(group)
     out["coroa"] = CROWN
+    out.update({"conq_" + k: g for k, g in CONQ_ART.items()})
     return out
 
 
