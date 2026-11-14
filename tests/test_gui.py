@@ -617,7 +617,16 @@ appv.feed(1000, 1000); appv.ajustar_visivel(time.time()); assert vis == ["some",
 os.environ["APPDATA"] = home; ini = tp.atalho_inicio(); ini.parent.mkdir(parents=True)
 appv.inicio_var.set(True); appv.toggle_inicio(); assert ini.is_file() and "tokenlike.py" in ini.read_text()
 appv.inicio_var.set(False); appv.toggle_inicio(); assert not ini.exists() and appv.inicio_var.get() is False
-PENDING.clear(); appv.quit()
+# bandeja: 0 = mostrar (mesmo escondido pelo "só com uso"), 1 = sair; ícone .ico com PNG 32x32 dentro
+import bandeja, queue
+icone = bandeja.ico(tp.png_bytes(tp.heroi_idle("slime"), 32, quadrado=True)[0], 32)
+assert icone[:6] == b"\0\0\1\0\1\0" and icone[22:26] == b"\x89PNG"
+appv.state["last_fed"] = appv.aberto_em = time.time() - tp.ESCONDER_S - 1; appv.ajustar_visivel(time.time())
+assert appv.escondido
+fechou = []
+appv.bandeja = types.SimpleNamespace(fila=queue.Queue(), fechar=lambda: fechou.append(1))
+appv.bandeja.fila.put(0); appv.ouvir_bandeja(); assert not appv.escondido
+appv.bandeja.fila.put(1); PENDING.clear(); appv.ouvir_bandeja(); assert fechou == [1] and appv.bandeja is None
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)

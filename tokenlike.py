@@ -853,22 +853,48 @@ def retangulo_arredondado(cv, x0, y0, x1, y1, r, fill, outline=None, larg=1, tag
     _forma(cv, x0, y0, x1, y1, r, fill, (tag, tag + "_f", *extra))
 
 
-def map_img(pm, lado):
-    """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
-    if not pm:
-        return tk.PhotoImage(width=1, height=1)
+def png_bytes(pm, lado, quadrado=False):
+    """PNG do mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px -> (png, w, h).
+    `quadrado`: centraliza numa tela lado x lado (ícone da bandeja)."""
     x0, y0, x1, y1 = visual.bbox(pm)
     s = max(1, lado // max(1, x1 - x0, y1 - y0))
-    w, h =(x1 - x0) * s, (y1 - y0) * s
-    # um PNG montado aqui e lido numa chamada só (um put por pixel levava ~0,4 s para abrir o cemitério)
+    if quadrado:
+        n = lado // s
+        x0 -= (n - (x1 - x0)) // 2
+        y0 -= (n - (y1 - y0)) // 2
+        x1, y1 = x0 + n, y0 + n
+    w, h = (x1 - x0) * s, (y1 - y0) * s
     raw = b"".join((b"\0" + b"".join((bytes.fromhex(pm[(x, y)][1:]) + b"\xff" if (x, y) in pm else b"\0" * 4) * s
                                      for x in range(x0, x1))) * s for y in range(y0, y1))
 
     def bloco(tipo, d):
         return struct.pack(">I", len(d)) + tipo + d + struct.pack(">I", zlib.crc32(tipo + d))
-    png = (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
-           + bloco(b"IDAT", zlib.compress(raw, 1)) + bloco(b"IEND", b""))
+    return (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0))
+            + bloco(b"IDAT", zlib.compress(raw, 1)) + bloco(b"IEND", b"")), w, h
+
+
+def map_img(pm, lado):
+    """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
+    if not pm:
+        return tk.PhotoImage(width=1, height=1)
+    # um PNG montado aqui e lido numa chamada só (um put por pixel levava ~0,4 s para abrir o cemitério)
+    png, w, h = png_bytes(pm, lado)
     return tk.PhotoImage(data=base64.b64encode(png).decode(), format="png", width=w, height=h)
+
+
+def iniciar_bandeja():
+    """Ícone na bandeja (só Windows): o Slime em .ico em DATA_DIR. Falhou? Segue sem (o menu tem "Sair")."""
+    if os.name != "nt":
+        return None
+    try:
+        import bandeja
+        p = DATA_DIR / "icone.ico"
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(bandeja.ico(png_bytes(heroi_idle("slime"), 32, quadrado=True)[0], 32))
+        return bandeja.Bandeja(str(p), APP_NAME, lambda: [_t("Mostrar o pet"), _t("Sair")])
+    except Exception:
+        log("erro no ícone da bandeja: " + traceback.format_exc())
+        return None
 
 
 def heroi_idle(key):
@@ -1046,6 +1072,7 @@ class PetApp:
         self.last_rest_heal = time.time()
         self.aberto_em = time.time()        # aberto à mão: aparece por ESCONDER_S mesmo sem uso
         self.escondido = False
+        self.bandeja = None                 # ícone na bandeja (run_gui liga; os testes não)
         self.last_save = time.time()
         self.busy_until = time.time() + 1.5
         self.respawn_at = None
@@ -1888,8 +1915,27 @@ class PetApp:
         self.floater(_t("{n} personagens", n=len(self.chars)), MUTED)
 
 
+    def mostrar(self):
+        """Pela bandeja: aparece (mesmo com "Aparecer só com uso", conta ESCONDER_S de novo) e vem para a frente."""
+        self.aberto_em = time.time()
+        self.ajustar_visivel(self.aberto_em)
+        self.root.lift()
+
+    def ouvir_bandeja(self):
+        """Cliques da bandeja chegam por fila (a thread dela não pode mexer no Tk). 0 = mostrar, 1 = sair."""
+        if not self.bandeja:
+            return
+        while not self.bandeja.fila.empty():
+            if self.bandeja.fila.get():
+                return self.quit()
+            self.mostrar()
+        self.root.after(150, self.ouvir_bandeja)
+
     def quit(self):
         self.save()
+        if self.bandeja:
+            self.bandeja.fechar()
+            self.bandeja = None
         self.root.destroy()
 
     def _on_error(self, *exc):
@@ -2916,6 +2962,8 @@ def run_gui(args):
         print("O Agent Tokenlike já está aberto.")
         return
     app = PetApp(args)
+    app.bandeja = iniciar_bandeja()
+    app.ouvir_bandeja()
     app.root.mainloop()
 
 

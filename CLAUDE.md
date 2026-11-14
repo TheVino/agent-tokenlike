@@ -16,6 +16,9 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   "Aparecer só com uso" (`state["so_com_uso"]`, `ajustar_visivel` no poll): `withdraw` depois de `ESCONDER_S` (5 min) sem tokens
   (conta de `max(last_fed, aberto_em)`; nunca no meio de sala ou com escolha aberta), `deiconify` no 1º token; escondido o jogo segue.
   "Abrir com o Windows" (`atalho_inicio`): `.cmd` com pythonw na pasta Inicializar, só pelo menu.
+  Ícone na bandeja (`bandeja.py`, ctypes, só Windows; `iniciar_bandeja` em `run_gui`, não nos testes): thread com janela
+  oculta e `Shell_NotifyIconW`, ícone = Slime em `~/.tokenlike/icone.ico`; clique esquerdo = `mostrar`, botão direito = menu
+  Mostrar o pet / Sair. Os cliques vêm por `fila` (`ouvir_bandeja`, after de 150 ms), porque o Tk não é thread-safe.
   Toda janela de `janela()` é arrastável pela barra de título (`arrastavel`, cursor `fleur`); a posição fica em
   `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela virtual (`tela()`: todos os monitores, x negativo vale; senão, ao lado do pet).
   Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
