@@ -40,7 +40,7 @@ To start it with Windows: `Win + R` → `shell:startup` → create a shortcut to
 | Drag | Move the pet |
 | Click | Pet it ❤ |
 | Double-click | Stats: HP, ATK, DEF, items, stored energy, best run |
-| Right-click | Menu: Graveyard, Achievements, next run's hero, size, Mode (Auto or Interactive), give up the run, quit |
+| Right-click | Menu: Graveyard, Achievements, next run's hero, size, Mode (Auto or Interactive), language (PT or EN), give up the run, quit |
 
 Command-line options:
 

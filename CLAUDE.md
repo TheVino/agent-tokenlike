@@ -33,6 +33,12 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   Regra: **toda caixa nova usa esses helpers e passa em `tests/test_textos.py`** (`tests/_textos.py: checar(janela)`).
   Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
   carrega numa chamada só (um `put` por pixel deixava a janela lenta).
+- `idioma.py`: idioma da interface (pt-BR padrão ou inglês, `state["lang"]`, chips PT/EN no menu). `t(texto_pt, **fmt)`:
+  o texto em pt é a chave do dicionário `EN`; sem `fmt`, um texto já montado (linhas de evento, lápides antigas) é
+  traduzido por modelo (`"Pagou {n} ouro"`). No `tokenlike.py` é `_t`. Os dados do jogo continuam em pt (lápides,
+  registros, `BALANCE_VERSION`); a tradução é só na hora de mostrar. Trocar o idioma redesenha o HUD e reabre as
+  janelas abertas (`change_lang`, `REABRE`). **Todo texto visível novo passa por `t()`/`_t()` e ganha entrada em `EN`**
+  (`tests/test_idioma.py` falha se faltar; nomes em inglês também são originais, ex.: Cavaleiro Oco = Empty Knight).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
   `enter_room()` resolve uma sala e devolve um dicionário de evento, que a GUI só anima (`PetApp.play_room`).
 - `arte.py`: toda a pixel art em grades de texto (`'.'` = transparente, letras = cores de `PAL`).
@@ -78,9 +84,10 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
   `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet), `test_textos.py` (Tk real, dados de pior caso em todas
-  as janelas e no HUD; a checagem reutilizável é `tests/_textos.py: checar(janela)`, cartões no Canvas marcados com a tag
-  `card:<id>` via `extra=`) e `test_gui.py` (tkinter falso
-  que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói e testa o modo interativo;
+  as janelas e no HUD, em pt e en; a checagem reutilizável é `tests/_textos.py: checar(janela)`, cartões no Canvas marcados com a tag
+  `card:<id>` via `extra=`), `test_idioma.py` (toda chave de `t()` e todo dado do jogo com tradução EN, `fx_text` e
+  linhas de evento em EN, `BALANCE_VERSION` igual) e `test_gui.py` (tkinter falso
+  que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói, testa o modo interativo e a troca de idioma;
   usa `random.Random(SEED)` para ser determinístico).
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
   `tools/estatisticas.py`: gera `tools/saida/estatisticas.html` e `.json` (gitignored) com simulado x real, itens, pares, mortes e heróis; `METAS` (metas de balanceamento) mora aí.
@@ -105,7 +112,8 @@ python tests/test_migracao.py
 python tests/test_limites.py
 python tests/test_registro.py
 python tests/test_estatisticas.py
-python tests/test_textos.py     # Tk de verdade (pula sem tela): textos sem cortar/sobrepor
+python tests/test_idioma.py
+python tests/test_textos.py     # Tk de verdade (pula sem tela): textos sem cortar/sobrepor, em pt e en
 python tools/estatisticas.py    # página de estatísticas (sim x real); --sem-abrir não abre o navegador
 python tools/simular.py          # depois de mexer em balanceamento/itens/salas
 python tools/preview_arte.py     # depois de mexer em arte.py
