@@ -602,6 +602,22 @@ assert not sobra, sobra
 appm.lang_var.set("pt"); appm.change_lang(); assert idioma.LANG == "pt" and tudo().count("Sair") == 1
 tkinter.Label = Wid; Canvas.create_text = _ct
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
+# "Aparecer só com uso": some após ESCONDER_S sem tokens, volta no 1º token; desligado nunca some
+appv = tp.PetApp(Args()); PENDING.clear(); vis = []
+appv.root.withdraw = lambda: vis.append("some"); appv.root.deiconify = lambda: vis.append("volta")
+t = time.time(); appv.busy_until = 0; appv.run["pending"] = None
+appv.state["last_fed"] = appv.aberto_em = t - tp.ESCONDER_S - 5
+appv.ajustar_visivel(t); assert vis == []                                       # opção desligada
+appv.uso_var.set(True); appv.toggle_uso(); appv.ajustar_visivel(time.time()); assert vis == []   # ligou agora: fica
+appv.aberto_em = t - tp.ESCONDER_S - 5
+appv.run["pending"] = {"key": next(iter(M.ITEMS)), "rar": "comum"}; appv.ajustar_visivel(t); assert vis == []  # escolha aberta
+appv.run["pending"] = None; appv.ajustar_visivel(t); assert vis == ["some"] and appv.escondido
+appv.feed(1000, 1000); appv.ajustar_visivel(time.time()); assert vis == ["some", "volta"] and not appv.escondido
+# atalho de inicialização (APPDATA temporário)
+os.environ["APPDATA"] = home; ini = tp.atalho_inicio(); ini.parent.mkdir(parents=True)
+appv.inicio_var.set(True); appv.toggle_inicio(); assert ini.is_file() and "tokenlike.py" in ini.read_text()
+appv.inicio_var.set(False); appv.toggle_inicio(); assert not ini.exists() and appv.inicio_var.get() is False
+PENDING.clear(); appv.quit()
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)
