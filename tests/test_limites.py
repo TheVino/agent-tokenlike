@@ -85,6 +85,17 @@ pct, reset, est, tok = tp.limit_view("sessao", None, vazio, now)
 assert pct is None and not est and tok == 0
 so = {}; tp.add_usage(so, now - 60, 1_200_000)
 assert tp.limit_view("sessao", None, so, now)[3] == 1_200_000
+# sem fator: sessão refeita do histórico (começa no 1º uso; uso depois de 5h abre outra) e régua = seu pico
+h = {}; t0 = 1_800_000_000
+tp.add_usage(h, t0, 4_000); tp.add_usage(h, t0 + 4 * 3600, 6_000)          # sessão 1: 10k
+tp.add_usage(h, t0 + 6 * 3600, 3_000)                                        # sessão 2 (passou das 5h): 3k
+assert tp.sessoes(h) == [[t0 // 300 * 300, 10_000], [(t0 + 6 * 3600) // 300 * 300, 3_000]]
+pct, reset, est, tok = tp.limit_view("sessao", None, h, t0 + 7 * 3600)
+assert pct is None and tok == 3_000 and reset == (t0 + 6 * 3600) // 300 * 300 + 5 * 3600
+assert tp.limit_view("sessao", None, h, t0 + 12 * 3600) == (None, None, False, 0.0)   # sessão acabou
+assert tp.pico(h, "sessao", 3_000) == 10_000 and h["pico"]["sessao"] == 10_000
+h["usage_hist"].clear(); assert tp.pico(h, "sessao", 2_000) == 10_000            # pico sobrevive ao histórico
+assert tp.pico(h, "semana", 50_000) == 50_000 and tp.pico(h, "semana", 1) == 50_000
 r = tp.read_limits(d / "limites.json", now); assert r["updated"] == saved["updated"]
 # histórico mais novo que o início da janela: não calibra e mantém o fator anterior
 curto = {"calib": {"semana": {"f": 7, "reset": 1}}, "usage_hist_desde": now - 5 * 3600}; tp.add_usage(curto, now - 60, 50_000)

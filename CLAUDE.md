@@ -98,8 +98,11 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `statusline.py`: statusline opcional do Claude Code (o usuário liga). Lê o JSON do stdin e grava só os limites oficiais
   de sessão (5h) e semana em `~/.tokenlike/limites.json`. O pet lê com `read_limits` a cada poll e desenha as barras
   Sessão/Semana no painel (verde ≤50%, amarelo ≤80%, vermelho acima). Leitura oficial nova calibra um fator por janela
-  (`calibrate`, `state["calib"]`); sem leitura recente (<10 min) mostra `~N%` estimado (`limit_view`); sem fator, só os tokens
-  da janela. As barras aparecem sempre.
+  (`calibrate`, `state["calib"]`); sem leitura recente (<10 min) mostra `~N%` estimado (`limit_view`); sem fator, mostra os
+  tokens da janela e a barra (cor neutra `PICO_COR`) é a fração do **seu pico** (`pico`, `state["pico"]`, guardado além dos 8 dias),
+  não do limite real; a sessão de 5h é refeita do histórico (`sessoes`: começa no 1º uso depois que a anterior acabou). A statusline
+  só roda no Claude Code do terminal. A barra de energia desliza até o valor (`bar_frac` no tick) e tem um brilho que corre (`desenha_energia`).
+  As barras aparecem sempre.
 - `.claude/skills/balancear/`: skill `/balancear` (lê as estatísticas e propõe mudanças de números, só edita com aprovação do dono).
 - `iniciar.bat` (pythonw, sem console), `testar-demo.bat` (`--demo`: tokens falsos, estado separado).
 
