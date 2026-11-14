@@ -77,7 +77,9 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso; funções do perfil), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
-  `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso
+  `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet), `test_textos.py` (Tk real, dados de pior caso em todas
+  as janelas e no HUD; a checagem reutilizável é `tests/_textos.py: checar(janela)`, cartões no Canvas marcados com a tag
+  `card:<id>` via `extra=`) e `test_gui.py` (tkinter falso
   que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói e testa o modo interativo;
   usa `random.Random(SEED)` para ser determinístico).
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
@@ -103,6 +105,7 @@ python tests/test_migracao.py
 python tests/test_limites.py
 python tests/test_registro.py
 python tests/test_estatisticas.py
+python tests/test_textos.py     # Tk de verdade (pula sem tela): textos sem cortar/sobrepor
 python tools/estatisticas.py    # página de estatísticas (sim x real); --sem-abrir não abre o navegador
 python tools/simular.py          # depois de mexer em balanceamento/itens/salas
 python tools/preview_arte.py     # depois de mexer em arte.py

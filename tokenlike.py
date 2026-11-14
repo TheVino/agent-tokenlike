@@ -2393,9 +2393,10 @@ class PetApp:
                 tk.Label(box, text="nenhum ainda", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(anchor="w")
             for n, it in enumerate(i for i in lista if i["key"] in M.ITEMS):
                 rar = it.get("rar", "comum")
-                lbl = tk.Label(box, image=self.icon(arte.ITEM_ART[it["key"]], s, glow=M.RAR_COLOR.get(rar), dim=dim),
-                               bg=PANEL_BG, width=s * 9 + 4, height=s * 9 + 4)
-                lbl.grid(row=n // 12, column=n % 12)
+                lado, cols = s * 12, 10 if s == 3 else 14     # célula fixa: itens largos (chapéus) cabem sem cobrir o vizinho
+                lbl = tk.Label(box, image=self.icon(arte.ITEM_ART[it["key"]], s, glow=M.RAR_COLOR.get(rar), dim=dim,
+                                                    lado=lado), bg=PANEL_BG, width=lado + 2, height=lado + 2)
+                lbl.grid(row=n // cols, column=n % cols)
                 txt = (f"{M.ITEMS[it['key']]['name']} ({M.RAR_NAMES.get(rar, rar)})"
                        + ("" if dim else f": {M.fx_text(M.item_fx(it['key'], rar))}"))
                 lbl.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
