@@ -989,6 +989,7 @@ class PetApp:
         self.font_small = ("Segoe UI", 8, "bold")
 
         self.floaters: list = []
+        self.n_floater = 0
         self.particles: list = []
         self.hop: list[int] = []
         self.lunge: list[int] = []
@@ -1109,17 +1110,16 @@ class PetApp:
 
         py = self.base_y + self.below + 6
         self.panel_y = py
-        c.create_rectangle(6, py, self.W - 6, py + 52 + self.limit_h, fill=PANEL_BG,
-                           outline=PANEL_EDGE, width=2)
+        retangulo_arredondado(c, 5, py - 1, self.W - 5, py + 53 + self.limit_h, JANELA_R, PANEL_BG, PANEL_EDGE, 2,
+                              tag="painel", extra=("card:painel",))
         self.title_txt = c.create_text(14, py + 11, anchor="w", fill=TEXT, font=self.font)
         self.hp_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=HURT, font=self.font)
         self.status_y = py + 11
         self.status_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=MUTED, font=self.font_small)
         self.info_txt = c.create_text(14, py + 26, anchor="w", fill=MUTED, font=self.font_small)
         self.bar_x0, self.bar_x1, self.bar_y = 14, self.W - 14, py + 38
-        c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, fill=BAR_BG, outline="")
-        self.bar = c.create_rectangle(self.bar_x0, self.bar_y, self.bar_x0, self.bar_y + 6,
-                                      fill=ENERGY, outline="")
+        retangulo_arredondado(c, self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, 3, BAR_BG, tag="barra_t")
+        self.bar = "barra_e"            # tag do preenchimento (redesenhado em update_panel)
         self.limit_rows = {}
         # colunas fixas medidas com o texto mais largo: rótulo | barra | reset
         y = py + 56
@@ -1131,11 +1131,12 @@ class PetApp:
         c.delete(probe)
         for i, (key, label) in enumerate((("sessao", "Sessão"), ("semana", "Semana"))):
             y = py + 52 + 4 + i * 13
-            back = c.create_rectangle(lx0, y - 3, lx1, y + 3, fill=BAR_BG, outline="")
+            back = f"lim_t_{key}"       # tags: trilha e preenchimento (redesenhado em update_limits)
+            retangulo_arredondado(c, lx0, y - 3, lx1, y + 3, 3, BAR_BG, tag=back)
             self.limit_rows[key] = (
                 label,
                 c.create_text(14, y, anchor="w", fill=MUTED, font=self.font_small),
-                c.create_rectangle(lx0, y - 3, lx0, y + 3, fill=GOOD, outline=""),
+                f"lim_{key}",
                 c.create_text(self.W - 14, y, anchor="e", fill=MUTED, font=self.font_small),
                 lx0, lx1, y, back)
         self.refresh_look()
@@ -1276,7 +1277,8 @@ class PetApp:
         cost = M.room_cost(run)
         frac = min(1.0, run["energy"] / cost) if cost else 0
         x1 = self.bar_x0 + (self.bar_x1 - self.bar_x0) * frac
-        self.canvas.coords(self.bar, self.bar_x0, self.bar_y, x1, self.bar_y + 6)
+        self.canvas.delete(self.bar)
+        retangulo_arredondado(self.canvas, self.bar_x0, self.bar_y, round(x1), self.bar_y + 6, 3, ENERGY, tag=self.bar)
         self.update_limits()
 
     def update_limits(self):
@@ -1284,16 +1286,16 @@ class PetApp:
         for key, (label, txt, fill, rtxt, lx0, lx1, y, back) in self.limit_rows.items():
             pct, reset, est, tok = limit_view(key, self.limits, self.state, now)
             self.canvas.itemconfigure(rtxt, text=f"reseta {fmt_reset(reset, now)}" if reset else "")
+            self.canvas.delete(fill)
             if pct is None:                 # sem fator: só os tokens da janela, sem barra de %
                 self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
-                self.canvas.coords(fill, lx0, y - 3, lx0, y + 3)
                 self.canvas.itemconfigure(back, state="hidden")
                 continue
             self.canvas.itemconfigure(back, state="normal")
             self.canvas.itemconfigure(txt, text=f"{label}  {'~' if est else ''}{round(pct)}%")
             frac = max(0.0, min(1.0, pct / 100))
-            self.canvas.coords(fill, lx0, y - 3, lx0 + (lx1 - lx0) * frac, y + 3)
-            self.canvas.itemconfigure(fill, fill=limit_color(pct))
+            retangulo_arredondado(self.canvas, lx0, y - 3, round(lx0 + (lx1 - lx0) * frac), y + 3, 3, limit_color(pct),
+                                  tag=fill)
 
     def refresh_limits(self):
         """Relê limites.json (opcional), calibra a estimativa com leitura oficial nova e redesenha."""
@@ -2141,7 +2143,9 @@ class PetApp:
             x0, y0, x1, y1 = c.bbox(t)
             box = (x0 - 5, y0 - 2, x1 + 5, y1 + 2)
         c.coords(t, fx, fy)
-        r = c.create_rectangle(*box, fill=PANEL_BG, outline=PANEL_EDGE, tags=tags)
+        self.n_floater += 1
+        r = f"flt{self.n_floater}"      # tag do balão arredondado (vários retângulos)
+        retangulo_arredondado(c, *box, CARTAO_R, PANEL_BG, PANEL_EDGE, 1, tag=r, extra=tags)
         c.tag_raise(t)
         c.tag_raise("nome")
         self.floaters.append([(r, t), life])
