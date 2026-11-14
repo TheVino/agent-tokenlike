@@ -92,6 +92,8 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
   `tools/estatisticas.py`: gera `tools/saida/estatisticas.html` e `.json` (gitignored) com simulado x real, itens, pares, mortes e heróis; `METAS` (metas de balanceamento) mora aí.
   `tools/preview_arte.py`: gera um PNG com todos os desenhos (precisa do Pillow, só para desenvolvimento).
+  `tools/gravar_readme.py`: gera `docs/screenshot.png` e `docs/demo.gif` com o app de verdade (HOME temporário, dados falsos,
+  fundo escuro atrás do pet; aborta sem salvar se outra janela aparecer na área). Não mexer no PC durante os ~30 s.
 - `README.md` (inglês, para o GitHub) e `LEIA-ME.md` (pt-BR). Licença MIT.
 - `statusline.py`: statusline opcional do Claude Code (o usuário liga). Lê o JSON do stdin e grava só os limites oficiais
   de sessão (5h) e semana em `~/.tokenlike/limites.json`. O pet lê com `read_limits` a cada poll e desenha as barras
@@ -240,7 +242,6 @@ O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HO
 ## Antes do lançamento
 
 - Capricho visual da página de estatísticas e ícones de itens e heróis nela.
-- Screenshot e GIF do README (`docs/screenshot.png`, `docs/demo.gif`).
 - Testar na tela de verdade o modo interativo e as barras de sessão e semana.
 
 ## Ideias em aberto
