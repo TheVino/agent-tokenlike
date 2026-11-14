@@ -63,6 +63,7 @@ CACHE_READ_WEIGHT = 0.1     # tokens lidos do cache valem 10% (são baratos e mu
 POLL_MS = 2500              # de quanto em quanto tempo olha os logs
 REST_AFTER_S = 5 * 60       # parado há 5 min -> descansa e recupera 1 HP a cada 2 min
 SLEEP_AFTER_S = 10 * 60     # parado há 10 min -> dorme (Zzz). Nunca morre por ficar parado.
+ESCONDER_S = 5 * 60         # "Aparecer só com uso": some depois disso sem tokens novos (continua rodando escondido)
 SAVE_EVERY_S = 30
 RESPAWN_S = 12              # tempo mostrando a lápide antes da run nova
 SIZES = {"Pequeno": 4, "Médio": 6, "Grande": 8}  # px de tela por pixel da arte
@@ -448,6 +449,7 @@ DEFAULT_STATE = {
     "lang": "pt",                # idioma da interface: "pt" ou "en" (idioma.py)
     "pos": None,
     "topmost": True,
+    "so_com_uso": False,         # some depois de ESCONDER_S sem tokens e volta quando houver uso
     "last_fed": 0.0,
     "run": None,
     "meta": None,
@@ -1042,6 +1044,8 @@ class PetApp:
         self.next_blink = time.time() + 3
         self.next_zzz = 0.0
         self.last_rest_heal = time.time()
+        self.aberto_em = time.time()        # aberto à mão: aparece por ESCONDER_S mesmo sem uso
+        self.escondido = False
         self.last_save = time.time()
         self.busy_until = time.time() + 1.5
         self.respawn_at = None
@@ -1367,6 +1371,8 @@ class PetApp:
         self.mode_var = tk.StringVar(value=self.state["mode"])
         self.lang_var = tk.StringVar(value=self.state["lang"])
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
+        self.uso_var = tk.BooleanVar(value=bool(self.state.get("so_com_uso")))
+        self.inicio_var = tk.BooleanVar(value=atalho_inicio().exists())
         self.virar_var = tk.BooleanVar(value=self.virar)
         for attr in JANELAS:
             setattr(self, attr, None)
@@ -1596,8 +1602,12 @@ class PetApp:
         self.menu_chips(f, "Tamanho", {n: n for n in SIZES}, self.size_var, self.change_size)
         self.menu_chips(f, "Modo", MODES, self.mode_var, self.change_mode)
         self.menu_chips(f, "Idioma", idioma.LINGUAS, self.lang_var, self.change_lang)
-        for text, var, fn in (("Sempre por cima", self.top_var, self.toggle_top),
-                              ("Virar herói", self.virar_var, self.toggle_virar)):
+        opcoes = [("Sempre por cima", self.top_var, self.toggle_top),
+                  ("Virar herói", self.virar_var, self.toggle_virar),
+                  ("Aparecer só com uso", self.uso_var, self.toggle_uso)]
+        if os.name == "nt":
+            opcoes.append(("Abrir com o Windows", self.inicio_var, self.toggle_inicio))
+        for text, var, fn in opcoes:
             self.menu_row(f, "caixa_ok" if var.get() else "caixa", _t(text),
                           lambda v=var, fn=fn: (v.set(not v.get()), fn()))
         self.menu_sep(f)
@@ -1818,6 +1828,34 @@ class PetApp:
         self.state["topmost"] = bool(self.top_var.get())
         self.root.attributes("-topmost", self.state["topmost"])
 
+    def toggle_uso(self):
+        self.state["so_com_uso"] = bool(self.uso_var.get())
+        self.aberto_em = time.time()            # ligou agora: não some na hora
+        self.save()
+
+    def toggle_inicio(self):
+        try:
+            atalho_inicio(criar=bool(self.inicio_var.get()))
+        except OSError as e:
+            log(f"erro no atalho de inicialização: {e}")
+        self.inicio_var.set(atalho_inicio().exists())
+
+    def ajustar_visivel(self, now):
+        """"Aparecer só com uso": esconde depois de ESCONDER_S sem tokens (nunca no meio de uma sala ou com
+        escolha aberta) e mostra de novo no 1º token. Escondido o jogo continua; nada se perde."""
+        parado = now - max(self.state["last_fed"], self.aberto_em) > ESCONDER_S
+        esconder = bool(self.state.get("so_com_uso")) and parado and now >= self.busy_until and not self.run["pending"]
+        if esconder == self.escondido:
+            return
+        self.escondido = esconder
+        if esconder:
+            for attr in JANELAS:
+                self.close_win(getattr(self, attr))
+            self.root.withdraw()
+        else:
+            self.root.deiconify()
+            self.root.attributes("-topmost", self.state["topmost"])
+
     def give_up(self):
         if self.run["dead"]:
             return
@@ -1881,6 +1919,7 @@ class PetApp:
             if now - self.last_save > SAVE_EVERY_S:
                 self.save()
             self.refresh_limits()
+            self.ajustar_visivel(now)
         except Exception:
             log("erro lendo tokens: " + traceback.format_exc())
         self.root.after(1000 if self.demo else POLL_MS, self.poll)
@@ -2822,6 +2861,19 @@ class PetApp:
             self.last_save = time.time()
         except OSError as e:
             log(f"erro salvando: {e}")
+
+
+def atalho_inicio(criar: bool | None = None) -> Path:
+    """Atalho na pasta Inicializar do Windows que abre o pet sem console (pythonw). Só o usuário liga, pelo menu.
+    criar=True grava, False apaga, None só devolve o caminho."""
+    p = Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs/Startup/Agent Tokenlike.cmd"
+    if criar:
+        pyw = Path(sys.executable).with_name("pythonw.exe")
+        exe = str(pyw) if pyw.exists() else "pythonw"
+        p.write_text(f'@start "" "{exe}" "{Path(__file__).resolve()}"\r\n', encoding="utf-8")
+    elif criar is False:
+        p.unlink(missing_ok=True)
+    return p
 
 
 def acquire_lock(name: str):

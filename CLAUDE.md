@@ -13,6 +13,9 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
   "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
   "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
+  "Aparecer só com uso" (`state["so_com_uso"]`, `ajustar_visivel` no poll): `withdraw` depois de `ESCONDER_S` (5 min) sem tokens
+  (conta de `max(last_fed, aberto_em)`; nunca no meio de sala ou com escolha aberta), `deiconify` no 1º token; escondido o jogo segue.
+  "Abrir com o Windows" (`atalho_inicio`): `.cmd` com pythonw na pasta Inicializar, só pelo menu.
   Toda janela de `janela()` é arrastável pela barra de título (`arrastavel`, cursor `fleur`); a posição fica em
   `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela virtual (`tela()`: todos os monitores, x negativo vale; senão, ao lado do pet).
   Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):

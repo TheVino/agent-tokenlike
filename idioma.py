@@ -286,6 +286,7 @@ EN = {
     "Duplo clique = status": "Double-click = status", "MODO DEMO": "DEMO MODE",
     "Run #{n} começou!": "Run #{n} started!", "{nome} entra na masmorra...": "{nome} enters the dungeon...",
     "Sessão": "Session", "Semana": "Week", "reseta {h}": "resets {h}",
+    "Aparecer só com uso": "Show only when in use", "Abrir com o Windows": "Start with Windows",
     "{n} · {p}% do seu pico": "{n} · {p}% of your peak",
     "seg": "Mon", "ter": "Tue", "qua": "Wed", "qui": "Thu", "sex": "Fri", "sáb": "Sat", "dom": "Sun",
     "empate": "draw", "esquivou!": "dodged!", "bloqueou!": "blocked!", "perdeu a vez": "lost a turn",
