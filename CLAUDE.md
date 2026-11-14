@@ -22,6 +22,10 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   com rolagem). "Itens" abre `show_items`: cards num `Canvas` (`item_card`), cada raridade possível com `fx_text` e o
   `consume` na cor de `RAR_COLOR`, família por `item_familia`/`FAMILIAS`, filtro Todos/Liberados/Bloqueados; bloqueado
   (`item_liberado`, mesma regra do sorteio; demo libera tudo) = silhueta + cadeado + conquista, sem valores.
+  "Perfil" (1ª linha do menu) abre `show_perfil`: herói/run/HP, nível de domador (`nivel`: floor(sqrt(tokens na vida / 1M)),
+  `NIVEL_TOKENS`), medalhas de `arte.CONQ_ART` (nome no hover), 6 cartões (hoje, sequência `dias_seguidos`, na vida, runs,
+  recorde, heróis N/20 + chefes), barras dos últimos 7 dias (`uso_por_dia`, XP de `usage_hist`, hoje dourado), limites via
+  `limit_view` e rodapé com `ultimo_uso`/`fmt_ha` e atalhos. Funções puras testadas em `test_limites.py`; textos todos em `show_perfil`.
   Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
   carrega numa chamada só (um `put` por pixel deixava a janela lenta).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
@@ -65,7 +69,7 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   (cache `fx_cache` por estado + itens + status). Todos os estados usam o mesmo k e o pivô na base da caixa aparada.
   O Slime embutido também tem `estados` (grade) e continua piscando no idle; heróis PNG soltos seguem sem estados.
   Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
-- `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
+- `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso; funções do perfil), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
   `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso

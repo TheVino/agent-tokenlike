@@ -99,3 +99,25 @@ sb = {}; rb = tp.TokenReader(sb, dirs=[tmpb]); rb.skip_existing(); rb.backfill()
 tp.calibrate(sb, {"semana": (10.0, now + 86400), "updated": now}, now)
 assert abs(sb["calib"]["semana"]["f"] - 10 / 5000) < 1e-12
 print("ok: estimativa")
+
+# perfil: nível de domador, uso por dia, sequência e último uso (funções puras, só usage_hist/daily)
+assert tp.nivel(0) == (0, 0.0, 1_000_000)
+assert tp.nivel(999_999)[0] == 0 and tp.nivel(1_000_000)[:2] == (1, 0.0)
+n, frac, falta = tp.nivel(2_500_000)                 # Nv 1 vai de 1M a 4M
+assert n == 1 and abs(frac - 0.5) < 1e-12 and falta == 1_500_000
+assert tp.nivel(4_000_000)[0] == 2 and tp.nivel(100_000_000)[0] == 10
+meio_dia = datetime(2026, 11, 14, 12).timestamp()
+dia = lambda d: str(int((meio_dia - d * 86400) // tp.BUCKET_S * tp.BUCKET_S))
+assert tp.uso_por_dia({}, meio_dia)[-1] == (datetime(2026, 11, 14).date(), 0.0) and tp.dias_seguidos({}, meio_dia) == 0
+assert tp.ultimo_uso({}) is None
+s = {"usage_hist": {dia(0): 10, dia(1): 5, dia(2): 7, dia(4): 1, dia(9): 99}}
+por_dia = tp.uso_por_dia(s, meio_dia)
+assert len(por_dia) == 7 and [v for _, v in por_dia] == [0, 0, 1, 0, 7, 5, 10], por_dia
+assert tp.dias_seguidos(s, meio_dia) == 3
+del s["usage_hist"][dia(0)]
+assert tp.dias_seguidos(s, meio_dia) == 2                                  # hoje sem uso não quebra a sequência
+s["daily"] = {"2026-11-11": 3, "2026-11-10": 3, "2026-11-09": 0}
+assert tp.dias_seguidos(s, meio_dia) == 4                                  # daily (60 dias) estende o histórico
+assert tp.ultimo_uso(s) == int(dia(1)) + tp.BUCKET_S
+assert tp.fmt_ha(30) == "agora" and tp.fmt_ha(600) == "há 10 min" and tp.fmt_ha(7200) == "há 2 h"
+print("ok: perfil")

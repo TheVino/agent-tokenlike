@@ -1,6 +1,7 @@
 """Teste de fumaça da interface com um tkinter falso (roda sem tela)."""
 import json, random, sys, types, tempfile, os, time
 from pathlib import Path
+from datetime import date
 home = tempfile.mkdtemp(); os.environ["HOME"]=home; os.environ["USERPROFILE"]=home
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -482,16 +483,17 @@ import arte
 assert set(arte.CONQ_ART) == set(M.ACHIEVEMENTS)
 campos = set(M.stats(appm.run)) | {"crescer"}
 assert campos <= set(arte.STAT_ART) and campos == {k for k, *_ in tp.STAT_LINHAS}
-JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats))
+JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats), ("perfil_win", appm.show_perfil))
 def abre_fecha():
     for _ in range(2):
         for attr, fn in JAN:
             fn(); fn(); assert getattr(appm, attr) in VIVAS
-        assert len(VIVAS - {appm.popup_win}) == 3
+        assert len(VIVAS - {appm.popup_win}) == len(JAN)
         for attr, _ in JAN:
             appm.close_win(getattr(appm, attr)); assert getattr(appm, attr) is None
         assert not VIVAS - {appm.popup_win}
 appm.meta.update(graveyard=[], achievements=[]); appm.run.update(items=[], consumed=[], traco={})
+appm.state.update(usage_hist={}, daily={}, tokens_total=0); appm.limits = None
 abre_fecha()
 mortes = [("Rato", "monster"), ("Rei Rato", "boss"), ("Veneno", "status"), ("Queimadura", "status"), ("Mímico", "mimic"),
           ("Armadilha", "trap"), ("Desistiu", "desistiu"), ("Coisa Nova", "monster")]
@@ -503,6 +505,9 @@ appm.meta["achievements"] = list(M.ACHIEVEMENTS)[::2]
 appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40, shield=3, traco={"dodge": 0.1},
                 consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
 assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
+for d in range(8): tp.add_usage(appm.state, time.time() - d * 86400, 1e6 * d)
+appm.state.update(tokens_total=47_000_000, daily={date.today().isoformat(): 5e6})
+appm.limits = {"sessao": (42, time.time() + 3600), "semana": (None, None), "updated": time.time()}
 abre_fecha()
 # janelas móveis: arrastar pela barra muda a geometria e grava; reabrir usa a posição; fora da tela volta ao lado do pet
 appm.show_achievements(); w = appm.conq_win

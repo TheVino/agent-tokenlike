@@ -37,7 +37,7 @@ import traceback
 import zlib
 from collections import Counter, deque
 from functools import lru_cache
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -85,7 +85,8 @@ HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de
 CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
 ITENS_COLS, ITENS_CARD_W, ITENS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
-JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win", "itens_win")
+JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win", "itens_win", "perfil_win")
+PERFIL_W, PERFIL_MEDALHAS, PERFIL_BARRA = 312, 13, "#8a5a2b"   # perfil: largura, medalhas por linha, cor das barras
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -348,6 +349,58 @@ def limit_view(key: str, limits: dict | None, state: dict, now: float):
     if cal:
         return tok * cal["f"], reset, True, None
     return None, reset, False, tok
+
+
+# ------------------------------------------------------------- perfil (funções puras)
+NIVEL_TOKENS = 1_000_000            # nível de domador = floor(sqrt(tokens na vida / 1M))
+
+
+def nivel(total: float) -> tuple[int, float, float]:
+    """(nível, fração até o próximo, tokens que faltam). Nível n começa em n² milhões de tokens."""
+    n = math.isqrt(int(total // NIVEL_TOKENS))
+    base, prox = n * n * NIVEL_TOKENS, (n + 1) ** 2 * NIVEL_TOKENS
+    return n, (total - base) / (prox - base), prox - total
+
+
+def uso_por_dia(state: dict, now: float, dias: int = 7) -> list[tuple[date, float]]:
+    """XP de `usage_hist` somado por dia local, do mais antigo até hoje."""
+    hoje = datetime.fromtimestamp(now).date()
+    out = {hoje - timedelta(days=i): 0.0 for i in range(dias)}
+    for k, v in (state.get("usage_hist") or {}).items():
+        d = datetime.fromtimestamp(int(k)).date()
+        if d in out:
+            out[d] += v
+    return sorted(out.items())
+
+
+def dias_seguidos(state: dict, now: float) -> int:
+    """Dias seguidos com uso até hoje (hoje ainda sem uso não quebra a sequência).
+    Usa `usage_hist` (8 dias, por horário) e `daily` (60 dias, contado com o app aberto)."""
+    usados = {datetime.fromtimestamp(int(k)).date() for k, v in (state.get("usage_hist") or {}).items() if v > 0}
+    usados |= {date.fromisoformat(k) for k, v in (state.get("daily") or {}).items() if v > 0}
+    d = datetime.fromtimestamp(now).date()
+    if d not in usados:
+        d -= timedelta(days=1)
+    n = 0
+    while d in usados:
+        n, d = n + 1, d - timedelta(days=1)
+    return n
+
+
+def ultimo_uso(state: dict) -> float | None:
+    """Fim do último balde de 5 min com tokens."""
+    ks = [int(k) for k, v in (state.get("usage_hist") or {}).items() if v > 0]
+    return max(ks) + BUCKET_S if ks else None
+
+
+def fmt_ha(dt: float) -> str:
+    if dt < 60:
+        return "agora"
+    if dt < 3600:
+        return f"há {int(dt // 60)} min"
+    if dt < 86400:
+        return f"há {int(dt // 3600)} h"
+    return f"há {int(dt // 86400)} d"
 
 
 # ------------------------------------------------------------- progresso
@@ -1336,7 +1389,8 @@ class PetApp:
         tk.Label(head, text=f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
                  bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
         self.menu_sep(f)
-        for icon, text, cmd in (("grimorio", "Status", self.show_stats),
+        for icon, text, cmd in (("estrela_cadente", "Perfil", self.show_perfil),
+                                ("grimorio", "Status", self.show_stats),
                                 ("lapide", "Cemitério", self.show_graveyard),
                                 ("coroa", "Conquistas", self.show_achievements),
                                 ("pocao", "Itens", self.show_items),
@@ -2426,6 +2480,112 @@ class PetApp:
                 tk.Label(linha, text="libera", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
                 for im in premios[:6]:
                     tk.Label(linha, image=im, bg=PANEL_BG).pack(side="left", padx=1)
+        self.ao_lado(w)
+
+    def show_perfil(self):
+        """Perfil (só dados que já existem: state, meta, usage_hist): herói, nível de domador, medalhas,
+        números, gráfico dos últimos 7 dias, limites e atalhos. Textos novos do perfil ficam todos aqui."""
+        run, meta, state, now = self.run, self.meta, self.state, time.time()
+        st, fs, L = M.stats(run), self.font_small, PERFIL_W
+        w, f = self.janela("perfil_win", "Perfil")
+
+        def barra(parent, frac, cor, larg=L, alto=6):
+            cv = tk.Canvas(parent, width=larg, height=alto, bg=BAR_BG, highlightthickness=0)
+            cv.create_rectangle(0, 0, larg * max(0.0, min(1.0, frac)), alto, fill=cor, width=0)
+            return cv
+
+        def rotulo(parent, txt, fg=MUTED, font=fs):
+            tk.Label(parent, text=txt, bg=PANEL_BG, fg=fg, font=font, anchor="w").pack(fill="x")
+
+        def topo(esq, dir_, fg_dir=TEXT, font=fs):
+            fr = tk.Frame(f, bg=PANEL_BG)
+            fr.pack(fill="x")
+            tk.Label(fr, text=esq, bg=PANEL_BG, fg=GOLD if font == self.font else MUTED, font=font).pack(side="left")
+            tk.Label(fr, text=dir_, bg=PANEL_BG, fg=fg_dir, font=fs).pack(side="right")
+        # cabeçalho: herói, run, HP
+        head = tk.Frame(f, bg=PANEL_BG)
+        head.pack(fill="x", pady=(4, 0))
+        self.perfil_thumb = map_img(self.look_maps[0], 48)    # referência: o tk não guarda a imagem sozinho
+        tk.Label(head, image=self.perfil_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
+        col = tk.Frame(head, bg=PANEL_BG)
+        col.pack(side="left", fill="x")
+        rotulo(col, f"{self.char.name}  ·  {self.stage_title}", GOLD, self.font)
+        rotulo(col, f"Run #{run['id']}   ·   Andar {run['floor']}-{run['room']}   ·   ♥ {run['hp']}/{st['maxhp']}")
+        barra(col, run["hp"] / st["maxhp"], HURT, L - 56).pack(anchor="w", pady=(3, 0))
+        # nível de domador (tokens na vida)
+        n, frac, falta = nivel(state["tokens_total"])
+        self.menu_sep(f)
+        topo(f"Domador  Nv {n}", f"{round(frac * 100)}%", GOLD, self.font)
+        barra(f, frac, GOLD).pack(anchor="w", pady=2)
+        rotulo(f, f"faltam ~{fmt(falta)} tokens para o Nv {n + 1}")
+        # medalhas
+        have = set(meta["achievements"]) & set(M.ACHIEVEMENTS)
+        self.menu_sep(f)
+        topo("Conquistas", f"{len(have)} / {len(M.ACHIEVEMENTS)}")
+        med = tk.Frame(f, bg=PANEL_BG)
+        med.pack(anchor="w", pady=2)
+        dica = "passe o mouse numa medalha"
+        info = tk.Label(f, text=dica, bg=PANEL_BG, fg=MUTED, font=fs, anchor="w", justify="left", wraplength=L)
+        for i, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
+            lb = tk.Label(med, image=self.icon(arte.CONQ_ART[k], 2, dark=k not in have), bg=PANEL_BG, width=24, height=24, bd=0, padx=0)
+            lb.grid(row=i // PERFIL_MEDALHAS, column=i % PERFIL_MEDALHAS)
+            txt = desc + ("" if k in have else "  (bloqueada)")
+            lb.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
+            lb.bind("<Leave>", lambda e: info.configure(text=dica, fg=MUTED))
+        info.pack(fill="x")
+        # cartões de números
+        proprios = [c for k, c in self.chars.items() if heroi_proprio(k)]
+        best, hoje = meta["best"], state["daily"].get(date.today().isoformat(), 0)
+        cartoes = (("HOJE", fmt(hoje), "tokens"), ("SEQUÊNCIA", str(dias_seguidos(state, now)), "dias seguidos"),
+                   ("NA VIDA", fmt(state["tokens_total"]), "tokens"), ("RUNS", str(meta["runs"]), "jogadas"),
+                   ("RECORDE", f"{best['floor']}-{best['room']}", "andar-sala"),
+                   ("HERÓIS", f"{sum(self.is_unlocked(c) for c in proprios)}/{len(proprios)}",
+                    f"{meta.get('chefes', 0)} chefes"))
+        self.menu_sep(f)
+        grade = tk.Frame(f, bg=PANEL_BG)
+        grade.pack(fill="x")
+        cw = (L - 18) // 3
+        for i, (tit, val, sub) in enumerate(cartoes):
+            card = tk.Frame(grade, bg=PANEL_BG, width=cw, height=56, highlightthickness=1,
+                            highlightbackground=PANEL_EDGE)
+            card.pack_propagate(False)
+            card.grid(row=i // 3, column=i % 3, padx=2, pady=2)
+            for txt, fg, font in ((tit, MUTED, fs), (val, TEXT, self.font), (sub, MUTED, fs)):
+                tk.Label(card, text=txt, bg=PANEL_BG, fg=fg, font=font, anchor="w", padx=4).pack(fill="x")
+        # gráfico dos últimos 7 dias (XP por dia, de usage_hist)
+        dias = uso_por_dia(state, now)
+        self.menu_sep(f)
+        topo("Últimos 7 dias  (energia)", fmt(sum(v for _, v in dias)), GOLD)
+        alto, maior = 58, max(v for _, v in dias) or 1
+        cv = tk.Canvas(f, width=L, height=alto + 16, bg=PANEL_BG, highlightthickness=0)
+        cv.pack(pady=(2, 0))
+        bw = L // 7
+        for i, (d, v) in enumerate(dias):
+            x0, hoje_ = i * bw + 4, i == len(dias) - 1
+            h = max(2, round(alto * v / maior / 2) * 2)      # degraus de 2 px: cara de pixel
+            cv.create_rectangle(x0, alto - h, x0 + bw - 8, alto, width=0,
+                                fill=(GOLD if hoje_ else PERFIL_BARRA) if v else BAR_BG)
+            cv.create_text(x0 + (bw - 8) / 2, alto + 9, text=DIAS[d.weekday()], fill=GOLD if hoje_ else MUTED, font=fs)
+        # limites (iguais aos do painel)
+        self.menu_sep(f)
+        rotulo(f, "Limites")
+        for key, nome in (("sessao", "Sessão"), ("semana", "Semana")):
+            pct, reset, est, tok = limit_view(key, self.limits, state, now)
+            val = f"{'~' if est else ''}{round(pct)}%" if pct is not None else (fmt(tok) if tok else "—")
+            topo(f"{nome}  {val}", f"reseta {fmt_reset(reset, now)}" if reset else "", MUTED)
+            if pct is not None:
+                barra(f, pct / 100, limit_color(pct)).pack(anchor="w", pady=(1, 3))
+        # rodapé: último uso e atalhos
+        self.menu_sep(f)
+        ult = ultimo_uso(state)
+        rotulo(f, f"último uso: {fmt_ha(now - ult) if ult else 'nenhum ainda'}" + ("   ·   (modo demo)" if self.demo else ""))
+        bot = tk.Frame(f, bg=PANEL_BG)
+        bot.pack(fill="x", pady=(4, 0))
+        for txt, fn in (("Conquistas", self.show_achievements), ("Cemitério", self.show_graveyard),
+                        ("Itens", self.show_items)):
+            b = tk.Label(bot, text=txt, bg=BAR_BG, fg=TEXT, font=fs, padx=6, pady=1, cursor="hand2")
+            b.pack(side="left", padx=(0, 4))
+            b.bind("<Button-1>", lambda e, fn=fn: fn())
         self.ao_lado(w)
 
     def save(self):
