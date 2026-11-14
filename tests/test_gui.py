@@ -568,6 +568,38 @@ appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_liberado(
 # grade de heróis: os nossos (módulo em herois/) separados dos importados (characters/ sem módulo, Petdex)
 assert tp.heroi_proprio("slime") and tp.heroi_proprio("fantasma")
 assert not tp.heroi_proprio("bitty-openpets") and not tp.heroi_proprio("naoexiste") and not tp.heroi_proprio("x.y")
+# idioma: o chip EN do menu troca o HUD e reabre as janelas abertas; em EN não sobra texto em pt
+import re, idioma
+TEXTOS = []
+class Rotulo(Wid):
+    def __init__(self, *a, **k): super().__init__(); TEXTOS.append(k.get("text", ""))
+    def configure(self, **k): TEXTOS.append(k.get("text", ""))
+    config = configure
+_ct = Canvas.create_text
+Canvas.create_text = lambda self, *a, **k: (TEXTOS.append(k.get("text", "")), _ct(self, *a, **k))[1]
+tkinter.Label = Rotulo
+appm.run["pending"] = {"key": "adaga", "rar": "raro", "source": "chest"}
+def tudo():
+    TEXTOS.clear(); appm.update_panel()
+    TEXTOS.extend(k.get("text", "") for kind, _, k in appm.canvas.it.values() if kind == "text")
+    for fn in (appm.show_perfil, appm.show_stats, appm.show_achievements, appm.show_graveyard, appm.show_heroes,
+               appm.show_items, lambda: appm.on_menu(ev), appm.show_choice, lambda: appm.announce_unlocks(["ouro300"])):
+        fn()
+    appm.close_choice()
+    return " | ".join(TEXTOS)
+pt = tudo()
+assert "Sair" in pt and "Andar" in pt and "Quit" not in pt
+appm.show_stats(); appm.show_achievements(); appm.on_menu(ev); antes = (appm.stats_win, appm.conq_win)
+appm.lang_var.set("en"); appm.change_lang()
+assert appm.state["lang"] == "en" and appm.menu_win is None
+assert appm.stats_win in VIVAS and appm.conq_win in VIVAS and (appm.stats_win, appm.conq_win) != antes   # reabriu
+assert appm.canvas.it[appm.info_txt][2]["text"].startswith("Floor ")
+en = tudo()
+assert "Quit" in en and "Sair" not in en and "Graveyard" in en, en[:400]
+sobra = re.findall(r"\S*[ãõáéíóúâêôçàÃÕÁÉÍÓÚÂÊÔÇ]\S*|\b(?:Andar|andar|Sair|Itens|Modo|ouro|sala|morto|nenhum|passe)\b", en)
+assert not sobra, sobra
+appm.lang_var.set("pt"); appm.change_lang(); assert idioma.LANG == "pt" and tudo().count("Sair") == 1
+tkinter.Label = Wid; Canvas.create_text = _ct
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

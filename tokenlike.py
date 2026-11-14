@@ -46,6 +46,8 @@ import arte  # noqa: E402
 from herois import montar as _montar, slime as _slime  # noqa: E402
 import folha  # noqa: E402
 import masmorra as M  # noqa: E402
+import idioma  # noqa: E402
+_t = idioma.t   # texto no idioma atual (todo texto visível passa por aqui)
 import visual  # noqa: E402
 
 tk = None  # o tkinter é importado só quando a janela abre (run_gui)
@@ -89,6 +91,9 @@ CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
 ITENS_COLS, ITENS_CARD_W, ITENS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
 JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win", "itens_win", "perfil_win")
+REABRE = {"heroes_win": "show_heroes", "stats_win": "show_stats", "conq_win": "show_achievements",
+          "cemi_win": "show_graveyard", "itens_win": "show_items", "perfil_win": "show_perfil"}   # troca de idioma
+
 PERFIL_W, PERFIL_MEDALHAS, PERFIL_MEDALHA, PERFIL_BARRA = 312, 13, 24, "#8a5a2b"   # perfil: largura, medalhas/linha, célula, cor
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
@@ -398,12 +403,12 @@ def ultimo_uso(state: dict) -> float | None:
 
 def fmt_ha(dt: float) -> str:
     if dt < 60:
-        return "agora"
+        return _t("agora")
     if dt < 3600:
-        return f"há {int(dt // 60)} min"
+        return _t("há {n} min", n=int(dt // 60))
     if dt < 86400:
-        return f"há {int(dt // 3600)} h"
-    return f"há {int(dt // 86400)} d"
+        return _t("há {n} h", n=int(dt // 3600))
+    return _t("há {n} d", n=int(dt // 86400))
 
 
 # ------------------------------------------------------------- progresso
@@ -413,6 +418,7 @@ DEFAULT_STATE = {
     "daily": {},
     "size": "Médio",
     "mode": "auto",              # "auto" ou "interativo" (o jogador escolhe pegar/consumir)
+    "lang": "pt",                # idioma da interface: "pt" ou "en" (idioma.py)
     "pos": None,
     "topmost": True,
     "last_fed": 0.0,
@@ -471,7 +477,7 @@ def fmt_reset(reset: float, now: float) -> str:
     t = datetime.fromtimestamp(reset)
     if t.date() == datetime.fromtimestamp(now).date():
         return t.strftime("%H:%M")
-    return f"{DIAS[t.weekday()]} {t.strftime('%H:%M')}"
+    return f"{_t(DIAS[t.weekday()])} {t.strftime('%H:%M')}"
 
 
 def save_state(path: Path, state: dict) -> None:
@@ -871,7 +877,13 @@ def pet_looks(run):
     return looks + [({"type": t}, None) for k, t in ELEMENTO_LOOK.items() if st[k] > 0 and t not in tipos]
 
 
+def andar(run):
+    """"Andar 3-2" no idioma atual."""
+    return _t("Andar {n}", n=f"{run['floor']}-{run['room']}")
+
+
 def _pct(v):
+
     return f"{round(v * 100)}%"
 
 
@@ -884,9 +896,9 @@ STAT_LINHAS = (
     ("crit", "Crítico", _pct, M.MAX_CRIT, True),
     ("critdmg", "Dano crítico", lambda v: f"×{v:g}", None, True),
     ("dodge", "Esquiva", _pct, M.MAX_DODGE, False),
-    ("lifesteal", "Roubo de vida", lambda v: f"+{v} por vitória", None, False),
+    ("lifesteal", "Roubo de vida", lambda v: _t("+{v} por vitória", v=v), None, False),
     ("duplo", "Golpe duplo", _pct, M.MAX_DUPLO, False),
-    ("area", "Ataque em área", lambda v: "sim", None, False),
+    ("area", "Ataque em área", lambda v: _t("sim"), None, False),
     ("queimar", "Queimar", _pct, M.MAX_ELEM_CHANCE, False),
     ("eletrizar", "Eletrizar", _pct, M.MAX_ELEM_CHANCE, False),
     ("envenenar", "Envenenar", _pct, M.MAX_ELEM_CHANCE, False),
@@ -896,8 +908,8 @@ STAT_LINHAS = (
     ("cura_sala", "Cura por sala", lambda v: f"+{v} HP", None, False),
     ("cura_andar", "Cura por andar", lambda v: f"+{v} HP", None, False),
     ("custo_ataque", "Custo de ataque", lambda v: f"-{v} HP", None, False),
-    ("furia", "Fúria", lambda v: f"+{v} ATK a cada 10%", None, False),
-    ("ajudante", "Ajudante", lambda v: f"{v} de dano", None, False),
+    ("furia", "Fúria", lambda v: _t("+{v} ATK a cada 10%", v=v), None, False),
+    ("ajudante", "Ajudante", lambda v: _t("{v} de dano", v=v), None, False),
     ("crescer", "Crescer", lambda v: f"+1 ATK / {v} kills", None, False),
     ("gold", "Ouro", lambda v: f"+{_pct(v)}", None, False),
     ("energy", "Energia", lambda v: f"+{_pct(v)}", M.MAX_ENERGY_BONUS, False),
@@ -915,7 +927,7 @@ def stat_linhas(run, st):
     for k, nome, fmt_, teto, sempre in STAT_LINHAS:
         v = st[k]
         if sempre or (v != 1 if k == "trap" else v):
-            out.append((k, nome, fmt_(v) + (f" / {fmt_(teto)}" if teto is not None else "")))
+            out.append((k, _t(nome), fmt_(v) + (f" / {fmt_(teto)}" if teto is not None else "")))
     return out
 
 
@@ -969,6 +981,8 @@ class PetApp:
             self.state["size"] = "Médio"
         if self.state["mode"] not in MODES:
             self.state["mode"] = "auto"
+        idioma.set_lang(self.state.get("lang"))
+        self.state["lang"] = idioma.LANG
         run = self.state.get("run")
         if not run or run.get("dead") or run.get("char") not in self.chars:
             self.new_run(announce=False)
@@ -1022,13 +1036,13 @@ class PetApp:
 
         if is_new:
             self.root.after(800, lambda: self.popup(
-                ["Bem-vindo à Masmorra de Tokens!",
-                 "Seus tokens do Claude Code viram energia",
-                 "e eu desço a masmorra sozinho.",
-                 "Arraste para me mover · botão direito = menu",
-                 "Duplo clique = status"], 10000))
+                [_t(s) for s in ("Bem-vindo à Masmorra de Tokens!",
+                                 "Seus tokens do Claude Code viram energia",
+                                 "e eu desço a masmorra sozinho.",
+                                 "Arraste para me mover · botão direito = menu",
+                                 "Duplo clique = status")], 10000))
         if self.demo:
-            self.root.after(500, lambda: self.floater("MODO DEMO", GOLD))
+            self.root.after(500, lambda: self.floater(_t("MODO DEMO"), GOLD))
         self.root.after(300, self.poll)
         self.root.after(100, self.tick)
 
@@ -1058,7 +1072,8 @@ class PetApp:
         self.pet_status = None
         if announce:
             self.build()
-            self.popup([f"Run #{self.run['id']} começou!", f"{c.name} entra na masmorra..."], 5000)
+            self.popup([_t("Run #{n} começou!", n=self.run['id']), _t("{nome} entra na masmorra...", nome=_t(c.name))],
+                       5000)
 
     # --------------------------------------------------------------- layout
     def build(self, first=False):
@@ -1123,13 +1138,14 @@ class PetApp:
         self.limit_rows = {}
         # colunas fixas medidas com o texto mais largo: rótulo | barra | reset
         y = py + 56
-        probe = c.create_text(14, y, anchor="w", text="Semana  ~100%", font=self.font_small)
+        probe = c.create_text(14, y, anchor="w", text=max((_t("Sessão"), _t("Semana")), key=len) + "  ~100%",
+                              font=self.font_small)
         lx0 = c.bbox(probe)[2] + 8
-        c.itemconfigure(probe, anchor="e", text="reseta sáb 00:00")
+        c.itemconfigure(probe, anchor="e", text=_t("reseta {h}", h=max((_t(d) for d in DIAS), key=len) + " 00:00"))
         c.coords(probe, self.W - 14, y)
         lx1 = max(lx0 + 4, c.bbox(probe)[0] - 8)
         c.delete(probe)
-        for i, (key, label) in enumerate((("sessao", "Sessão"), ("semana", "Semana"))):
+        for i, (key, label) in enumerate((("sessao", _t("Sessão")), ("semana", _t("Semana")))):
             y = py + 52 + 4 + i * 13
             back = f"lim_t_{key}"       # tags: trilha e preenchimento (redesenhado em update_limits)
             retangulo_arredondado(c, lx0, y - 3, lx1, y + 3, 3, BAR_BG, tag=back)
@@ -1187,7 +1203,7 @@ class PetApp:
         if stage.get("thread") is None:
             stage["thread"] = threading.Thread(target=completar_estagio, args=(stage,), daemon=True)
             stage["thread"].start()
-            self.root.after(0, lambda: self.floater("preparando herói…", MUTED))
+            self.root.after(0, lambda: self.floater(_t("preparando herói…"), MUTED))
             self.root.after(100, lambda: self.esperar_folha(stage))
 
     def esperar_folha(self, stage):
@@ -1265,15 +1281,15 @@ class PetApp:
     def update_panel(self):
         run = self.run
         st = M.stats(run)
-        self.canvas.itemconfigure(self.title_txt, text=f"{self.stage_title}  ·  Run #{run['id']}")
+        self.canvas.itemconfigure(self.title_txt, text=f"{_t(self.stage_title)}  ·  Run #{run['id']}")
         self.canvas.itemconfigure(self.hp_txt, text=f"♥ {run['hp']}/{st['maxhp']}")
         x0 = self.canvas.bbox(self.hp_txt)[0] - 8
         self.canvas.coords(self.status_txt, x0, self.status_y)
-        self.canvas.itemconfigure(self.status_txt, text=self.pet_status or "",
+        self.canvas.itemconfigure(self.status_txt, text=_t(self.pet_status) if self.pet_status else "",
                                   fill=STATUS_COR.get(self.pet_status, MUTED))
         self.canvas.itemconfigure(
             self.info_txt,
-            text=f"Andar {run['floor']}-{run['room']}   ATK {st['atk']}  DEF {st['def']}   $ {run['gold']}")
+            text=f"{andar(run)}   ATK {st['atk']}  DEF {st['def']}   $ {run['gold']}")
         cost = M.room_cost(run)
         frac = min(1.0, run["energy"] / cost) if cost else 0
         x1 = self.bar_x0 + (self.bar_x1 - self.bar_x0) * frac
@@ -1285,7 +1301,7 @@ class PetApp:
         now = time.time()
         for key, (label, txt, fill, rtxt, lx0, lx1, y, back) in self.limit_rows.items():
             pct, reset, est, tok = limit_view(key, self.limits, self.state, now)
-            self.canvas.itemconfigure(rtxt, text=f"reseta {fmt_reset(reset, now)}" if reset else "")
+            self.canvas.itemconfigure(rtxt, text=_t("reseta {h}", h=fmt_reset(reset, now)) if reset else "")
             self.canvas.delete(fill)
             if pct is None:                 # sem fator: só os tokens da janela, sem barra de %
                 self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
@@ -1309,6 +1325,7 @@ class PetApp:
         self.char_var = tk.StringVar(value=self.meta.get("next_char", "slime"))
         self.size_var = tk.StringVar(value=self.state["size"])
         self.mode_var = tk.StringVar(value=self.state["mode"])
+        self.lang_var = tk.StringVar(value=self.state["lang"])
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.virar_var = tk.BooleanVar(value=self.virar)
         for attr in JANELAS:
@@ -1415,9 +1432,9 @@ class PetApp:
         """Botões segmentados no próprio menu (sem submenu); o escolhido fica dourado."""
         row = tk.Frame(parent, bg=PANEL_BG)
         row.pack(fill="x", pady=2)
-        tk.Label(row, text=label, bg=PANEL_BG, fg=MUTED, font=self.font_small, width=8, anchor="w").pack(side="left")
+        tk.Label(row, text=_t(label), bg=PANEL_BG, fg=MUTED, font=self.font_small, width=8, anchor="w").pack(side="left")
         for value, text in opcoes.items():
-            self.chip(row, text, var.get() == value, lambda v=value: (var.set(v), self.menu_do(cmd))).pack(
+            self.chip(row, _t(text), var.get() == value, lambda v=value: (var.set(v), self.menu_do(cmd))).pack(
                 side="left", padx=(0, 3))
 
     def chip(self, parent, text, sel=False, cmd=None):
@@ -1523,9 +1540,9 @@ class PetApp:
         head.pack(fill="x")
         self.menu_thumb = map_img(self.look_maps[0], 36)     # referência: o tk não guarda a imagem sozinho
         tk.Label(head, image=self.menu_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 6))
-        tk.Label(head, text=f"{self.char.name}  ·  {self.stage_title}", bg=PANEL_BG, fg=GOLD,
+        tk.Label(head, text=f"{_t(self.char.name)}  ·  {_t(self.stage_title)}", bg=PANEL_BG, fg=GOLD,
                  font=self.font, anchor="w").pack(fill="x")
-        tk.Label(head, text=f"Andar {run['floor']}-{run['room']}    ♥ {run['hp']}/{st['maxhp']}",
+        tk.Label(head, text=f"{andar(run)}    ♥ {run['hp']}/{st['maxhp']}",
                  bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
         self.menu_sep(f)
         for icon, text, cmd in (("estrela_cadente", "Perfil", self.show_perfil),
@@ -1534,20 +1551,21 @@ class PetApp:
                                 ("coroa", "Conquistas", self.show_achievements),
                                 ("pocao", "Itens", self.show_items),
                                 ("espada_osso", "Heróis…", self.show_heroes)):
-            self.menu_row(f, icon, text, cmd)
+            self.menu_row(f, icon, _t(text), cmd)
         self.menu_sep(f)
         self.menu_chips(f, "Tamanho", {n: n for n in SIZES}, self.size_var, self.change_size)
         self.menu_chips(f, "Modo", MODES, self.mode_var, self.change_mode)
+        self.menu_chips(f, "Idioma", idioma.LINGUAS, self.lang_var, self.change_lang)
         for text, var, fn in (("Sempre por cima", self.top_var, self.toggle_top),
                               ("Virar herói", self.virar_var, self.toggle_virar)):
-            self.menu_row(f, "caixa_ok" if var.get() else "caixa", text,
+            self.menu_row(f, "caixa_ok" if var.get() else "caixa", _t(text),
                           lambda v=var, fn=fn: (v.set(not v.get()), fn()))
         self.menu_sep(f)
-        self.menu_row(f, "caveirinha", "Desistir da run", self.give_up, fg=HURT)
+        self.menu_row(f, "caveirinha", _t("Desistir da run"), self.give_up, fg=HURT)
         self.menu_sep(f)
-        self.menu_row(f, "bau", "Abrir pasta de personagens", self.open_chars)
-        self.menu_row(f, "redemoinho", "Recarregar personagens", self.reload_chars)
-        self.menu_row(f, "escada", "Sair", self.quit)
+        self.menu_row(f, "bau", _t("Abrir pasta de personagens"), self.open_chars)
+        self.menu_row(f, "redemoinho", _t("Recarregar personagens"), self.reload_chars)
+        self.menu_row(f, "escada", _t("Sair"), self.quit)
         self.place_win(w, e.x_root, e.y_root)
 
     def menu_do(self, cmd):
@@ -1652,13 +1670,13 @@ class PetApp:
         return self.icons[ck]
 
     def show_heroes(self):
-        w, f = self.janela("heroes_win", "Herói da próxima run")
+        w, f = self.janela("heroes_win", _t("Herói da próxima run"))
         secoes = [("Heróis", [(k, c) for k, c in self.chars.items() if heroi_proprio(k)]),
                   ("Comunidade", [(k, c) for k, c in self.chars.items() if not heroi_proprio(k)])]
         for n, (titulo, lista) in enumerate(s for s in secoes if s[1]):
             if n:
                 self.menu_sep(f)
-            tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x", pady=(4, 0))
+            tk.Label(f, text=_t(titulo), bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x", pady=(4, 0))
             grade = tk.Frame(f, bg=PANEL_BG)
             grade.pack(pady=(4, 0))
             for i, (key, c) in enumerate(lista):
@@ -1674,11 +1692,12 @@ class PetApp:
                        font=self.font, height=72 if img else 4)
         pic.pack(pady=(CARTAO_PAD, 0))
         self.hero_thumb_lbl[key] = pic
-        curto = self.encurtar(c.name, self.font, HERO_CARD_W - 2 * CARTAO_PAD)
+        nome_ = _t(c.name)
+        curto = self.encurtar(nome_, self.font, HERO_CARD_W - 2 * CARTAO_PAD)
         nome = tk.Label(card, text=curto, bg=CARD_BG, fg=GOLD if sel else TEXT if ok else MUTED, font=self.font)
         nome.pack()
         if ok:
-            info = tk.Label(card, text=M.fx_text(c.traco) if c.traco else "sem traço", bg=CARD_BG,
+            info = tk.Label(card, text=M.fx_text(c.traco) if c.traco else _t("sem traço"), bg=CARD_BG,
                             fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 2 * CARTAO_PAD)
             info.pack()
 
@@ -1687,11 +1706,11 @@ class PetApp:
                 self.char_var.set(key)
                 self.change_character()
             self.hover((card, pic, nome, info), nome, GOLD if sel else TEXT, pick)
-            if curto != c.name:
-                self.dica(nome, c.name)
+            if curto != nome_:
+                self.dica(nome, nome_)
         else:
             pick = None             # bloqueado: nada clicável
-            tk.Label(card, text=M.ACHIEVEMENTS[c.unlock], image=self.menu_icon("cadeado"), compound="left",
+            tk.Label(card, text=_t(M.ACHIEVEMENTS[c.unlock]), image=self.menu_icon("cadeado"), compound="left",
                      bg=CARD_BG, fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 24 - 2 * CARTAO_PAD).pack()
         self.hero_cards[key] = pick
         return card
@@ -1719,12 +1738,12 @@ class PetApp:
     def change_character(self):
         key = self.char_var.get()
         self.meta["next_char"] = key
-        name = self.chars[key].name
+        name = _t(self.chars[key].name)
         run = self.run
         if run["floor"] == 1 and run["room"] == 0 and not run["dead"]:
             self.new_run()      # run nem começou: troca na hora
         else:
-            self.popup([f"{name} entra na próxima run."], 4000)
+            self.popup([_t("{nome} entra na próxima run.", nome=name)], 4000)
 
     def change_size(self):
         self.state["size"] = self.size_var.get()
@@ -1736,6 +1755,23 @@ class PetApp:
         self.state["mode"] = self.mode_var.get()
         if self.state["mode"] == "auto" and self.run["pending"] and not self.run["dead"]:
             self.finish_pending(M.resolve_pending(self.run, self.meta))
+        self.save()
+
+    def change_lang(self):
+        """Troca o idioma: redesenha o HUD e reabre as janelas que estavam abertas (o menu fecha)."""
+        self.state["lang"] = self.lang_var.get()
+        idioma.set_lang(self.state["lang"])
+        abertas = [a for a in JANELAS if a != "menu_win" and getattr(self, a) is not None]
+        self.build()
+        if self.run["dead"]:
+            self.show_tomb()
+        for a in abertas:
+            getattr(self, REABRE[a])()
+        if self.choice_win is not None:
+            since = self.pending_since
+            self.close_choice()
+            self.pending_since = since
+            self.show_choice()
         self.save()
 
     def toggle_top(self):
@@ -1771,7 +1807,8 @@ class PetApp:
         self.build()
         if self.run["dead"]:
             self.show_tomb()
-        self.floater(f"{len(self.chars)} personagens", MUTED)
+        self.floater(_t("{n} personagens", n=len(self.chars)), MUTED)
+
 
     def quit(self):
         self.save()
@@ -1842,7 +1879,7 @@ class PetApp:
             at(0, lambda: self.show_foes(foes))
         else:
             at(0, lambda: self.show_foe(ev.get("sprite"), ev.get("boss", False)))
-        at(0, lambda: self.floater(ev["name"], name_color, x=self.fcx, life=22, top=True))
+        at(0, lambda: self.floater(_t(ev["name"]), name_color, x=self.fcx, life=22, top=True))
         if ev.get("cura_item"):                        # cura_sala / cura_andar dos itens
             at(250, lambda: self.floater(f"+{ev['cura_item']} ♥", GOOD))
         t = 500
@@ -1871,14 +1908,14 @@ class PetApp:
                 at(t, lambda: self.floater(f"+{ev.get('gold', 0)} $", GOLD, x=self.fcx))
                 t += 450
             elif ev.get("empate"):
-                at(t, lambda: (self.floater("empate", MUTED, x=self.fcx), self.hide_foe()))
+                at(t, lambda: (self.floater(_t("empate"), MUTED, x=self.fcx), self.hide_foe()))
                 t += 450
             at(t, lambda: self.set_pet_status(None))  # o status do pet acaba com a luta
         elif kind == "trap":
             if ev.get("dodged"):
-                at(t, lambda: self.floater("esquivou!", CYAN))
+                at(t, lambda: self.floater(_t("esquivou!"), CYAN))
             elif ev["dmg"] == 0:                       # o escudo absorveu tudo
-                at(t, lambda: self.floater("bloqueou!", CYAN))
+                at(t, lambda: self.floater(_t("bloqueou!"), CYAN))
             else:
                 at(t, lambda: (self._set("hop", [-4, -8, -4, 0]),
                                self.floater(f"-{ev['dmg']}", HURT)))
@@ -1899,7 +1936,7 @@ class PetApp:
         if ev.get("pending"):
             key, rar = ev["pending"]["key"], ev["pending"]["rar"]
             at(t, lambda: self.show_foe(key, False))
-            at(t, lambda: self.floater(M.ITEMS[key]["name"], M.RAR_COLOR.get(rar) or GOLD,
+            at(t, lambda: self.floater(_t(M.ITEMS[key]["name"]), M.RAR_COLOR.get(rar) or GOLD,
                                        x=self.fcx, life=24))
             at(t, self.show_choice)
             t += 700
@@ -1922,13 +1959,13 @@ class PetApp:
     def _offer_steps(self, ev, at, t):
         """Animação das linhas e da oferta resolvida (item pego ou consumido); devolve o novo t."""
         for line in ev["lines"]:
-            at(t, lambda line=line: self.floater(line, TEXT, life=24))
+            at(t, lambda line=line: self.floater(_t(line), TEXT, life=24))
             t += 600
         if ev.get("item"):
             key, rar = ev["item"]["key"], ev["item"]["rar"]
             it = M.ITEMS[key]
             at(t, lambda: self.show_foe(key, False))
-            at(t, lambda: self.floater(it["name"], GOLD, x=self.fcx, life=24))
+            at(t, lambda: self.floater(_t(it["name"]), GOLD, x=self.fcx, life=24))
             t += 700
             at(t, lambda: (self.hide_foe(), self.refresh_look(),
                            self.burst(self.pcx, self.base_y - self.T // 2),
@@ -1939,9 +1976,9 @@ class PetApp:
             if c.get("heal"):
                 at(t, lambda: self.floater(f"+{c['heal']} ♥", GOOD))
             elif "heal" in c:                          # curou 0: o HP já estava cheio
-                at(t, lambda: self.floater("HP já cheio", MUTED))
+                at(t, lambda: self.floater(_t("HP já cheio"), MUTED))
             else:
-                at(t, lambda: self.floater(f"+{c['shield']} escudo", CYAN))
+                at(t, lambda: self.floater(_t("+{n} escudo", n=c['shield']), CYAN))
             t += 600
         return t
 
@@ -1974,14 +2011,14 @@ class PetApp:
         x = None if tgt == "pet" else fx(tgt)
         txt = f"-{h['dmg']}" + ("!" if h["crit"] else "") + (" x2" if h.get("duplo") else "")
         if h["skip"]:
-            self.floater("perdeu a vez", MUTED, x=None if who == "pet" else fx(who), life=10)
+            self.floater(_t("perdeu a vez"), MUTED, x=None if who == "pet" else fx(who), life=10)
         elif h["dot"]:
             self.floater(str(h["dmg"]), STATUS_COR.get(h["status"], HURT), x=x, life=8)
         elif h["dodge"]:
-            self.floater("esquivou!", CYAN, life=10)
+            self.floater(_t("esquivou!"), CYAN, life=10)
         elif h.get("bloqueado"):
             self.foe_attack(who)
-            self.floater("bloqueou!", CYAN, life=10)
+            self.floater(_t("bloqueou!"), CYAN, life=10)
         elif h.get("espinhos"):                           # espinhos: o dano volta para o atacante, sem bote
             self.floater(f"-{h['dmg']}", GOOD, x=x, life=10)
         elif who == "ajudante":                           # ajudante: o número sai de cima do pet, sem bote
@@ -1998,7 +2035,7 @@ class PetApp:
             if h["dmg"]:
                 self.floater(txt, GOLD if h["crit"] else HURT, life=10)
             else:
-                self.floater("bloqueou!", CYAN, life=10)
+                self.floater(_t("bloqueou!"), CYAN, life=10)
         self.set_pet_status(status)
         for i in mortos:
             self.hide_foe(i, burst=True)
@@ -2068,8 +2105,8 @@ class PetApp:
         self.burst(self.pcx, self.base_y - self.T // 2)
         self.hop = [-6, -12, -16, -12, -6, 0]
         self.estado_tmp = ("jumping", time.time() + 1.2)
-        self.floater("EVOLUIU!", GOLD, life=22)
-        self.popup([f"{old} evoluiu para {self.stage_title}!", "+4 HP máx, +1 ATK"], 5000)
+        self.floater(_t("EVOLUIU!"), GOLD, life=22)
+        self.popup([_t("{a} evoluiu para {b}!", a=_t(old), b=_t(self.stage_title)), _t("+4 HP máx, +1 ATK")], 5000)
 
     def log_run(self, killer, gave_up):
         rec = M.run_record(self.run, killer, gave_up, self.state["mode"],
@@ -2088,11 +2125,11 @@ class PetApp:
             self.show_tomb()
         self.burst(self.pcx, self.base_y - self.T // 3, colors=("#8a94a8", "#d7dde9", HURT))
         best = self.meta["best"]
-        self.popup([f"{self.stage_title} morreu no andar {g['floor']}-{g['room']}",
-                    f"Derrotado por: {g['killer']}",
-                    f"Monstros vencidos: {g['kills']}   Ouro: {g['gold']}",
-                    f"Recorde: andar {best['floor']}-{best['room']}",
-                    "Uma nova run começa em instantes..."], RESPAWN_S * 1000)
+        self.popup([_t("{nome} morreu no andar {n}", nome=_t(self.stage_title), n=f"{g['floor']}-{g['room']}"),
+                    _t("Derrotado por: {k}", k=_t(g['killer'])),
+                    _t("Monstros vencidos: {k}   Ouro: {o}", k=g['kills'], o=g['gold']),
+                    _t("Recorde: andar {n}", n=f"{best['floor']}-{best['room']}"),
+                    _t("Uma nova run começa em instantes...")], RESPAWN_S * 1000)
         self.respawn_at = time.time() + RESPAWN_S
 
     def show_tomb(self):
@@ -2101,18 +2138,18 @@ class PetApp:
         self.hide_foe()
 
     def announce_unlocks(self, keys):
-        lines = ["CONQUISTA!"]
+        lines = [_t("CONQUISTA!")]
         for k in keys:
-            lines.append(M.ACHIEVEMENTS[k])
+            lines.append(_t(M.ACHIEVEMENTS[k]))
             gains = self.unlock_rewards(k)
             if gains:
-                lines.append("  libera: " + ", ".join(gains))
+                lines.append(_t("  libera: {x}", x=", ".join(gains)))
         self.fill_char_menu()
         self.popup(lines, 9000)
 
     def unlock_rewards(self, ach):
-        items = [it["name"] for it in M.ITEMS.values() if it.get("req") == ach]
-        chars = [f"herói {c.name}" for c in self.chars.values() if c.unlock == ach]
+        items = [_t(it["name"]) for it in M.ITEMS.values() if it.get("req") == ach]
+        chars = [_t("herói {nome}", nome=_t(c.name)) for c in self.chars.values() if c.unlock == ach]
         return items + chars
 
     # ------------------------------------------------------------- animação
@@ -2302,16 +2339,16 @@ class PetApp:
         w, f = self.pixel_box(0, 0, fecha=False)   # a escolha não fecha sozinha ao perder o foco
         self.choice_img = self.art_img(key)       # referência: o tk não guarda a imagem sozinho
         tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
-        tk.Label(f, text=f"{it['name']}  ·  {M.RAR_NAMES[rar]}", bg=PANEL_BG,
+        tk.Label(f, text=f"{_t(it['name'])}  ·  {_t(M.RAR_NAMES[rar])}", bg=PANEL_BG,
                  fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=6)
         cf = M.consume_fx(key, rar)
-        cons = f"+{cf['heal']} ♥" if "heal" in cf else f"+{cf['shield']} escudo"
-        tk.Label(f, text=f"Pegar: {M.fx_text(M.item_fx(key, rar))}\nConsumir: {cons}",
+        cons = f"+{cf['heal']} ♥" if "heal" in cf else _t("+{n} escudo", n=cf['shield'])
+        tk.Label(f, text=_t("Pegar: {x}", x=M.fx_text(M.item_fx(key, rar))) + "\n" + _t("Consumir: {x}", x=cons),
                  justify="left", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(padx=6)
         row = tk.Frame(f, bg=PANEL_BG)
         row.pack(pady=4)
         for label, choice in (("Pegar", "pegar"), ("Consumir", "consumir")):
-            self.chip(row, label, False, lambda c=choice: self.choose(c)).pack(side="left", padx=4)
+            self.chip(row, _t(label), False, lambda c=choice: self.choose(c)).pack(side="left", padx=4)
         self.choice_cv = self.barra(f, CHOICE_BAR_W, 6, 1.0, ENERGY)
         self.choice_cv.pack(pady=(2, 2))
         self.choice_wait = tk.Label(f, text="", bg=PANEL_BG, fg=MUTED, font=self.font_small)
@@ -2334,7 +2371,8 @@ class PetApp:
         left = max(0.0, 1 - (time.time() - since) / M.CHOICE_WINDOW_S)
         self.choice_cv.set(left)
         rooms = int(self.run["energy"] // M.room_cost(self.run))
-        wait = "" if rooms < 1 else ("1 sala esperando" if rooms == 1 else f"{rooms} salas esperando")
+        wait = "" if rooms < 1 else (_t("1 sala esperando") if rooms == 1 else _t("{n} salas esperando", n=rooms))
+
         self.choice_wait.config(text=wait)
 
     def close_choice(self):
@@ -2348,24 +2386,25 @@ class PetApp:
     def show_stats(self):
         run, meta = self.run, self.meta
         st = M.stats(run)
-        w, f = self.janela("stats_win", f"Status  ·  Run #{run['id']}")
+        w, f = self.janela("stats_win", _t("Status  ·  Run #{n}", n=run['id']))
         head = tk.Frame(f, bg=PANEL_BG)
         head.pack(fill="x", pady=(4, 0))
         self.stats_thumb = map_img(self.look_maps[0], 56)    # referência: o tk não guarda a imagem sozinho
         tk.Label(head, image=self.stats_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
         col = tk.Frame(head, bg=PANEL_BG)
         col.pack(side="left", fill="x")
-        tk.Label(col, text=f"{self.char.name}  ·  {self.stage_title}", bg=PANEL_BG, fg=GOLD, font=self.font,
+        tk.Label(col, text=f"{_t(self.char.name)}  ·  {_t(self.stage_title)}", bg=PANEL_BG, fg=GOLD, font=self.font,
                  anchor="w").pack(fill="x")
-        tk.Label(col, text=f"Andar {run['floor']}-{run['room']}   ·   Modo {MODES[self.state['mode']]}",
+        tk.Label(col, text=f"{andar(run)}   ·   " + _t("Modo {m}", m=_t(MODES[self.state['mode']])),
                  bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
         self.barra(col, 170, 8, run["hp"] / st["maxhp"], HURT).pack(anchor="w", pady=3)
-        escudo = f"   ·   escudo {run['shield']}" if run["shield"] > 0 else ""
+        escudo = "   ·   " + _t("escudo {n}", n=run['shield']) if run["shield"] > 0 else ""
+        chefes = _t("{n} chefe" if run['bosses'] == 1 else "{n} chefes", n=run['bosses'])
         tk.Label(col, text=f"♥ {run['hp']}/{st['maxhp']}{escudo}   ·   $ {run['gold']}   ·   {run['kills']} kills"
-                 f"   ·   {run['bosses']} chefe{'s' if run['bosses'] != 1 else ''}", bg=PANEL_BG, fg=TEXT, font=self.font_small,
+                 f"   ·   {chefes}", bg=PANEL_BG, fg=TEXT, font=self.font_small,
                  anchor="w").pack(fill="x")
         if run.get("traco"):
-            tk.Label(f, text=f"Traço: {M.fx_text(run['traco'])}", bg=PANEL_BG, fg=MUTED, font=self.font_small,
+            tk.Label(f, text=_t("Traço: {x}", x=M.fx_text(run['traco'])), bg=PANEL_BG, fg=MUTED, font=self.font_small,
                      anchor="w").pack(fill="x", pady=(4, 0))
         self.menu_sep(f)
         grade = tk.Frame(f, bg=PANEL_BG)
@@ -2379,39 +2418,39 @@ class PetApp:
             tk.Label(grade, text=valor, bg=PANEL_BG, fg=TEXT, font=self.font_small, anchor="e").grid(
                 row=r, column=c + 2, sticky="e", padx=(0, 14 if c == 0 else 0))
         self.menu_sep(f)
-        dica = "passe o mouse num item" if run["items"] or run["consumed"] else ""
+        dica = _t("passe o mouse num item") if run["items"] or run["consumed"] else ""
         info = tk.Label(f, text=dica, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w", justify="left",
                         wraplength=330)
-        for titulo, lista, s, dim in ((f"Itens ({len(run['items'])})", run["items"], 3, False),
-                                      (f"Consumidos ({len(run['consumed'])})", run["consumed"], 2, True)):
+        for titulo, lista, s, dim in ((_t("Itens ({n})", n=len(run['items'])), run["items"], 3, False),
+                                      (_t("Consumidos ({n})", n=len(run['consumed'])), run["consumed"], 2, True)):
             if not lista and dim:
                 continue
             tk.Label(f, text=titulo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
             box = tk.Frame(f, bg=PANEL_BG)
             box.pack(fill="x", pady=(2, 4))
             if not lista:
-                tk.Label(box, text="nenhum ainda", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(anchor="w")
+                tk.Label(box, text=_t("nenhum ainda"), bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(anchor="w")
             for n, it in enumerate(i for i in lista if i["key"] in M.ITEMS):
                 rar = it.get("rar", "comum")
                 lado, cols = s * 12, 10 if s == 3 else 14     # célula fixa: itens largos (chapéus) cabem sem cobrir o vizinho
                 lbl = tk.Label(box, image=self.icon(arte.ITEM_ART[it["key"]], s, glow=M.RAR_COLOR.get(rar), dim=dim,
                                                     lado=lado), bg=PANEL_BG, width=lado + 2, height=lado + 2)
                 lbl.grid(row=n // cols, column=n % cols)
-                txt = (f"{M.ITEMS[it['key']]['name']} ({M.RAR_NAMES.get(rar, rar)})"
+                txt = (f"{_t(M.ITEMS[it['key']]['name'])} ({_t(M.RAR_NAMES.get(rar, rar))})"
                        + ("" if dim else f": {M.fx_text(M.item_fx(it['key'], rar))}"))
                 lbl.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
                 lbl.bind("<Leave>", lambda e: info.configure(text=dica, fg=MUTED))
         info.pack(fill="x")
         self.menu_sep(f)
         best = meta["best"]
-        rodape = [f"Energia guardada: {int(run['energy'] // M.room_cost(run))} sala(s)",
-                  f"Recorde: andar {best['floor']}-{best['room']}   ·   Runs: {meta['runs']}",
-                  f"Tokens hoje: {fmt(self.state['daily'].get(date.today().isoformat(), 0))}"
-                  f"   ·   Total: {fmt(self.state['tokens_total'])}"]
+        rodape = [_t("Energia guardada: {n} sala(s)", n=int(run['energy'] // M.room_cost(run))),
+                  _t("Recorde: andar {n}", n=f"{best['floor']}-{best['room']}") + f"   ·   Runs: {meta['runs']}",
+                  _t("Tokens hoje: {n}", n=fmt(self.state['daily'].get(date.today().isoformat(), 0)))
+                  + f"   ·   Total: {fmt(self.state['tokens_total'])}"]
         if run["pending"]:
-            rodape.append(f"Esperando escolha: {M.ITEMS[run['pending']['key']]['name']}")
+            rodape.append(_t("Esperando escolha: {x}", x=_t(M.ITEMS[run['pending']['key']]['name'])))
         if self.demo:
-            rodape.append("(modo demo)")
+            rodape.append(_t("(modo demo)"))
         tk.Label(f, text="\n".join(rodape), bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w",
                  justify="left").pack(fill="x")
         self.ao_lado(w)
@@ -2437,12 +2476,13 @@ class PetApp:
         c = self.chars.get(d.get("char"))
         img = (c and self.hero_thumb(c, True, 40)) or self.icon(arte.ROOM_ART["lapide"], 4)
         cv.create_image(30, y + L // 2 - 1, image=img)
-        cv.create_text(60, y + 15, anchor="w", text=f"#{d.get('run', '?')}  {c.name if c else d.get('char', '?')}",
+        cv.create_text(60, y + 15, anchor="w", text=f"#{d.get('run', '?')}  {_t(c.name) if c else d.get('char', '?')}",
                        fill=GOLD, font=f)
-        cv.create_text(CEMI_W - 12, y + 15, anchor="e", text=f"andar {d['floor']}-{d['room']}", fill=TEXT, font=f)
+        cv.create_text(CEMI_W - 12, y + 15, anchor="e", text=_t("andar {n}", n=f"{d['floor']}-{d['room']}"), fill=TEXT,
+                       font=f)
         kimg = self.killer_icon(d)
         cv.create_image(60, y + 37, anchor="w", image=kimg)
-        quem = "desistiu" if d.get("kind") == "desistiu" else f"morto por {d.get('killer', '?')}"
+        quem = _t("desistiu") if d.get("kind") == "desistiu" else _t("morto por {k}", k=_t(d.get('killer', '?')))
         cv.create_text(66 + kimg.width(), y + 37, anchor="w", text=quem, fill=HURT, font=fs)
         cv.create_text(CEMI_W - 12, y + 37, anchor="e", fill=MUTED, font=fs,
                        text=f"$ {d.get('gold', 0)}   ·   {d.get('kills', 0)} kills   ·   {d.get('date', '')}")
@@ -2457,19 +2497,19 @@ class PetApp:
             cv.create_image(x, y + 64, anchor="w", image=im)
             x += im.width() + 3
         if not itens:
-            cv.create_text(60, y + 64, anchor="w", text="sem itens", fill=MUTED, font=fs)
+            cv.create_text(60, y + 64, anchor="w", text=_t("sem itens"), fill=MUTED, font=fs)
 
     def show_graveyard(self):
         g, meta = self.meta["graveyard"], self.meta
-        w, f = self.janela("cemi_win", "Cemitério")
+        w, f = self.janela("cemi_win", _t("Cemitério"))
         best = meta["best"]
-        resumo = f"{meta['runs']} runs   ·   recorde: andar {best['floor']}-{best['room']}"
+        resumo = _t("{n} runs   ·   recorde: andar {a}", n=meta['runs'], a=f"{best['floor']}-{best['room']}")
         mortes = Counter(d.get("killer") for d in g if d.get("kind") != "desistiu")
         if mortes:
-            resumo += f"   ·   quem mais matou: {mortes.most_common(1)[0][0]}"
+            resumo += _t("   ·   quem mais matou: {k}", k=_t(mortes.most_common(1)[0][0]))
         tk.Label(f, text=resumo, bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
         if not g:
-            tk.Label(f, image=self.icon(arte.ROOM_ART["lapide"], 4), text="Nenhuma lápide ainda...\no herói segue firme!",
+            tk.Label(f, image=self.icon(arte.ROOM_ART["lapide"], 4), text=_t("Nenhuma lápide ainda...\no herói segue firme!"),
                      compound="left", bg=PANEL_BG, fg=TEXT, font=self.font, padx=10, pady=12,
                      justify="left").pack()
             self.ao_lado(w)
@@ -2537,20 +2577,21 @@ class PetApp:
         it, ok, fs = M.ITEMS[key], self.item_liberado(key), self.font_small
         top = next((M.RAR_COLOR[r] for r in reversed(it["rarities"]) if M.RAR_COLOR[r]), None)
         cv.create_image(x + 26, y + 26, image=self.icon(arte.ITEM_ART[key], 4, glow=ok and top or None, dark=not ok))
-        cv.create_text(x + 54, y + 16, anchor="w", text=it["name"], fill=TEXT if ok else MUTED, font=self.font)
+        cv.create_text(x + 54, y + 16, anchor="w", text=_t(it["name"]), fill=TEXT if ok else MUTED, font=self.font)
+        comer = _t("cura" if "heal" in it["consume"] else "escudo")
         cv.create_text(x + 54, y + 33, anchor="w", font=fs, fill=MUTED,
-                       text=item_familia(key) + (f"  ·  consumir: {'cura' if 'heal' in it['consume'] else 'escudo'}" if ok else ""))
+                       text=_t(item_familia(key)) + ("  ·  " + _t("consumir: {x}", x=comer) if ok else ""))
         ty, larg = y + 54, ITENS_CARD_W - 20
         if not ok:
             cv.create_image(x + 10, ty + 7, anchor="w", image=self.menu_icon("cadeado"))
-            t = cv.create_text(x + 26, ty, anchor="nw", text=M.ACHIEVEMENTS.get(it["req"], it["req"]), fill=MUTED,
+            t = cv.create_text(x + 26, ty, anchor="nw", text=_t(M.ACHIEVEMENTS.get(it["req"], it["req"])), fill=MUTED,
                                font=fs, width=larg - 16)
             ty = cv.bbox(t)[3] + 4
         for r in [] if not ok else it["rarities"]:
             c = M.consume_fx(key, r)
-            comer = f"cura {c['heal']}" if "heal" in c else f"escudo {c.get('shield', 0)}"
+            comer = _t("cura {n}", n=c['heal']) if "heal" in c else _t("escudo {n}", n=c.get('shield', 0))
             t = cv.create_text(x + 10, ty, anchor="nw", fill=M.RAR_COLOR[r] or TEXT, font=fs, width=larg,
-                               text=f"{M.RAR_NAMES[r]}: {M.fx_text(M.item_fx(key, r))}  ·  {comer}")
+                               text=f"{_t(M.RAR_NAMES[r])}: {M.fx_text(M.item_fx(key, r))}  ·  {comer}")
             ty = cv.bbox(t)[3] + 3
         alto = max(ty - y + 6, 60)
         retangulo_arredondado(cv, x, y, x + ITENS_CARD_W, y + alto, CARTAO_R, CARD_BG, PANEL_EDGE, 2, tag="cartao",
@@ -2560,7 +2601,7 @@ class PetApp:
 
     def show_items(self):
         livres = [k for k in M.ITEMS if self.item_liberado(k)]
-        w, f = self.janela("itens_win", f"Itens  ·  {len(livres)} de {len(M.ITEMS)} liberados")
+        w, f = self.janela("itens_win", _t("Itens  ·  {a} de {b} liberados", a=len(livres), b=len(M.ITEMS)))
         self.itens_filtro = getattr(self, "itens_filtro", "todos")
         chips = tk.Frame(f, bg=PANEL_BG)
         chips.pack(fill="x", pady=(4, 0))
@@ -2584,11 +2625,11 @@ class PetApp:
                 y += 6 + max(self.item_card(cv, c * (ITENS_CARD_W + 6), y, k)
                              for c, k in enumerate(keys[i:i + ITENS_COLS]))
             if not keys:
-                cv.create_text(10, 20, anchor="w", text="Nenhum item aqui.", fill=MUTED, font=self.font)
+                cv.create_text(10, 20, anchor="w", text=_t("Nenhum item aqui."), fill=MUTED, font=self.font)
             cv.configure(scrollregion=(0, 0, ITENS_COLS * (ITENS_CARD_W + 6), max(y, ITENS_H)))
             cv.yview_moveto(0)
         for nome, texto in (("todos", "Todos"), ("liberados", "Liberados"), ("bloqueados", "Bloqueados")):
-            b = self.chip(chips, texto, False, lambda n=nome: desenha(n))
+            b = self.chip(chips, _t(texto), False, lambda n=nome: desenha(n))
             b.pack(side="left", padx=(0, 3))
             botoes[nome] = b
         desenha(self.itens_filtro)
@@ -2596,7 +2637,7 @@ class PetApp:
 
     def show_achievements(self):
         have = set(self.meta["achievements"]) & set(M.ACHIEVEMENTS)
-        w, f = self.janela("conq_win", f"Conquistas  ·  {len(have)} de {len(M.ACHIEVEMENTS)}")
+        w, f = self.janela("conq_win", _t("Conquistas  ·  {a} de {b}", a=len(have), b=len(M.ACHIEVEMENTS)))
         grade = tk.Frame(f, bg=PANEL_BG)
         grade.pack(pady=(4, 0))
         for n, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
@@ -2605,7 +2646,7 @@ class PetApp:
             card.grid(row=n // CONQ_COLS, column=n % CONQ_COLS, padx=3, pady=3)
             tk.Label(card, image=self.icon(arte.CONQ_ART[k], 3, dark=not ok), bg=CARD_BG, height=36).pack(
                 pady=(CARTAO_PAD, 2))
-            tk.Label(card, text=desc, bg=CARD_BG, fg=TEXT if ok else MUTED, font=self.font_small,
+            tk.Label(card, text=_t(desc), bg=CARD_BG, fg=TEXT if ok else MUTED, font=self.font_small,
                      wraplength=CONQ_CARD_W - 2 * CARTAO_PAD).pack()
             premios = [self.icon(arte.ITEM_ART[ik], 2, dark=not ok) for ik, it in M.ITEMS.items()
                        if it.get("req") == k and ik in arte.ITEM_ART]
@@ -2613,7 +2654,7 @@ class PetApp:
             if premios:
                 linha = tk.Frame(card, bg=CARD_BG)
                 linha.pack(side="bottom", pady=(0, CARTAO_PAD))
-                tk.Label(linha, text="libera", bg=CARD_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
+                tk.Label(linha, text=_t("libera"), bg=CARD_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
                 for im in premios[:3]:
                     tk.Label(linha, image=im, bg=CARD_BG).pack(side="left", padx=1)
                 if len(premios) > 3:
@@ -2625,7 +2666,7 @@ class PetApp:
         números, gráfico dos últimos 7 dias, limites e atalhos. Textos novos do perfil ficam todos aqui."""
         run, meta, state, now = self.run, self.meta, self.state, time.time()
         st, fs, L = M.stats(run), self.font_small, PERFIL_W
-        w, f = self.janela("perfil_win", "Perfil")
+        w, f = self.janela("perfil_win", _t("Perfil"))
 
         def barra(parent, frac, cor, larg=L, alto=6):
             return self.barra(parent, larg, alto, frac, cor)
@@ -2645,28 +2686,28 @@ class PetApp:
         tk.Label(head, image=self.perfil_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
         col = tk.Frame(head, bg=PANEL_BG)
         col.pack(side="left", fill="x")
-        rotulo(col, f"{self.char.name}  ·  {self.stage_title}", GOLD, self.font)
-        rotulo(col, f"Run #{run['id']}   ·   Andar {run['floor']}-{run['room']}   ·   ♥ {run['hp']}/{st['maxhp']}")
+        rotulo(col, f"{_t(self.char.name)}  ·  {_t(self.stage_title)}", GOLD, self.font)
+        rotulo(col, f"Run #{run['id']}   ·   {andar(run)}   ·   ♥ {run['hp']}/{st['maxhp']}")
         barra(col, run["hp"] / st["maxhp"], HURT, L - 56).pack(anchor="w", pady=(3, 0))
         # nível de domador (energia na vida: mesma unidade do gráfico)
         n, frac, falta = nivel(state["xp_total"])
         self.menu_sep(f)
-        topo(f"Domador  Nv {n}", f"{round(frac * 100)}%", GOLD, self.font)
+        topo(_t("Domador  Nv {n}", n=n), f"{round(frac * 100)}%", GOLD, self.font)
         barra(f, frac, GOLD).pack(anchor="w", pady=2)
-        rotulo(f, f"faltam ~{fmt(falta)} de energia para o Nv {n + 1}")
+        rotulo(f, _t("faltam ~{x} de energia para o Nv {n}", x=fmt(falta), n=n + 1))
         # medalhas
         have = set(meta["achievements"]) & set(M.ACHIEVEMENTS)
         self.menu_sep(f)
-        topo("Conquistas", f"{len(have)} / {len(M.ACHIEVEMENTS)}")
+        topo(_t("Conquistas"), f"{len(have)} / {len(M.ACHIEVEMENTS)}")
         med = tk.Frame(f, bg=PANEL_BG)
         med.pack(anchor="w", pady=2)
-        dica = "passe o mouse numa medalha"
+        dica = _t("passe o mouse numa medalha")
         info = tk.Label(f, text=dica, bg=PANEL_BG, fg=MUTED, font=fs, anchor="w", justify="left", wraplength=L)
         for i, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
             lb = tk.Label(med, image=self.icon(arte.CONQ_ART[k], dark=k not in have, lado=PERFIL_MEDALHA - 2),
                           bg=PANEL_BG, width=PERFIL_MEDALHA, height=PERFIL_MEDALHA, bd=0, padx=0, pady=0)
             lb.grid(row=i // PERFIL_MEDALHAS, column=i % PERFIL_MEDALHAS)
-            txt = desc + ("" if k in have else "  (bloqueada)")
+            txt = _t(desc) + ("" if k in have else _t("  (bloqueada)"))
             lb.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
             lb.bind("<Leave>", lambda e: info.configure(text=dica, fg=MUTED))
         info.pack(fill="x")
@@ -2677,7 +2718,8 @@ class PetApp:
                    ("NA VIDA", fmt(state["xp_total"]), "de energia"), ("RUNS", str(meta["runs"]), "jogadas"),
                    ("RECORDE", f"{best['floor']}-{best['room']}", "andar-sala"),
                    ("HERÓIS", f"{sum(self.is_unlocked(c) for c in proprios)}/{len(proprios)}",
-                    f"{meta.get('chefes', 0)} chefes"))
+                    _t("{n} chefe" if meta.get('chefes', 0) == 1 else "{n} chefes", n=meta.get('chefes', 0))))
+        cartoes = [(_t(a), b, _t(c)) for a, b, c in cartoes]
         self.menu_sep(f)
         grade = tk.Frame(f, bg=PANEL_BG)
         grade.pack(fill="x")
@@ -2691,7 +2733,7 @@ class PetApp:
                     fill="x", padx=CARTAO_PAD, pady=(CARTAO_PAD if j == 0 else 0, CARTAO_PAD if j == 2 else 0))
         # gráfico dos últimos 7 dias (energia por dia, de usage_hist)
         self.menu_sep(f)
-        topo("Últimos 7 dias  (energia)", fmt(sum(v for _, v in dias)), GOLD)
+        topo(_t("Últimos 7 dias  (energia)"), fmt(sum(v for _, v in dias)), GOLD)
         alto, maior = 58, max(v for _, v in dias) or 1
         cv = tk.Canvas(f, width=L, height=alto + 16, bg=PANEL_BG, highlightthickness=0)
         cv.pack(pady=(2, 0))
@@ -2701,25 +2743,26 @@ class PetApp:
             h = max(2, round(alto * v / maior / 2) * 2)      # degraus de 2 px: cara de pixel
             cv.create_rectangle(x0, alto - h, x0 + bw - 8, alto, width=0,
                                 fill=(GOLD if hoje_ else PERFIL_BARRA) if v else BAR_BG)
-            cv.create_text(x0 + (bw - 8) / 2, alto + 9, text=DIAS[d.weekday()], fill=GOLD if hoje_ else MUTED, font=fs)
+            cv.create_text(x0 + (bw - 8) / 2, alto + 9, text=_t(DIAS[d.weekday()]), fill=GOLD if hoje_ else MUTED, font=fs)
         # limites (iguais aos do painel)
         self.menu_sep(f)
-        rotulo(f, "Limites")
+        rotulo(f, _t("Limites"))
         for key, nome in (("sessao", "Sessão"), ("semana", "Semana")):
             pct, reset, est, tok = limit_view(key, self.limits, state, now)
             val = f"{'~' if est else ''}{round(pct)}%" if pct is not None else (fmt(tok) if tok else "—")
-            topo(f"{nome}  {val}", f"reseta {fmt_reset(reset, now)}" if reset else "", MUTED)
+            topo(f"{_t(nome)}  {val}", _t("reseta {h}", h=fmt_reset(reset, now)) if reset else "", MUTED)
             if pct is not None:
                 barra(f, pct / 100, limit_color(pct)).pack(anchor="w", pady=(1, 3))
         # rodapé: último uso e atalhos
         self.menu_sep(f)
         ult = ultimo_uso(state)
-        rotulo(f, f"último uso: {fmt_ha(now - ult) if ult else 'nenhum ainda'}" + ("   ·   (modo demo)" if self.demo else ""))
+        rotulo(f, _t("último uso: {x}", x=fmt_ha(now - ult) if ult else _t("nenhum ainda"))
+               + ("   ·   " + _t("(modo demo)") if self.demo else ""))
         bot = tk.Frame(f, bg=PANEL_BG)
         bot.pack(fill="x", pady=(4, 0))
         for txt, fn in (("Conquistas", self.show_achievements), ("Cemitério", self.show_graveyard),
                         ("Itens", self.show_items)):
-            self.chip(bot, txt, False, fn).pack(side="left", padx=(0, 4))
+            self.chip(bot, _t(txt), False, fn).pack(side="left", padx=(0, 4))
         self.ao_lado(w)
 
     def save(self):

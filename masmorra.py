@@ -14,6 +14,8 @@ import math
 import random
 from datetime import date
 
+from idioma import t
+
 ROOM_COST = 100_000          # XP de tokens por sala
 ROOMS_PER_FLOOR = 5
 MAX_STORED_ROOMS = 20        # a "mochila" de energia guarda no máximo 20 salas
@@ -396,53 +398,54 @@ DEFAULT_STAGE_FLOORS = [1, 3, 8, 15, 25, 40]
 
 
 def fx_text(fx: dict) -> str:
+    """Texto dos efeitos no idioma atual (idioma.t); as regras não dependem dele."""
     parts = []
     for k, label in (("atk", "ATK"), ("def", "DEF"), ("maxhp", "HP")):
         if fx.get(k):
             parts.append(f"{fx[k]:+d} {label}")
     if fx.get("dodge"):
-        parts.append(f"{int(fx['dodge'] * 100)}% esquiva")
+        parts.append(t("{v}% esquiva", v=int(fx['dodge'] * 100)))
     if fx.get("gold"):
-        parts.append(f"+{int(fx['gold'] * 100)}% ouro")
+        parts.append(t("+{v}% ouro", v=int(fx['gold'] * 100)))
     if fx.get("energy"):
-        parts.append(f"+{int(fx['energy'] * 100)}% energia")
+        parts.append(t("+{v}% energia", v=int(fx['energy'] * 100)))
     if fx.get("lifesteal"):
-        parts.append(f"+{fx['lifesteal']} HP por vitória")
+        parts.append(t("+{v} HP por vitória", v=fx['lifesteal']))
     if fx.get("trap"):
-        parts.append("armadilhas x" + (f"{fx['trap']:g}"))
+        parts.append(t("armadilhas x{v}", v=f"{fx['trap']:g}"))
     if fx.get("spd"):
-        parts.append(f"{fx['spd']:+g} velocidade")
+        parts.append(t("{v} velocidade", v=f"{fx['spd']:+g}"))
     if fx.get("crit"):
-        parts.append(f"{fx['crit'] * 100:+.0f}% crítico")
+        parts.append(t("{v}% crítico", v=f"{fx['crit'] * 100:+.0f}"))
     if fx.get("critdmg"):
-        parts.append(f"{fx['critdmg']:+g}x dano crítico")
+        parts.append(t("{v}x dano crítico", v=f"{fx['critdmg']:+g}"))
     if fx.get("area"):
-        parts.append("ataque em área")
+        parts.append(t("ataque em área"))
     for el, nome in STATUS_NOME.items():
         if fx.get(el):
-            parts.append(f"{round(fx[el] * 100)}% {nome}")
+            parts.append(f"{round(fx[el] * 100)}% {t(nome)}")
     if fx.get("bloqueio"):
-        parts.append(f"bloqueia {fx['bloqueio']} golpe" + ("s" if fx["bloqueio"] != 1 else ""))
+        parts.append(t("bloqueia {v} golpe" if fx["bloqueio"] == 1 else "bloqueia {v} golpes", v=fx['bloqueio']))
     if fx.get("espinhos"):
-        parts.append(f"devolve {round(fx['espinhos'] * 100)}% do dano")
+        parts.append(t("devolve {v}% do dano", v=round(fx['espinhos'] * 100)))
     if fx.get("cura_sala"):
-        parts.append(f"+{fx['cura_sala']} HP por sala")
+        parts.append(t("+{v} HP por sala", v=fx['cura_sala']))
     if fx.get("cura_andar"):
-        parts.append(f"+{fx['cura_andar']} HP por andar")
+        parts.append(t("+{v} HP por andar", v=fx['cura_andar']))
     if fx.get("custo_ataque"):
-        parts.append(f"-{fx['custo_ataque']} HP por ataque")
+        parts.append(t("-{v} HP por ataque", v=fx['custo_ataque']))
     if fx.get("furia"):
-        parts.append(f"fúria +{fx['furia']:g} ATK/10% HP perdido")
+        parts.append(t("fúria +{v} ATK/10% HP perdido", v=f"{fx['furia']:g}"))
     if fx.get("duplo"):
-        parts.append(f"{round(fx['duplo'] * 100)}% golpe duplo")
+        parts.append(t("{v}% golpe duplo", v=round(fx['duplo'] * 100)))
     if fx.get("ajudante"):
-        parts.append(f"ajudante {fx['ajudante']:g} de dano")
+        parts.append(t("ajudante {v} de dano", v=f"{fx['ajudante']:g}"))
     if fx.get("crescer"):
-        parts.append(f"+1 ATK a cada {fx['crescer']} kills")
+        parts.append(t("+1 ATK a cada {v} kills", v=fx['crescer']))
     if fx.get("sorte"):
-        parts.append(f"+{round(fx['sorte'] * 100)}% sorte")
+        parts.append(t("+{v}% sorte", v=round(fx['sorte'] * 100)))
     if fx.get("desconto"):
-        parts.append(f"-{round(fx['desconto'] * 100)}% preço na loja")
+        parts.append(t("-{v}% preço na loja", v=round(fx['desconto'] * 100)))
     return ", ".join(parts)
 
 
