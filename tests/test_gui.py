@@ -1,6 +1,7 @@
 """Teste de fumaça da interface com um tkinter falso (roda sem tela)."""
 import json, random, sys, types, tempfile, os, time
 from pathlib import Path
+from datetime import date
 home = tempfile.mkdtemp(); os.environ["HOME"]=home; os.environ["USERPROFILE"]=home
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -17,33 +18,44 @@ class Tk(Noop):
     def winfo_height(self): return 120
     def winfo_screenwidth(self): return 1920
     def winfo_screenheight(self): return 1080
+    def winfo_vrootx(self): return 0
+    def winfo_vrooty(self): return 0
+    def winfo_vrootwidth(self): return 1920
+    def winfo_vrootheight(self): return 1080
 class Canvas(Noop):
     """Guarda posição e texto de cada item para bbox realista (6 px por letra, 10 de altura)."""
     n=0
     def __init__(self,*a,**k): self.it={}; self.binds={}; self.cfg=dict(k); self.moveto=None
-    def bind(self,seq,fn=None,*a): self.binds[seq]=fn
+    def bind(self,seq,fn=None,*a,**k): self.binds[seq]=fn
     def configure(self,**k): self.cfg.update(k)
     def yview_moveto(self,f): self.moveto=f
     def _new(self,kind,a,k): Canvas.n+=1; self.it[Canvas.n]=[kind,list(a[:4]),dict(k)]; return Canvas.n
     def create_image(self,*a,**k): return self._new("img",a,k)
     def create_rectangle(self,*a,**k): return self._new("rect",a,k)
     def create_text(self,*a,**k): return self._new("text",a,k)
+    def _ids(self,i):   # id ou tag (string ou tupla em tags=)
+        if i in self.it: return [i]
+        return [n for n,v in self.it.items() if i in ((v[2].get("tags"),) if isinstance(v[2].get("tags"),str) else (v[2].get("tags") or ()))]
     def coords(self,i,*a):
         if i in self.it and a: self.it[i][1]=list(a)
     def move(self,i,dx,dy):
-        if i in self.it: c=self.it[i][1]; self.it[i][1]=[v+(dx if j%2==0 else dy) for j,v in enumerate(c)]
+        for n in self._ids(i): c=self.it[n][1]; self.it[n][1]=[v+(dx if j%2==0 else dy) for j,v in enumerate(c)]
     def itemconfigure(self,i,**k):
-        if i in self.it: self.it[i][2].update(k)
+        for n in self._ids(i): self.it[n][2].update(k)
     def delete(self,i):
         if i=="all": self.it.clear()
-        else: self.it.pop(i,None)
+        for n in self._ids(i): self.it.pop(n,None)
     def bbox(self,i):
-        if i not in self.it: return (100,0,140,10)
+        ids=self._ids(i)
+        if not ids: return (100,0,140,10)
+        bs=[self._bbox(n) for n in ids]
+        return (min(b[0] for b in bs),min(b[1] for b in bs),max(b[2] for b in bs),max(b[3] for b in bs))
+    def _bbox(self,i):
         kind,c,k=self.it[i]
         if kind=="rect": return tuple(c[:4])
         if kind=="text":
             w=6*len(str(k.get("text",""))); a=k.get("anchor","center")
-            x0=c[0] if a=="w" else c[0]-w if a=="e" else c[0]-w/2
+            x0=c[0] if a in ("w","nw","sw") else c[0]-w if a in ("e","ne","se") else c[0]-w/2
             return (x0,c[1]-5,x0+w,c[1]+5)
         return (c[0]-8,c[1]-16,c[0]+8,c[1])
 class PhotoImage(Noop):
@@ -64,7 +76,10 @@ class Var:
     def set(self,v): self.v=v
 fake = types.ModuleType("tkinter")
 fake.Tk, fake.Canvas, fake.PhotoImage, fake.Toplevel = Tk, Canvas, PhotoImage, Tk
-fake.Label = fake.Menu = fake.Button = fake.Frame = Noop
+class Wid(Noop):
+    def __init__(self,*a,**k): self.binds={}
+    def bind(self,seq,fn=None,*a,**k): self.binds[seq]=fn
+fake.Label = fake.Menu = fake.Button = fake.Frame = Wid
 fake.StringVar = fake.BooleanVar = Var
 fake.TclError = TclError
 sys.modules["tkinter"] = fake
@@ -458,6 +473,7 @@ VIVAS = set()
 class Janela(Tk):
     def __init__(self, *a, **k): VIVAS.add(self)
     def destroy(self): VIVAS.discard(self)
+    def geometry(self, g=None): self.geo = g
 tkinter.Toplevel = Janela
 appm = tp.PetApp(Args()); PENDING.clear(); appm.close_choice(); VIVAS.clear()
 appm.meta["achievements"] = ["chefe1"]; appm.meta["next_char"] = "slime"; appm.char_var.set("slime")
@@ -478,16 +494,17 @@ import arte
 assert set(arte.CONQ_ART) == set(M.ACHIEVEMENTS)
 campos = set(M.stats(appm.run)) | {"crescer"}
 assert campos <= set(arte.STAT_ART) and campos == {k for k, *_ in tp.STAT_LINHAS}
-JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats))
+JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats), ("perfil_win", appm.show_perfil))
 def abre_fecha():
     for _ in range(2):
         for attr, fn in JAN:
             fn(); fn(); assert getattr(appm, attr) in VIVAS
-        assert len(VIVAS - {appm.popup_win}) == 3
+        assert len(VIVAS - {appm.popup_win}) == len(JAN)
         for attr, _ in JAN:
             appm.close_win(getattr(appm, attr)); assert getattr(appm, attr) is None
         assert not VIVAS - {appm.popup_win}
 appm.meta.update(graveyard=[], achievements=[]); appm.run.update(items=[], consumed=[], traco={})
+appm.state.update(usage_hist={}, daily={}, tokens_total=0); appm.limits = None
 abre_fecha()
 mortes = [("Rato", "monster"), ("Rei Rato", "boss"), ("Veneno", "status"), ("Queimadura", "status"), ("Mímico", "mimic"),
           ("Armadilha", "trap"), ("Desistiu", "desistiu"), ("Coisa Nova", "monster")]
@@ -499,7 +516,22 @@ appm.meta["achievements"] = list(M.ACHIEVEMENTS)[::2]
 appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40, shield=3, traco={"dodge": 0.1},
                 consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
 assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
+for d in range(8): tp.add_usage(appm.state, time.time() - d * 86400, 1e6 * d)
+appm.state.update(tokens_total=47_000_000, daily={date.today().isoformat(): 5e6})
+appm.limits = {"sessao": (42, time.time() + 3600), "semana": (None, None), "updated": time.time()}
 abre_fecha()
+# janelas móveis: arrastar pela barra muda a geometria e grava; reabrir usa a posição; fora da tela volta ao lado do pet
+appm.show_achievements(); w = appm.conq_win
+w.barra.binds["<Button-1>"](types.SimpleNamespace(x_root=310, y_root=305))
+w.barra.binds["<B1-Motion>"](types.SimpleNamespace(x_root=510, y_root=405))
+assert w.geo == "+500+400" and appm.state["janelas"]["conq_win"] == [500, 400], w.geo
+appm.show_achievements(); assert appm.conq_win.geo == "+500+400", appm.conq_win.geo
+appm.state["janelas"]["conq_win"] = [500, 1070]; appm.show_achievements(); assert appm.conq_win.geo == "+500+960"
+appm.state["janelas"]["conq_win"] = [5000, -900]; appm.show_achievements(); assert appm.conq_win.geo == "+144+300"
+appm.root.winfo_vrootx = lambda: -1680; appm.root.winfo_vrootwidth = lambda: 3600   # monitor à esquerda
+appm.state["janelas"]["conq_win"] = [-1000, 200]; appm.show_achievements(); assert appm.conq_win.geo == "+-1000+200"
+del appm.root.winfo_vrootx, appm.root.winfo_vrootwidth
+appm.close_win(appm.conq_win)
 # barra de rolagem: arrastar o polegar e clicar na trilha chamam yview_moveto com a fração certa
 cv = tkinter.Canvas(); tr = appm.rolagem(None, Tk(), cv, 100)
 cv.cfg["yscrollcommand"]("0.0", "0.25")                      # 1/4 visível: polegar de 0 a 25 px
@@ -509,6 +541,13 @@ tr.binds["<B1-Motion>"](ev(60)); assert abs(cv.moveto - 0.5) < 1e-9
 tr.binds["<ButtonRelease-1>"](ev(60)); tr.binds["<B1-Motion>"](ev(0)); assert abs(cv.moveto - 0.5) < 1e-9   # solto: não arrasta
 tr.binds["<Button-1>"](ev(90)); assert abs(cv.moveto - 0.75) < 1e-9   # trilha embaixo: vai ao fim (limitado a 1 - 0,25)
 tr.binds["<Button-1>"](ev(5)); assert cv.moveto == 0.0
+# cantos arredondados: só retângulos retos, o canto (0,0) fica de fora e o miolo é todo coberto
+assert tp.degraus(8) == [5, 3, 2, 1, 1, 0, 0, 0] and tp.degraus(0) == []
+cv = tkinter.Canvas(); tp.retangulo_arredondado(cv, 0, 0, 40, 20, 8, "#000000", "#ffffff", 2, tag="t", extra=("card:1",))
+rs = [c for kind, c, k in cv.it.values()]
+cobre = lambda x, y, tag: any(c[0] <= x < c[2] and c[1] <= y < c[3] for kind, c, k in cv.it.values() if tag in k["tags"])
+assert not cobre(0, 0, "t") and not cobre(39, 19, "t") and cobre(20, 10, "t_f") and cobre(0, 10, "t_b") and not cobre(0, 10, "t_f")
+assert all(0 <= c[0] <= c[2] <= 40 and 0 <= c[1] <= c[3] <= 20 for c in rs) and cv.bbox("card:1") == (0, 0, 40, 20)
 # página de itens: todo item tem card; bloqueado mostra silhueta e conquista, sem valores; demo libera tudo
 textos = lambda cv: [k.get("text", "") for kind, _, k in cv.it.values() if kind == "text"]
 rar_txt = lambda cv: [t for t in textos(cv) if any(t.startswith(n + ":") for n in M.RAR_NAMES.values())]
@@ -529,6 +568,39 @@ appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_liberado(
 # grade de heróis: os nossos (módulo em herois/) separados dos importados (characters/ sem módulo, Petdex)
 assert tp.heroi_proprio("slime") and tp.heroi_proprio("fantasma")
 assert not tp.heroi_proprio("bitty-openpets") and not tp.heroi_proprio("naoexiste") and not tp.heroi_proprio("x.y")
+# idioma: o chip EN do menu troca o HUD e reabre as janelas abertas; em EN não sobra texto em pt
+import re, idioma
+ev_m = types.SimpleNamespace(x_root=1900, y_root=1070)
+TEXTOS = []
+class Rotulo(Wid):
+    def __init__(self, *a, **k): super().__init__(); TEXTOS.append(k.get("text", ""))
+    def configure(self, **k): TEXTOS.append(k.get("text", ""))
+    config = configure
+_ct = Canvas.create_text
+Canvas.create_text = lambda self, *a, **k: (TEXTOS.append(k.get("text", "")), _ct(self, *a, **k))[1]
+tkinter.Label = Rotulo
+appm.run["pending"] = {"key": "adaga", "rar": "raro", "source": "chest"}
+def tudo():
+    TEXTOS.clear(); appm.update_panel()
+    TEXTOS.extend(k.get("text", "") for kind, _, k in appm.canvas.it.values() if kind == "text")
+    for fn in (appm.show_perfil, appm.show_stats, appm.show_achievements, appm.show_graveyard, appm.show_heroes,
+               appm.show_items, lambda: appm.on_menu(ev_m), appm.show_choice, lambda: appm.announce_unlocks(["ouro300"])):
+        fn()
+    appm.close_choice()
+    return " | ".join(TEXTOS)
+pt = tudo()
+assert "Sair" in pt and "Andar" in pt and "Quit" not in pt
+appm.show_stats(); appm.show_achievements(); appm.on_menu(ev_m); antes = (appm.stats_win, appm.conq_win)
+appm.lang_var.set("en"); appm.menu_do(appm.change_lang)   # como o chip EN do menu
+assert appm.state["lang"] == "en" and appm.menu_win is None
+assert appm.stats_win in VIVAS and appm.conq_win in VIVAS and (appm.stats_win, appm.conq_win) != antes   # reabriu
+assert appm.canvas.it[appm.info_txt][2]["text"].startswith("Floor ")
+en = tudo()
+assert "Quit" in en and "Sair" not in en and "Graveyard" in en, en[:400]
+sobra = re.findall(r"\S*[ãõáéíóúâêôçàÃÕÁÉÍÓÚÂÊÔÇ]\S*|\b(?:Andar|andar|Sair|Itens|Modo|ouro|sala|morto|nenhum|passe)\b", en)
+assert not sobra, sobra
+appm.lang_var.set("pt"); appm.change_lang(); assert idioma.LANG == "pt" and tudo().count("Sair") == 1
+tkinter.Label = Wid; Canvas.create_text = _ct
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]

@@ -13,6 +13,8 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
   "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
   "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
+  Toda janela de `janela()` é arrastável pela barra de título (`arrastavel`, cursor `fleur`); a posição fica em
+  `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela virtual (`tela()`: todos os monitores, x negativo vale; senão, ao lado do pet).
   Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
   `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
   e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,
@@ -20,8 +22,23 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   com rolagem). "Itens" abre `show_items`: cards num `Canvas` (`item_card`), cada raridade possível com `fx_text` e o
   `consume` na cor de `RAR_COLOR`, família por `item_familia`/`FAMILIAS`, filtro Todos/Liberados/Bloqueados; bloqueado
   (`item_liberado`, mesma regra do sorteio; demo libera tudo) = silhueta + cadeado + conquista, sem valores.
+  "Perfil" (1ª linha do menu) abre `show_perfil`: herói/run/HP, nível de domador (`nivel`: floor(sqrt(energia na vida `xp_total` / 1M)),
+  `NIVEL_XP`), medalhas de `arte.CONQ_ART` em células fixas (`icon(..., lado=)`, nome no hover), 6 cartões (hoje e na vida em energia, sequência `dias_seguidos`, runs,
+  recorde, heróis N/20 + chefes), barras dos últimos 7 dias (`uso_por_dia`, XP de `usage_hist`, hoje dourado), limites via
+  `limit_view` e rodapé com `ultimo_uso`/`fmt_ha` e atalhos. Funções puras testadas em `test_limites.py`; textos todos em `show_perfil`.
+  **Cantos arredondados:** tudo usa `retangulo_arredondado(cv, x0, y0, x1, y1, r, fill, outline, larg, tag, extra)` (degraus de
+  pixel de `degraus(r)`, só retângulos retos: nada de antialias contra a cor-chave). `pixel_box` desenha a moldura num Canvas
+  de fundo (`JANELA_R`); cartões são `cartao()` (Canvas, miolo `CARD_BG`, filhos a `CARTAO_PAD` da borda, `fundo(cor)` no hover);
+  botões/filtros são `chip()`; barras são `barra()` (`.set(frac)`). Texto que pode não caber: `encurtar` ("…") + `dica` (balão no hover).
+  Regra: **toda caixa nova usa esses helpers e passa em `tests/test_textos.py`** (`tests/_textos.py: checar(janela)`).
   Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
   carrega numa chamada só (um `put` por pixel deixava a janela lenta).
+- `idioma.py`: idioma da interface (pt-BR padrão ou inglês, `state["lang"]`, chips PT/EN no menu). `t(texto_pt, **fmt)`:
+  o texto em pt é a chave do dicionário `EN`; sem `fmt`, um texto já montado (linhas de evento, lápides antigas) é
+  traduzido por modelo (`"Pagou {n} ouro"`). No `tokenlike.py` é `_t`. Os dados do jogo continuam em pt (lápides,
+  registros, `BALANCE_VERSION`); a tradução é só na hora de mostrar. Trocar o idioma redesenha o HUD e reabre as
+  janelas abertas (`change_lang`, `REABRE`). **Todo texto visível novo passa por `t()`/`_t()` e ganha entrada em `EN`**
+  (`tests/test_idioma.py` falha se faltar; nomes em inglês também são originais, ex.: Cavaleiro Oco = Empty Knight).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
   `enter_room()` resolve uma sala e devolve um dicionário de evento, que a GUI só anima (`PetApp.play_room`).
 - `arte.py`: toda a pixel art em grades de texto (`'.'` = transparente, letras = cores de `PAL`).
@@ -63,11 +80,14 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   (cache `fx_cache` por estado + itens + status). Todos os estados usam o mesmo k e o pivô na base da caixa aparada.
   O Slime embutido também tem `estados` (grade) e continua piscando no idle; heróis PNG soltos seguem sem estados.
   Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
-- `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
+- `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso; funções do perfil), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
   `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
   `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
-  `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet) e `test_gui.py` (tkinter falso
-  que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói e testa o modo interativo;
+  `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet), `test_textos.py` (Tk real, dados de pior caso em todas
+  as janelas e no HUD, em pt e en; a checagem reutilizável é `tests/_textos.py: checar(janela)`, cartões no Canvas marcados com a tag
+  `card:<id>` via `extra=`), `test_idioma.py` (toda chave de `t()` e todo dado do jogo com tradução EN, `fx_text` e
+  linhas de evento em EN, `BALANCE_VERSION` igual) e `test_gui.py` (tkinter falso
+  que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói, testa o modo interativo e a troca de idioma;
   usa `random.Random(SEED)` para ser determinístico).
 - `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
   `tools/estatisticas.py`: gera `tools/saida/estatisticas.html` e `.json` (gitignored) com simulado x real, itens, pares, mortes e heróis; `METAS` (metas de balanceamento) mora aí.
@@ -92,6 +112,8 @@ python tests/test_migracao.py
 python tests/test_limites.py
 python tests/test_registro.py
 python tests/test_estatisticas.py
+python tests/test_idioma.py
+python tests/test_textos.py     # Tk de verdade (pula sem tela): textos sem cortar/sobrepor, em pt e en
 python tools/estatisticas.py    # página de estatísticas (sim x real); --sem-abrir não abre o navegador
 python tools/simular.py          # depois de mexer em balanceamento/itens/salas
 python tools/preview_arte.py     # depois de mexer em arte.py
