@@ -86,7 +86,7 @@ CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
 ITENS_COLS, ITENS_CARD_W, ITENS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
 JANELAS = ("menu_win", "heroes_win", "stats_win", "conq_win", "cemi_win", "itens_win", "perfil_win")
-PERFIL_W, PERFIL_MEDALHAS, PERFIL_BARRA = 312, 13, "#8a5a2b"   # perfil: largura, medalhas por linha, cor das barras
+PERFIL_W, PERFIL_MEDALHAS, PERFIL_MEDALHA, PERFIL_BARRA = 312, 13, 24, "#8a5a2b"   # perfil: largura, medalhas/linha, célula, cor
 FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
 
 
@@ -352,13 +352,13 @@ def limit_view(key: str, limits: dict | None, state: dict, now: float):
 
 
 # ------------------------------------------------------------- perfil (funções puras)
-NIVEL_TOKENS = 1_000_000            # nível de domador = floor(sqrt(tokens na vida / 1M))
+NIVEL_XP = 1_000_000                # nível de domador = floor(sqrt(energia na vida (xp_total) / 1M))
 
 
 def nivel(total: float) -> tuple[int, float, float]:
-    """(nível, fração até o próximo, tokens que faltam). Nível n começa em n² milhões de tokens."""
-    n = math.isqrt(int(total // NIVEL_TOKENS))
-    base, prox = n * n * NIVEL_TOKENS, (n + 1) ** 2 * NIVEL_TOKENS
+    """(nível, fração até o próximo, energia que falta). Nível n começa em n² milhões de energia."""
+    n = math.isqrt(int(total // NIVEL_XP))
+    base, prox = n * n * NIVEL_XP, (n + 1) ** 2 * NIVEL_XP
     return n, (total - base) / (prox - base), prox - total
 
 
@@ -1313,12 +1313,18 @@ class PetApp:
     def place_win(self, w, x, y):
         """Põe a janela em (x, y) sem sair da tela (sem espaço embaixo, abre para cima) e pega o foco."""
         w.update_idletasks()
-        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        vx0, vy0, vx1, vy1 = self.tela()
         ww, wh = w.winfo_width(), w.winfo_height()
-        x = max(0, min(x, sw - ww))
-        y = max(0, y if y + wh <= sh else y - wh)
+        x = max(vx0, min(x, vx1 - ww))
+        y = max(vy0, y if y + wh <= vy1 else y - wh)
         w.geometry(f"+{x}+{y}")
         w.focus_force()
+
+    def tela(self):
+        """Retângulo da tela virtual (todos os monitores; x negativo = monitor à esquerda do principal)."""
+        r = self.root
+        x, y = r.winfo_vrootx(), r.winfo_vrooty()
+        return x, y, x + r.winfo_vrootwidth(), y + r.winfo_vrootheight()
 
     def close_win(self, w):
         if w is None:
@@ -1488,17 +1494,18 @@ class PetApp:
         w.update_idletasks()
         attr = next((a for a in JANELAS if getattr(self, a) is w), None)
         pos = (self.state.get("janelas") or {}).get(attr)
-        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
-        if pos and 0 <= pos[0] < sw and 0 <= pos[1] < sh:   # ponytail: só o monitor principal (winfo_screen*)
-            self.place_win(w, pos[0], min(pos[1], max(0, sh - w.winfo_height())))
+        vx0, vy0, vx1, vy1 = self.tela()
+        if pos and vx0 <= pos[0] < vx1 and vy0 <= pos[1] < vy1:   # ponytail: retângulo da tela virtual, não por monitor
+            self.place_win(w, pos[0], min(pos[1], max(vy0, vy1 - w.winfo_height())))
             return
         x, y = self.root.winfo_x(), self.root.winfo_y()
         left = x - w.winfo_width() - 6
-        self.place_win(w, left if left >= 0 else x + self.W + 6, y)
+        self.place_win(w, left if left >= vx0 else x + self.W + 6, y)
 
-    def icon(self, grid, s=2, pal=None, glow=None, dark=False, dim=False):
-        """Grade de arte em escala s (cache): brilho de raridade, silhueta (bloqueado) ou esmaecida (consumido)."""
-        ck = (id(grid), s, id(pal), glow, dark, dim)
+    def icon(self, grid, s=2, pal=None, glow=None, dark=False, dim=False, lado=None):
+        """Grade de arte em escala s (cache): brilho de raridade, silhueta (bloqueado) ou esmaecida (consumido).
+        Com `lado`, a escala é a maior inteira que cabe num quadrado de `lado` px (ícones do mesmo tamanho)."""
+        ck = (id(grid), s, id(pal), glow, dark, dim, lado)
         if ck not in self.icons:
             pm = visual.grid_to_map(grid, pal or arte.PAL)
             if glow:
@@ -1508,7 +1515,7 @@ class PetApp:
             if dim:
                 pm = visual.tingir(pm, PANEL_BG, 0.55)
             x0, y0, x1, y1 = visual.bbox(pm)
-            self.icons[ck] = map_img(pm, s * max(x1 - x0, y1 - y0))
+            self.icons[ck] = map_img(pm, lado or s * max(x1 - x0, y1 - y0))
         return self.icons[ck]
 
     def show_heroes(self):
@@ -2512,12 +2519,12 @@ class PetApp:
         rotulo(col, f"{self.char.name}  ·  {self.stage_title}", GOLD, self.font)
         rotulo(col, f"Run #{run['id']}   ·   Andar {run['floor']}-{run['room']}   ·   ♥ {run['hp']}/{st['maxhp']}")
         barra(col, run["hp"] / st["maxhp"], HURT, L - 56).pack(anchor="w", pady=(3, 0))
-        # nível de domador (tokens na vida)
-        n, frac, falta = nivel(state["tokens_total"])
+        # nível de domador (energia na vida: mesma unidade do gráfico)
+        n, frac, falta = nivel(state["xp_total"])
         self.menu_sep(f)
         topo(f"Domador  Nv {n}", f"{round(frac * 100)}%", GOLD, self.font)
         barra(f, frac, GOLD).pack(anchor="w", pady=2)
-        rotulo(f, f"faltam ~{fmt(falta)} tokens para o Nv {n + 1}")
+        rotulo(f, f"faltam ~{fmt(falta)} de energia para o Nv {n + 1}")
         # medalhas
         have = set(meta["achievements"]) & set(M.ACHIEVEMENTS)
         self.menu_sep(f)
@@ -2527,7 +2534,8 @@ class PetApp:
         dica = "passe o mouse numa medalha"
         info = tk.Label(f, text=dica, bg=PANEL_BG, fg=MUTED, font=fs, anchor="w", justify="left", wraplength=L)
         for i, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
-            lb = tk.Label(med, image=self.icon(arte.CONQ_ART[k], 2, dark=k not in have), bg=PANEL_BG, width=24, height=24, bd=0, padx=0)
+            lb = tk.Label(med, image=self.icon(arte.CONQ_ART[k], dark=k not in have, lado=PERFIL_MEDALHA - 2),
+                          bg=PANEL_BG, width=PERFIL_MEDALHA, height=PERFIL_MEDALHA, bd=0, padx=0, pady=0)
             lb.grid(row=i // PERFIL_MEDALHAS, column=i % PERFIL_MEDALHAS)
             txt = desc + ("" if k in have else "  (bloqueada)")
             lb.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
@@ -2535,25 +2543,23 @@ class PetApp:
         info.pack(fill="x")
         # cartões de números
         proprios = [c for k, c in self.chars.items() if heroi_proprio(k)]
-        best, hoje = meta["best"], state["daily"].get(date.today().isoformat(), 0)
-        cartoes = (("HOJE", fmt(hoje), "tokens"), ("SEQUÊNCIA", str(dias_seguidos(state, now)), "dias seguidos"),
-                   ("NA VIDA", fmt(state["tokens_total"]), "tokens"), ("RUNS", str(meta["runs"]), "jogadas"),
+        best, dias = meta["best"], uso_por_dia(state, now)
+        cartoes = (("HOJE", fmt(dias[-1][1]), "de energia"), ("SEQUÊNCIA", str(dias_seguidos(state, now)), "dias seguidos"),
+                   ("NA VIDA", fmt(state["xp_total"]), "de energia"), ("RUNS", str(meta["runs"]), "jogadas"),
                    ("RECORDE", f"{best['floor']}-{best['room']}", "andar-sala"),
                    ("HERÓIS", f"{sum(self.is_unlocked(c) for c in proprios)}/{len(proprios)}",
                     f"{meta.get('chefes', 0)} chefes"))
         self.menu_sep(f)
         grade = tk.Frame(f, bg=PANEL_BG)
         grade.pack(fill="x")
-        cw = (L - 18) // 3
+        for c in range(3):
+            grade.columnconfigure(c, weight=1, uniform="cartao")
         for i, (tit, val, sub) in enumerate(cartoes):
-            card = tk.Frame(grade, bg=PANEL_BG, width=cw, height=56, highlightthickness=1,
-                            highlightbackground=PANEL_EDGE)
-            card.pack_propagate(False)
-            card.grid(row=i // 3, column=i % 3, padx=2, pady=2)
+            card = tk.Frame(grade, bg=PANEL_BG, padx=2, pady=3, highlightthickness=1, highlightbackground=PANEL_EDGE)
+            card.grid(row=i // 3, column=i % 3, padx=2, pady=2, sticky="nsew")
             for txt, fg, font in ((tit, MUTED, fs), (val, TEXT, self.font), (sub, MUTED, fs)):
                 tk.Label(card, text=txt, bg=PANEL_BG, fg=fg, font=font, anchor="w", padx=4).pack(fill="x")
-        # gráfico dos últimos 7 dias (XP por dia, de usage_hist)
-        dias = uso_por_dia(state, now)
+        # gráfico dos últimos 7 dias (energia por dia, de usage_hist)
         self.menu_sep(f)
         topo("Últimos 7 dias  (energia)", fmt(sum(v for _, v in dias)), GOLD)
         alto, maior = 58, max(v for _, v in dias) or 1

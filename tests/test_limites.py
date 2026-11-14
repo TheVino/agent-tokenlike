@@ -100,7 +100,7 @@ tp.calibrate(sb, {"semana": (10.0, now + 86400), "updated": now}, now)
 assert abs(sb["calib"]["semana"]["f"] - 10 / 5000) < 1e-12
 print("ok: estimativa")
 
-# perfil: nível de domador, uso por dia, sequência e último uso (funções puras, só usage_hist/daily)
+# perfil: nível de domador (energia na vida), uso por dia, sequência e último uso (funções puras, só usage_hist/daily)
 assert tp.nivel(0) == (0, 0.0, 1_000_000)
 assert tp.nivel(999_999)[0] == 0 and tp.nivel(1_000_000)[:2] == (1, 0.0)
 n, frac, falta = tp.nivel(2_500_000)                 # Nv 1 vai de 1M a 4M

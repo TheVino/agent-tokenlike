@@ -14,7 +14,7 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
   "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
   Toda janela de `janela()` é arrastável pela barra de título (`arrastavel`, cursor `fleur`); a posição fica em
-  `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela (senão, ao lado do pet).
+  `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela virtual (`tela()`: todos os monitores, x negativo vale; senão, ao lado do pet).
   Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
   `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
   e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,
@@ -22,8 +22,8 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   com rolagem). "Itens" abre `show_items`: cards num `Canvas` (`item_card`), cada raridade possível com `fx_text` e o
   `consume` na cor de `RAR_COLOR`, família por `item_familia`/`FAMILIAS`, filtro Todos/Liberados/Bloqueados; bloqueado
   (`item_liberado`, mesma regra do sorteio; demo libera tudo) = silhueta + cadeado + conquista, sem valores.
-  "Perfil" (1ª linha do menu) abre `show_perfil`: herói/run/HP, nível de domador (`nivel`: floor(sqrt(tokens na vida / 1M)),
-  `NIVEL_TOKENS`), medalhas de `arte.CONQ_ART` (nome no hover), 6 cartões (hoje, sequência `dias_seguidos`, na vida, runs,
+  "Perfil" (1ª linha do menu) abre `show_perfil`: herói/run/HP, nível de domador (`nivel`: floor(sqrt(energia na vida `xp_total` / 1M)),
+  `NIVEL_XP`), medalhas de `arte.CONQ_ART` em células fixas (`icon(..., lado=)`, nome no hover), 6 cartões (hoje e na vida em energia, sequência `dias_seguidos`, runs,
   recorde, heróis N/20 + chefes), barras dos últimos 7 dias (`uso_por_dia`, XP de `usage_hist`, hoje dourado), limites via
   `limit_view` e rodapé com `ultimo_uso`/`fmt_ha` e atalhos. Funções puras testadas em `test_limites.py`; textos todos em `show_perfil`.
   Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e

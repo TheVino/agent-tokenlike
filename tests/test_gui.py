@@ -18,6 +18,10 @@ class Tk(Noop):
     def winfo_height(self): return 120
     def winfo_screenwidth(self): return 1920
     def winfo_screenheight(self): return 1080
+    def winfo_vrootx(self): return 0
+    def winfo_vrooty(self): return 0
+    def winfo_vrootwidth(self): return 1920
+    def winfo_vrootheight(self): return 1080
 class Canvas(Noop):
     """Guarda posição e texto de cada item para bbox realista (6 px por letra, 10 de altura)."""
     n=0
@@ -517,6 +521,9 @@ assert w.geo == "+500+400" and appm.state["janelas"]["conq_win"] == [500, 400], 
 appm.show_achievements(); assert appm.conq_win.geo == "+500+400", appm.conq_win.geo
 appm.state["janelas"]["conq_win"] = [500, 1070]; appm.show_achievements(); assert appm.conq_win.geo == "+500+960"
 appm.state["janelas"]["conq_win"] = [5000, -900]; appm.show_achievements(); assert appm.conq_win.geo == "+144+300"
+appm.root.winfo_vrootx = lambda: -1680; appm.root.winfo_vrootwidth = lambda: 3600   # monitor à esquerda
+appm.state["janelas"]["conq_win"] = [-1000, 200]; appm.show_achievements(); assert appm.conq_win.geo == "+-1000+200"
+del appm.root.winfo_vrootx, appm.root.winfo_vrootwidth
 appm.close_win(appm.conq_win)
 # barra de rolagem: arrastar o polegar e clicar na trilha chamam yview_moveto com a fração certa
 cv = tkinter.Canvas(); tr = appm.rolagem(None, Tk(), cv, 100)
