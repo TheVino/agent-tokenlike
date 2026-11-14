@@ -58,6 +58,10 @@ def rodada(lang):
             fn(); olha(attr, getattr(app, attr)); app.close_win(getattr(app, attr))
         for filtro in ("todos", "bloqueados"):
             app.itens_filtro = filtro; app.show_items(); olha(f"itens/{filtro}", app.itens_win); app.close_win(app.itens_win)
+    lim, app.limits, app.state["calib"] = app.limits, None, {}   # sem % oficial nem fator: barra do seu pico
+    app.update_panel(); olha("hud/pico", app.root)
+    app.show_perfil(); olha("perfil/pico", app.perfil_win); app.close_win(app.perfil_win)
+    app.limits = lim
     app.on_menu(types.SimpleNamespace(x_root=200, y_root=200)); olha("menu", app.menu_win); app.close_win(app.menu_win)
     app.state["mode"] = "interativo"
     app.run["pending"] = {"key": max(M.ITEMS, key=lambda k: len(tp._t(M.ITEMS[k]["name"]))), "rar": "lendario", "source": "chest"}

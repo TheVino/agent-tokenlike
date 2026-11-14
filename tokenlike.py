@@ -76,6 +76,9 @@ TEXT = "#f2f0ff"
 MUTED = "#a9a4d6"
 BAR_BG = "#35315a"
 ENERGY = "#5fd3c6"
+ENERGY_BRILHO = "#c8f5ef"     # brilho que corre pela barra de energia
+BRILHO_S = 2.4                # segundos por passada do brilho
+PICO_COR = "#8f88d6"          # barra de limite sem % oficial: uso da janela / seu pico (neutra, não é alerta)
 GOOD = "#7ee081"
 HURT = "#ff6b81"
 GOLD = "#ffd23f"
@@ -340,6 +343,25 @@ def calibrate(state: dict, limits: dict | None, now: float) -> None:
             cal[key] = {"f": pct / tok, "reset": reset}
 
 
+def sessoes(state: dict) -> list[list[float]]:
+    """Janelas de 5h refeitas do histórico, [início, tokens]: uma começa no 1º uso depois que a anterior acabou."""
+    out = []
+    for k, v in sorted((int(k), v) for k, v in (state.get("usage_hist") or {}).items() if v > 0):
+        if not out or k >= out[-1][0] + WINDOWS["sessao"]:
+            out.append([k, 0.0])
+        out[-1][1] += v
+    return out
+
+
+def pico(state: dict, key: str, tok: float) -> float:
+    """Maior uso já visto numa janela `key` (guardado em state["pico"], vale além dos 8 dias do histórico).
+    É a régua da barra quando não há % oficial nem fator: "quanto do seu pico", não do limite real."""
+    p = state.setdefault("pico", {})
+    hist = max((t for _, t in sessoes(state)), default=0) if key == "sessao" else 0
+    p[key] = max(p.get(key, 0), hist, tok or 0)
+    return p[key]
+
+
 def limit_view(key: str, limits: dict | None, state: dict, now: float):
     """(pct|None, reset|None, estimado, tokens|None) para a linha da janela `key`."""
     win = WINDOWS[key]
@@ -348,6 +370,11 @@ def limit_view(key: str, limits: dict | None, state: dict, now: float):
     if pct is not None and now - upd < OFFICIAL_FRESH_S:
         return pct, reset, False, None
     cal = (state.get("calib") or {}).get(key)
+    if not cal and key == "sessao":         # sem fator: a sessão vem do histórico (começa no 1º uso)
+        s = sessoes(state)
+        if s and now < s[-1][0] + win:
+            return None, s[-1][0] + win, False, s[-1][1]
+        return None, None, False, 0.0
     if cal:
         reset = cal["reset"]
     if reset and reset <= now:              # o reset passou: avança a janela em múltiplos dela
@@ -1291,11 +1318,22 @@ class PetApp:
             self.info_txt,
             text=f"{andar(run)}   ATK {st['atk']}  DEF {st['def']}   $ {run['gold']}")
         cost = M.room_cost(run)
-        frac = min(1.0, run["energy"] / cost) if cost else 0
-        x1 = self.bar_x0 + (self.bar_x1 - self.bar_x0) * frac
-        self.canvas.delete(self.bar)
-        retangulo_arredondado(self.canvas, self.bar_x0, self.bar_y, round(x1), self.bar_y + 6, 3, ENERGY, tag=self.bar)
+        self.bar_alvo = min(1.0, run["energy"] / cost) if cost else 0
+        if getattr(self, "bar_frac", None) is None:     # 1º desenho: já no valor, sem deslizar
+            self.bar_frac = self.bar_alvo
+        self.desenha_energia(time.time())
         self.update_limits()
+
+    def desenha_energia(self, now):
+        """Barra de energia: o preenchimento desliza até o alvo (tick) e um brilho corre pela parte cheia."""
+        c = self.canvas
+        x0, y = self.bar_x0, self.bar_y
+        x1 = round(x0 + (self.bar_x1 - x0) * self.bar_frac)
+        c.delete(self.bar)
+        retangulo_arredondado(c, x0, y, x1, y + 6, 3, ENERGY, tag=self.bar)
+        if x1 - x0 > 14:                                 # brilho de 4 px, uma passada a cada BRILHO_S
+            bx = x0 + 3 + (now % BRILHO_S) / BRILHO_S * (x1 - x0 - 10)
+            c.create_rectangle(round(bx), y + 1, round(bx) + 4, y + 5, fill=ENERGY_BRILHO, width=0, tags=self.bar)
 
     def update_limits(self):
         now = time.time()
@@ -1303,11 +1341,13 @@ class PetApp:
             pct, reset, est, tok = limit_view(key, self.limits, self.state, now)
             self.canvas.itemconfigure(rtxt, text=_t("reseta {h}", h=fmt_reset(reset, now)) if reset else "")
             self.canvas.delete(fill)
-            if pct is None:                 # sem fator: só os tokens da janela, sem barra de %
+            if pct is None:                 # sem fator: tokens da janela, barra = fração do seu pico
                 self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
-                self.canvas.itemconfigure(back, state="hidden")
+                p = pico(self.state, key, tok)
+                if tok and p:
+                    retangulo_arredondado(self.canvas, lx0, y - 3, round(lx0 + (lx1 - lx0) * tok / p), y + 3, 3,
+                                          PICO_COR, tag=fill)
                 continue
-            self.canvas.itemconfigure(back, state="normal")
             self.canvas.itemconfigure(txt, text=f"{label}  {'~' if est else ''}{round(pct)}%")
             frac = max(0.0, min(1.0, pct / 100))
             retangulo_arredondado(self.canvas, lx0, y - 3, round(lx0 + (lx1 - lx0) * frac), y + 3, 3, limit_color(pct),
@@ -2283,6 +2323,10 @@ class PetApp:
                 x, y = self.foe_xy[self.lunge_foe]
                 self.canvas.coords(self.foe_items[self.lunge_foe][0], x + self.foe_lunge.pop(0), y)
 
+            d = self.bar_alvo - self.bar_frac             # barra de energia desliza até o alvo
+            self.bar_frac = self.bar_alvo if abs(d) < 0.004 else self.bar_frac + d * 0.3
+            self.desenha_energia(now)
+
             for f in self.floaters[:]:
                 for item in f[0]:
                     self.canvas.move(item, 0, -2)
@@ -2749,10 +2793,16 @@ class PetApp:
         rotulo(f, _t("Limites"))
         for key, nome in (("sessao", "Sessão"), ("semana", "Semana")):
             pct, reset, est, tok = limit_view(key, self.limits, state, now)
-            val = f"{'~' if est else ''}{round(pct)}%" if pct is not None else (fmt(tok) if tok else "—")
+            if pct is not None:
+                val = f"{'~' if est else ''}{round(pct)}%"
+            else:                       # sem % oficial nem fator: tokens e quanto isso é do seu pico
+                p = pico(state, key, tok)
+                val = _t("{n} · {p}% do seu pico", n=fmt(tok), p=round(100 * tok / p)) if tok and p else "—"
             topo(f"{_t(nome)}  {val}", _t("reseta {h}", h=fmt_reset(reset, now)) if reset else "", MUTED)
             if pct is not None:
                 barra(f, pct / 100, limit_color(pct)).pack(anchor="w", pady=(1, 3))
+            else:
+                barra(f, tok / p if tok and p else 0, PICO_COR).pack(anchor="w", pady=(1, 3))
         # rodapé: último uso e atalhos
         self.menu_sep(f)
         ult = ultimo_uso(state)
