@@ -29,6 +29,7 @@ chefes, desbloqueios e **permadeath**.
 | Arrastar | Move o pet |
 | Clique | Carinho ❤ |
 | Duplo clique | Status: HP, ATK, DEF, itens, energia guardada, recorde |
+| Ícone na bandeja | Clique: mostra o pet (mesmo escondido). Botão direito: mostrar ou sair |
 | Botão direito | Menu: Cemitério, Conquistas, herói da próxima run, tamanho, Modo (Auto ou Interativo), idioma (PT ou EN), "Aparecer só com uso" (some após 5 min sem tokens e volta no próximo uso), "Abrir com o Windows", desistir da run, sair |
 
 ## Como a masmorra funciona
