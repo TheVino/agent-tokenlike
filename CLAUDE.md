@@ -26,6 +26,11 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   `NIVEL_XP`), medalhas de `arte.CONQ_ART` em células fixas (`icon(..., lado=)`, nome no hover), 6 cartões (hoje e na vida em energia, sequência `dias_seguidos`, runs,
   recorde, heróis N/20 + chefes), barras dos últimos 7 dias (`uso_por_dia`, XP de `usage_hist`, hoje dourado), limites via
   `limit_view` e rodapé com `ultimo_uso`/`fmt_ha` e atalhos. Funções puras testadas em `test_limites.py`; textos todos em `show_perfil`.
+  **Cantos arredondados:** tudo usa `retangulo_arredondado(cv, x0, y0, x1, y1, r, fill, outline, larg, tag, extra)` (degraus de
+  pixel de `degraus(r)`, só retângulos retos: nada de antialias contra a cor-chave). `pixel_box` desenha a moldura num Canvas
+  de fundo (`JANELA_R`); cartões são `cartao()` (Canvas, miolo `CARD_BG`, filhos a `CARTAO_PAD` da borda, `fundo(cor)` no hover);
+  botões/filtros são `chip()`; barras são `barra()` (`.set(frac)`). Texto que pode não caber: `encurtar` ("…") + `dica` (balão no hover).
+  Regra: **toda caixa nova usa esses helpers e passa em `tests/test_textos.py`** (`tests/_textos.py: checar(janela)`).
   Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
   carrega numa chamada só (um `put` por pixel deixava a janela lenta).
 - `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.

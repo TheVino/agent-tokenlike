@@ -26,29 +26,36 @@ class Canvas(Noop):
     """Guarda posição e texto de cada item para bbox realista (6 px por letra, 10 de altura)."""
     n=0
     def __init__(self,*a,**k): self.it={}; self.binds={}; self.cfg=dict(k); self.moveto=None
-    def bind(self,seq,fn=None,*a): self.binds[seq]=fn
+    def bind(self,seq,fn=None,*a,**k): self.binds[seq]=fn
     def configure(self,**k): self.cfg.update(k)
     def yview_moveto(self,f): self.moveto=f
     def _new(self,kind,a,k): Canvas.n+=1; self.it[Canvas.n]=[kind,list(a[:4]),dict(k)]; return Canvas.n
     def create_image(self,*a,**k): return self._new("img",a,k)
     def create_rectangle(self,*a,**k): return self._new("rect",a,k)
     def create_text(self,*a,**k): return self._new("text",a,k)
+    def _ids(self,i):   # id ou tag (string ou tupla em tags=)
+        if i in self.it: return [i]
+        return [n for n,v in self.it.items() if i in ((v[2].get("tags"),) if isinstance(v[2].get("tags"),str) else (v[2].get("tags") or ()))]
     def coords(self,i,*a):
         if i in self.it and a: self.it[i][1]=list(a)
     def move(self,i,dx,dy):
-        if i in self.it: c=self.it[i][1]; self.it[i][1]=[v+(dx if j%2==0 else dy) for j,v in enumerate(c)]
+        for n in self._ids(i): c=self.it[n][1]; self.it[n][1]=[v+(dx if j%2==0 else dy) for j,v in enumerate(c)]
     def itemconfigure(self,i,**k):
-        if i in self.it: self.it[i][2].update(k)
+        for n in self._ids(i): self.it[n][2].update(k)
     def delete(self,i):
         if i=="all": self.it.clear()
-        else: self.it.pop(i,None)
+        for n in self._ids(i): self.it.pop(n,None)
     def bbox(self,i):
-        if i not in self.it: return (100,0,140,10)
+        ids=self._ids(i)
+        if not ids: return (100,0,140,10)
+        bs=[self._bbox(n) for n in ids]
+        return (min(b[0] for b in bs),min(b[1] for b in bs),max(b[2] for b in bs),max(b[3] for b in bs))
+    def _bbox(self,i):
         kind,c,k=self.it[i]
         if kind=="rect": return tuple(c[:4])
         if kind=="text":
             w=6*len(str(k.get("text",""))); a=k.get("anchor","center")
-            x0=c[0] if a=="w" else c[0]-w if a=="e" else c[0]-w/2
+            x0=c[0] if a in ("w","nw","sw") else c[0]-w if a in ("e","ne","se") else c[0]-w/2
             return (x0,c[1]-5,x0+w,c[1]+5)
         return (c[0]-8,c[1]-16,c[0]+8,c[1])
 class PhotoImage(Noop):
@@ -71,7 +78,7 @@ fake = types.ModuleType("tkinter")
 fake.Tk, fake.Canvas, fake.PhotoImage, fake.Toplevel = Tk, Canvas, PhotoImage, Tk
 class Wid(Noop):
     def __init__(self,*a,**k): self.binds={}
-    def bind(self,seq,fn=None,*a): self.binds[seq]=fn
+    def bind(self,seq,fn=None,*a,**k): self.binds[seq]=fn
 fake.Label = fake.Menu = fake.Button = fake.Frame = Wid
 fake.StringVar = fake.BooleanVar = Var
 fake.TclError = TclError
@@ -534,6 +541,13 @@ tr.binds["<B1-Motion>"](ev(60)); assert abs(cv.moveto - 0.5) < 1e-9
 tr.binds["<ButtonRelease-1>"](ev(60)); tr.binds["<B1-Motion>"](ev(0)); assert abs(cv.moveto - 0.5) < 1e-9   # solto: não arrasta
 tr.binds["<Button-1>"](ev(90)); assert abs(cv.moveto - 0.75) < 1e-9   # trilha embaixo: vai ao fim (limitado a 1 - 0,25)
 tr.binds["<Button-1>"](ev(5)); assert cv.moveto == 0.0
+# cantos arredondados: só retângulos retos, o canto (0,0) fica de fora e o miolo é todo coberto
+assert tp.degraus(8) == [5, 3, 2, 1, 1, 0, 0, 0] and tp.degraus(0) == []
+cv = tkinter.Canvas(); tp.retangulo_arredondado(cv, 0, 0, 40, 20, 8, "#000000", "#ffffff", 2, tag="t", extra=("card:1",))
+rs = [c for kind, c, k in cv.it.values()]
+cobre = lambda x, y, tag: any(c[0] <= x < c[2] and c[1] <= y < c[3] for kind, c, k in cv.it.values() if tag in k["tags"])
+assert not cobre(0, 0, "t") and not cobre(39, 19, "t") and cobre(20, 10, "t_f") and cobre(0, 10, "t_b") and not cobre(0, 10, "t_f")
+assert all(0 <= c[0] <= c[2] <= 40 and 0 <= c[1] <= c[3] <= 20 for c in rs) and cv.bbox("card:1") == (0, 0, 40, 20)
 # página de itens: todo item tem card; bloqueado mostra silhueta e conquista, sem valores; demo libera tudo
 textos = lambda cv: [k.get("text", "") for kind, _, k in cv.it.values() if kind == "text"]
 rar_txt = lambda cv: [t for t in textos(cv) if any(t.startswith(n + ":") for n in M.RAR_NAMES.values())]

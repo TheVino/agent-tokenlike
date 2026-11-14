@@ -81,7 +81,10 @@ CYAN = "#6fd6ff"
 STATUS_COR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
 MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
 GOLD_HOVER = "#fff27a"      # polegar da barra de rolagem com o mouse em cima
-HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 150   # grade de heróis (cards de tamanho fixo)
+CARD_BG = "#262338"         # miolo dos cartões (um pouco mais claro que o painel)
+JANELA_R, CARTAO_R = 8, 4   # raio dos cantos em degraus: janelas/painel e cartões/chips
+CARTAO_PAD = 6              # respiro mínimo entre a borda do cartão e o que vai dentro
+HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 160   # grade de heróis (cards de tamanho fixo)
 CONQ_COLS, CONQ_CARD_W, CONQ_CARD_H = 4, 150, 118   # grade de conquistas
 CEMI_W, CEMI_H, CEMI_LAPIDE = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
 ITENS_COLS, ITENS_CARD_W, ITENS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
@@ -785,6 +788,36 @@ def render_map(pm, s: int, k: int = 1):
     return img, (y1 - 16 * k) * s
 
 
+def degraus(r: int) -> list[int]:
+    """Recuo de cada uma das r linhas de um canto de raio r, de fora para dentro (degraus de 1 px, sem antialias)."""
+    return [r - round(math.sqrt(r * r - (r - i - 0.5) ** 2)) for i in range(r)]
+
+
+def _forma(cv, x0, y0, x1, y1, r, cor, tags):
+    r = max(0, min(r, (x1 - x0) // 2, (y1 - y0) // 2))
+    if x1 <= x0 or y1 <= y0:
+        return
+    ins, kw, i = degraus(r), dict(fill=cor, outline="", width=0, tags=tags), 0
+    while i < len(ins):                     # linhas de mesmo recuo viram um retângulo só
+        j = i
+        while j < len(ins) and ins[j] == ins[i]:
+            j += 1
+        cv.create_rectangle(x0 + ins[i], y0 + i, x1 - ins[i], y0 + j, **kw)
+        cv.create_rectangle(x0 + ins[i], y1 - j, x1 - ins[i], y1 - i, **kw)
+        i = j
+    if y1 - r > y0 + r:
+        cv.create_rectangle(x0, y0 + r, x1, y1 - r, **kw)
+
+
+def retangulo_arredondado(cv, x0, y0, x1, y1, r, fill, outline=None, larg=1, tag="arred", extra=()):
+    """Retângulo de cantos em degraus de pixel no Canvas `cv`, só com retângulos retos (sem antialias: a cor-chave
+    #ff00fe não ganha contorno rosa). Tags: `tag` em tudo, `tag`_f no miolo (troca de cor no hover), mais `extra`."""
+    if outline:
+        _forma(cv, x0, y0, x1, y1, r, outline, (tag, tag + "_b", *extra))
+        x0, y0, x1, y1, r = x0 + larg, y0 + larg, x1 - larg, y1 - larg, max(0, r - larg)
+    _forma(cv, x0, y0, x1, y1, r, fill, (tag, tag + "_f", *extra))
+
+
 def map_img(pm, lado):
     """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
     if not pm:
@@ -1279,7 +1312,7 @@ class PetApp:
         for attr in JANELAS:
             setattr(self, attr, None)
         self.thumb_thread = None
-        self.hero_cards, self.hero_thumb_lbl, self.thumbs, self.icons = {}, {}, {}, {}
+        self.hero_cards, self.hero_thumb_lbl, self.thumbs, self.icons, self.fontes = {}, {}, {}, {}, {}
 
     def fill_char_menu(self):
         """Conquista nova ou personagens recarregados: refaz a grade de heróis se estiver aberta."""
@@ -1287,26 +1320,31 @@ class PetApp:
             self.show_heroes()
 
     # ------------------------------------------------------- menu em pixel art
-    def pixel_box(self, x, y):
-        """Janela sem borda, moldura dourada de 2 px com cantos recortados; devolve (janela, miolo).
-        Fecha com Esc ou ao perder o foco (clique fora). Quem chama posiciona de novo se crescer."""
+    def pixel_box(self, x, y, fecha=True):
+        """Janela sem borda, moldura dourada de 2 px com cantos arredondados em degraus; devolve (janela, miolo).
+        Com `fecha`, fecha com Esc ou ao perder o foco (clique fora). Quem chama posiciona de novo se crescer."""
         w = tk.Toplevel(self.root)
         w.overrideredirect(True)
         w.attributes("-topmost", True)
-        w.configure(bg=GOLD)
         try:
             w.attributes("-transparentcolor", TRANSPARENT)
             corte = TRANSPARENT
         except tk.TclError:
-            corte = GOLD                    # fora do Windows: cantos retos
-        miolo = tk.Frame(w, bg=PANEL_BG, padx=6, pady=6, highlightthickness=1, highlightbackground=PANEL_EDGE)
-        miolo.pack(padx=2, pady=2)
-        for rx in (0, 1):
-            for ry in (0, 1):
-                tk.Frame(w, bg=corte, width=2, height=2).place(relx=rx, rely=ry, x=-2 * rx, y=-2 * ry)
-                tk.Frame(w, bg=GOLD, width=2, height=2).place(relx=rx, rely=ry, x=2 - 6 * rx, y=2 - 6 * ry)
-        w.bind("<Escape>", lambda e: self.close_win(w))
-        w.bind("<FocusOut>", lambda e: self.close_win(w) if e.widget is w else None)
+            corte = PANEL_BG                # fora do Windows: cantos no fundo escuro
+        w.configure(bg=corte)
+        fundo = tk.Canvas(w, bg=corte, highlightthickness=0, bd=0)
+        fundo.place(x=0, y=0, relwidth=1, relheight=1)      # criado antes do miolo: fica por baixo dele
+
+        def desenha(e):
+            fundo.delete("all")
+            retangulo_arredondado(fundo, 0, 0, e.width, e.height, JANELA_R, PANEL_EDGE, GOLD, 2)
+            retangulo_arredondado(fundo, 3, 3, e.width - 3, e.height - 3, JANELA_R - 3, PANEL_BG)
+        fundo.bind("<Configure>", desenha)
+        miolo = tk.Frame(w, bg=PANEL_BG, padx=4, pady=4)
+        miolo.pack(padx=5, pady=5)          # fora da área dos cantos
+        if fecha:
+            w.bind("<Escape>", lambda e: self.close_win(w))
+            w.bind("<FocusOut>", lambda e: self.close_win(w) if e.widget is w else None)
         w.geometry(f"+{x}+{y}")
         return w, miolo
 
@@ -1346,10 +1384,15 @@ class PetApp:
         return self.art[ck]
 
     def hover(self, widgets, texto, fg, on_click):
-        """Hover: fundo mais claro e texto dourado; clique em qualquer parte."""
+        """Hover: fundo mais claro e texto dourado; clique em qualquer parte. Cartão (`cartao`) troca só o miolo."""
+        base = {wd: None if hasattr(wd, "fundo") else wd.cget("bg") for wd in widgets}
+
         def pintar(on):
             for wd in widgets:
-                wd.configure(bg=MENU_HOVER if on else PANEL_BG)
+                if base[wd] is None:
+                    wd.fundo(MENU_HOVER if on else CARD_BG)
+                else:
+                    wd.configure(bg=MENU_HOVER if on else base[wd])
             texto.configure(fg=GOLD if on else fg)
         for wd in widgets:
             wd.configure(cursor="hand2")
@@ -1372,11 +1415,99 @@ class PetApp:
         row.pack(fill="x", pady=2)
         tk.Label(row, text=label, bg=PANEL_BG, fg=MUTED, font=self.font_small, width=8, anchor="w").pack(side="left")
         for value, text in opcoes.items():
-            sel = var.get() == value
-            chip = tk.Label(row, text=text, bg=GOLD if sel else BAR_BG, fg=PANEL_BG if sel else TEXT,
-                            font=self.font_small, padx=6, pady=1, cursor="hand2")
-            chip.pack(side="left", padx=(0, 3))
-            chip.bind("<Button-1>", lambda e, v=value: (var.set(v), self.menu_do(cmd)))
+            self.chip(row, text, var.get() == value, lambda v=value: (var.set(v), self.menu_do(cmd))).pack(
+                side="left", padx=(0, 3))
+
+    def chip(self, parent, text, sel=False, cmd=None):
+        """Botão pílula arredondado (Canvas): dourado se escolhido, hover mais claro. `cv.pintar(sel)` troca o estado."""
+        cv = tk.Canvas(parent, bg=PANEL_BG, highlightthickness=0, bd=0, cursor="hand2" if cmd else "")
+        t = cv.create_text(0, 0, anchor="nw", text=text, font=self.font_small)
+        x0, y0, x1, y1 = cv.bbox(t)
+        larg, alto = x1 - x0 + 12, y1 - y0 + 4
+        cv.configure(width=larg, height=alto)
+        cv.coords(t, 6, 2)
+        st = {"sel": sel}
+
+        def pintar(sel=None, quente=False):
+            if sel is not None:
+                st["sel"] = sel
+            cv.delete("chip")
+            fundo = GOLD if st["sel"] else MENU_HOVER if quente else BAR_BG
+            retangulo_arredondado(cv, 0, 0, larg, alto, CARTAO_R, fundo, tag="chip")
+            cv.tag_raise(t)
+            cv.itemconfigure(t, fill=PANEL_BG if st["sel"] else GOLD if quente else TEXT)
+        pintar()
+        if cmd:
+            cv.bind("<Button-1>", lambda e: cmd())
+            cv.bind("<Enter>", lambda e: pintar(quente=True))
+            cv.bind("<Leave>", lambda e: pintar())
+        cv.pintar = pintar
+        return cv
+
+    def cartao(self, parent, borda=PANEL_EDGE, larg=None, alto=None, espessura=2):
+        """Cartão arredondado: Canvas com o fundo desenhado (CARD_BG). Os filhos usam bg=CARD_BG e ficam a
+        CARTAO_PAD da borda. Com larg/alto, tamanho fixo. `cv.fundo(cor)` troca a cor do miolo (hover)."""
+        cv = tk.Canvas(parent, bg=PANEL_BG, highlightthickness=0, bd=0, width=larg or 1, height=alto or 1)
+        if larg:
+            cv.pack_propagate(False)
+        st = {"cor": CARD_BG}
+
+        def desenha(e):
+            cv.delete("cartao")
+            retangulo_arredondado(cv, 0, 0, e.width, e.height, CARTAO_R, st["cor"], borda, espessura, tag="cartao")
+            cv.tag_lower("cartao")
+
+        def fundo(cor):
+            st["cor"] = cor
+            cv.itemconfigure("cartao_f", fill=cor)
+        cv.bind("<Configure>", desenha)
+        cv.fundo = fundo
+        return cv
+
+    def medir(self, texto, font):
+        """Largura do texto em px (tkinter falso dos testes: 6 px por letra)."""
+        tkf = getattr(tk, "font", None)
+        if tkf is None:
+            return 6 * len(texto)
+        if font not in self.fontes:
+            self.fontes[font] = tkf.Font(root=self.root, font=font)
+        return self.fontes[font].measure(texto)
+
+    def encurtar(self, texto, font, larg):
+        """O texto se couber em `larg` px; senão cortado com "…" (mostre o inteiro com `dica`)."""
+        if self.medir(texto, font) <= larg:
+            return texto
+        while texto and self.medir(texto + "…", font) > larg:
+            texto = texto[:-1]
+        return texto.rstrip() + "…"
+
+    def dica(self, wd, texto):
+        """Balão pixel com o texto inteiro enquanto o mouse está em cima de `wd` (para o que foi encurtado)."""
+        st = {}
+
+        def abre(e):
+            fecha(e)
+            w, f = self.pixel_box(e.x_root + 12, e.y_root + 14, fecha=False)
+            tk.Label(f, text=texto, bg=PANEL_BG, fg=TEXT, font=self.font_small).pack()
+            st["w"] = w
+
+        def fecha(e):
+            if st.get("w") is not None:
+                st.pop("w").destroy()
+        wd.bind("<Enter>", abre, add="+")
+        wd.bind("<Leave>", fecha, add="+")
+
+    def barra(self, parent, larg, alto, frac=0.0, cor=GOLD):
+        """Barra de progresso arredondada (Canvas); `cv.set(frac, cor)` redesenha o preenchimento."""
+        cv = tk.Canvas(parent, width=larg, height=alto, bg=PANEL_BG, highlightthickness=0, bd=0)
+        retangulo_arredondado(cv, 0, 0, larg, alto, alto // 2, BAR_BG, tag="trilha")
+
+        def set_(frac, cor=cor):
+            cv.delete("cheio")
+            retangulo_arredondado(cv, 0, 0, round(larg * max(0.0, min(1.0, frac))), alto, alto // 2, cor, tag="cheio")
+        set_(frac)
+        cv.set = set_
+        return cv
 
     def menu_sep(self, parent):
         tk.Frame(parent, bg=PANEL_EDGE, height=2).pack(fill="x", pady=4)
@@ -1535,19 +1666,18 @@ class PetApp:
 
     def hero_card(self, parent, key, c):
         ok, sel = self.is_unlocked(c), key == self.char_var.get()
-        card = tk.Frame(parent, bg=PANEL_BG, width=HERO_CARD_W, height=HERO_CARD_H, highlightthickness=2,
-                        highlightbackground=GOLD if sel else PANEL_EDGE)
-        card.pack_propagate(False)
+        card = self.cartao(parent, GOLD if sel else PANEL_EDGE, HERO_CARD_W, HERO_CARD_H)
         img = self.hero_thumb(c, ok)
-        pic = tk.Label(card, image=img or "", text="" if img else "…", bg=PANEL_BG, fg=MUTED,
+        pic = tk.Label(card, image=img or "", text="" if img else "…", bg=CARD_BG, fg=MUTED,
                        font=self.font, height=72 if img else 4)
-        pic.pack(pady=(4, 0))
+        pic.pack(pady=(CARTAO_PAD, 0))
         self.hero_thumb_lbl[key] = pic
-        nome = tk.Label(card, text=c.name, bg=PANEL_BG, fg=GOLD if sel else TEXT if ok else MUTED, font=self.font)
+        curto = self.encurtar(c.name, self.font, HERO_CARD_W - 2 * CARTAO_PAD)
+        nome = tk.Label(card, text=curto, bg=CARD_BG, fg=GOLD if sel else TEXT if ok else MUTED, font=self.font)
         nome.pack()
         if ok:
-            info = tk.Label(card, text=M.fx_text(c.traco) if c.traco else "sem traço", bg=PANEL_BG,
-                            fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 12)
+            info = tk.Label(card, text=M.fx_text(c.traco) if c.traco else "sem traço", bg=CARD_BG,
+                            fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 2 * CARTAO_PAD)
             info.pack()
 
             def pick():
@@ -1555,10 +1685,12 @@ class PetApp:
                 self.char_var.set(key)
                 self.change_character()
             self.hover((card, pic, nome, info), nome, GOLD if sel else TEXT, pick)
+            if curto != c.name:
+                self.dica(nome, c.name)
         else:
             pick = None             # bloqueado: nada clicável
             tk.Label(card, text=M.ACHIEVEMENTS[c.unlock], image=self.menu_icon("cadeado"), compound="left",
-                     bg=PANEL_BG, fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 24).pack()
+                     bg=CARD_BG, fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 24 - 2 * CARTAO_PAD).pack()
         self.hero_cards[key] = pick
         return card
 
@@ -2135,12 +2267,9 @@ class PetApp:
                 self.popup_win.destroy()
             except tk.TclError:
                 pass
-        w = tk.Toplevel(self.root)
-        w.overrideredirect(True)
-        w.attributes("-topmost", True)
-        w.configure(bg=PANEL_BG, highlightbackground=PANEL_EDGE, highlightthickness=2)
-        tk.Label(w, text="\n".join(lines), justify="left", bg=PANEL_BG, fg=TEXT,
-                 font=self.font, padx=10, pady=8).pack()
+        w, f = self.pixel_box(0, 0, fecha=False)
+        tk.Label(f, text="\n".join(lines), justify="left", bg=PANEL_BG, fg=TEXT,
+                 font=self.font, padx=6, pady=4).pack()
         w.update_idletasks()
         x = self.root.winfo_x() - w.winfo_width() - 6
         if x < 0:
@@ -2166,31 +2295,23 @@ class PetApp:
             return
         key, rar = p["key"], p["rar"]
         it = M.ITEMS[key]
-        w = tk.Toplevel(self.root)
-        w.overrideredirect(True)
-        w.attributes("-topmost", True)
-        w.configure(bg=PANEL_BG, highlightbackground=PANEL_EDGE, highlightthickness=2)
+        w, f = self.pixel_box(0, 0, fecha=False)   # a escolha não fecha sozinha ao perder o foco
         self.choice_img = self.art_img(key)       # referência: o tk não guarda a imagem sozinho
-        tk.Label(w, image=self.choice_img, bg=PANEL_BG).pack(pady=(8, 2))
-        tk.Label(w, text=f"{it['name']}  ·  {M.RAR_NAMES[rar]}", bg=PANEL_BG,
-                 fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=10)
+        tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
+        tk.Label(f, text=f"{it['name']}  ·  {M.RAR_NAMES[rar]}", bg=PANEL_BG,
+                 fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=6)
         cf = M.consume_fx(key, rar)
         cons = f"+{cf['heal']} ♥" if "heal" in cf else f"+{cf['shield']} escudo"
-        tk.Label(w, text=f"Pegar: {M.fx_text(M.item_fx(key, rar))}\nConsumir: {cons}",
-                 justify="left", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(padx=10)
-        row = tk.Frame(w, bg=PANEL_BG)
+        tk.Label(f, text=f"Pegar: {M.fx_text(M.item_fx(key, rar))}\nConsumir: {cons}",
+                 justify="left", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(padx=6)
+        row = tk.Frame(f, bg=PANEL_BG)
         row.pack(pady=4)
         for label, choice in (("Pegar", "pegar"), ("Consumir", "consumir")):
-            tk.Button(row, text=label, command=lambda c=choice: self.choose(c), bg=PANEL_EDGE,
-                      fg=TEXT, activebackground=PANEL_EDGE, activeforeground=TEXT, relief="flat",
-                      bd=0, font=self.font_small, padx=8, pady=2).pack(side="left", padx=4)
-        self.choice_cv = tk.Canvas(w, width=CHOICE_BAR_W, height=6, bg=BAR_BG,
-                                   highlightthickness=0, bd=0)
+            self.chip(row, label, False, lambda c=choice: self.choose(c)).pack(side="left", padx=4)
+        self.choice_cv = self.barra(f, CHOICE_BAR_W, 6, 1.0, ENERGY)
         self.choice_cv.pack(pady=(2, 2))
-        self.choice_bar = self.choice_cv.create_rectangle(0, 0, CHOICE_BAR_W, 6, fill=ENERGY,
-                                                          outline="")
-        self.choice_wait = tk.Label(w, text="", bg=PANEL_BG, fg=MUTED, font=self.font_small)
-        self.choice_wait.pack(pady=(0, 6))
+        self.choice_wait = tk.Label(f, text="", bg=PANEL_BG, fg=MUTED, font=self.font_small)
+        self.choice_wait.pack(pady=(0, 2))
         w.update_idletasks()
         x = self.root.winfo_x() - w.winfo_width() - 6
         if x < 0:
@@ -2207,7 +2328,7 @@ class PetApp:
             return
         since = time.time() if self.pending_since is None else self.pending_since
         left = max(0.0, 1 - (time.time() - since) / M.CHOICE_WINDOW_S)
-        self.choice_cv.coords(self.choice_bar, 0, 0, CHOICE_BAR_W * left, 6)
+        self.choice_cv.set(left)
         rooms = int(self.run["energy"] // M.room_cost(self.run))
         wait = "" if rooms < 1 else ("1 sala esperando" if rooms == 1 else f"{rooms} salas esperando")
         self.choice_wait.config(text=wait)
@@ -2234,9 +2355,7 @@ class PetApp:
                  anchor="w").pack(fill="x")
         tk.Label(col, text=f"Andar {run['floor']}-{run['room']}   ·   Modo {MODES[self.state['mode']]}",
                  bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w").pack(fill="x")
-        barra = tk.Canvas(col, width=170, height=8, bg=BAR_BG, highlightthickness=0)
-        barra.pack(anchor="w", pady=3)
-        barra.create_rectangle(0, 0, 170 * min(1, run["hp"] / st["maxhp"]), 8, fill=HURT, width=0)
+        self.barra(col, 170, 8, run["hp"] / st["maxhp"], HURT).pack(anchor="w", pady=3)
         escudo = f"   ·   escudo {run['shield']}" if run["shield"] > 0 else ""
         tk.Label(col, text=f"♥ {run['hp']}/{st['maxhp']}{escudo}   ·   $ {run['gold']}   ·   {run['kills']} kills"
                  f"   ·   {run['bosses']} chefe{'s' if run['bosses'] != 1 else ''}", bg=PANEL_BG, fg=TEXT, font=self.font_small,
@@ -2308,7 +2427,8 @@ class PetApp:
     def lapide(self, cv, y, d):
         """Uma lápide do cemitério desenhada no canvas a partir de y."""
         L, f, fs = CEMI_LAPIDE, self.font, self.font_small
-        cv.create_rectangle(2, y + 2, CEMI_W - 2, y + L - 4, fill=PANEL_BG, outline=PANEL_EDGE, width=2)
+        retangulo_arredondado(cv, 1, y + 1, CEMI_W - 1, y + L - 3, CARTAO_R, CARD_BG, PANEL_EDGE, 2, tag="cartao",
+                              extra=(f"card:{y}",))
         c = self.chars.get(d.get("char"))
         img = (c and self.hero_thumb(c, True, 40)) or self.icon(arte.ROOM_ART["lapide"], 4)
         cv.create_image(30, y + L // 2 - 1, image=img)
@@ -2365,15 +2485,17 @@ class PetApp:
         """Barra de rolagem em pixel (a nativa não pega as cores) ao lado do Canvas `cv` (com scrollregion):
         arrastar o polegar rola junto, clicar na trilha centraliza o polegar ali, roda do mouse e setas.
         O polegar some quando tudo cabe (ex.: depois de um filtro). Devolve a trilha."""
-        tr = tk.Canvas(parent, width=8, height=vis, bg=BAR_BG, highlightthickness=0, cursor="hand2")
+        tr = tk.Canvas(parent, width=8, height=vis, bg=PANEL_BG, highlightthickness=0, cursor="hand2")
         tr.pack(side="left", padx=(4, 0))
-        dedo = tr.create_rectangle(0, 0, 8, vis, fill=GOLD, width=0)
-        vista = {"a": 0.0, "b": 1.0, "pega": None}      # fração visível (de yscrollcommand) e onde o polegar foi pego
+        retangulo_arredondado(tr, 0, 0, 8, vis, 4, BAR_BG, tag="trilha")
+        vista = {"a": 0.0, "b": 1.0, "pega": None, "cor": GOLD}   # fração visível, onde o polegar foi pego, cor
 
         def mostra(a, b):
             vista["a"], vista["b"] = float(a), float(b)
-            tr.coords(dedo, 0, vista["a"] * vis, 8, vista["b"] * vis)
-            tr.itemconfigure(dedo, state="hidden" if vista["b"] - vista["a"] >= 0.999 else "normal")
+            tr.delete("dedo")
+            if vista["b"] - vista["a"] < 0.999:
+                retangulo_arredondado(tr, 0, round(vista["a"] * vis), 8, round(vista["b"] * vis), 4, vista["cor"],
+                                      tag="dedo")
 
         def vai(y):
             tam = vista["b"] - vista["a"]
@@ -2390,8 +2512,11 @@ class PetApp:
         tr.bind("<Button-1>", aperta)
         tr.bind("<B1-Motion>", lambda e: vista["pega"] is not None and vai(e.y))
         tr.bind("<ButtonRelease-1>", solta)
-        tr.tag_bind(dedo, "<Enter>", lambda e: tr.itemconfigure(dedo, fill=GOLD_HOVER))
-        tr.tag_bind(dedo, "<Leave>", lambda e: tr.itemconfigure(dedo, fill=GOLD))
+        def cor(c):
+            vista["cor"] = c
+            tr.itemconfigure("dedo", fill=c)
+        tr.tag_bind("dedo", "<Enter>", lambda e: cor(GOLD_HOVER))
+        tr.tag_bind("dedo", "<Leave>", lambda e: cor(GOLD))
         w.bind("<MouseWheel>", lambda e: cv.yview_scroll(-1 if e.delta > 0 else 1, "units"))
         w.bind("<Up>", lambda e: cv.yview_scroll(-1, "units"))
         w.bind("<Down>", lambda e: cv.yview_scroll(1, "units"))
@@ -2423,8 +2548,9 @@ class PetApp:
                                text=f"{M.RAR_NAMES[r]}: {M.fx_text(M.item_fx(key, r))}  ·  {comer}")
             ty = cv.bbox(t)[3] + 3
         alto = max(ty - y + 6, 60)
-        cv.tag_lower(cv.create_rectangle(x + 1, y + 1, x + ITENS_CARD_W - 1, y + alto - 1, fill=PANEL_BG, width=2,
-                                         outline=PANEL_EDGE))
+        retangulo_arredondado(cv, x, y, x + ITENS_CARD_W, y + alto, CARTAO_R, CARD_BG, PANEL_EDGE, 2, tag="cartao",
+                              extra=(f"card:{x}_{y}",))
+        cv.tag_lower("cartao")
         return alto
 
     def show_items(self):
@@ -2445,7 +2571,7 @@ class PetApp:
         def desenha(filtro):
             self.itens_filtro = filtro
             for nome, b in botoes.items():
-                b.configure(bg=GOLD if nome == filtro else BAR_BG, fg=PANEL_BG if nome == filtro else TEXT)
+                b.pintar(nome == filtro)
             cv.delete("all")
             keys = [k for k in M.ITEMS if filtro == "todos" or (k in livres) == (filtro == "liberados")]
             y = 0
@@ -2457,9 +2583,8 @@ class PetApp:
             cv.configure(scrollregion=(0, 0, ITENS_COLS * (ITENS_CARD_W + 6), max(y, ITENS_H)))
             cv.yview_moveto(0)
         for nome, texto in (("todos", "Todos"), ("liberados", "Liberados"), ("bloqueados", "Bloqueados")):
-            b = tk.Label(chips, text=texto, font=self.font_small, padx=6, pady=1, cursor="hand2")
+            b = self.chip(chips, texto, False, lambda n=nome: desenha(n))
             b.pack(side="left", padx=(0, 3))
-            b.bind("<Button-1>", lambda e, n=nome: desenha(n))
             botoes[nome] = b
         desenha(self.itens_filtro)
         self.ao_lado(w)
@@ -2471,22 +2596,23 @@ class PetApp:
         grade.pack(pady=(4, 0))
         for n, (k, desc) in enumerate(M.ACHIEVEMENTS.items()):
             ok = k in have
-            card = tk.Frame(grade, bg=PANEL_BG, width=CONQ_CARD_W, height=CONQ_CARD_H, highlightthickness=2,
-                            highlightbackground=GOLD if ok else PANEL_EDGE)
-            card.pack_propagate(False)
+            card = self.cartao(grade, GOLD if ok else PANEL_EDGE, CONQ_CARD_W, CONQ_CARD_H)
             card.grid(row=n // CONQ_COLS, column=n % CONQ_COLS, padx=3, pady=3)
-            tk.Label(card, image=self.icon(arte.CONQ_ART[k], 3, dark=not ok), bg=PANEL_BG, height=36).pack(pady=(6, 2))
-            tk.Label(card, text=desc, bg=PANEL_BG, fg=TEXT if ok else MUTED, font=self.font_small,
-                     wraplength=CONQ_CARD_W - 14).pack()
+            tk.Label(card, image=self.icon(arte.CONQ_ART[k], 3, dark=not ok), bg=CARD_BG, height=36).pack(
+                pady=(CARTAO_PAD, 2))
+            tk.Label(card, text=desc, bg=CARD_BG, fg=TEXT if ok else MUTED, font=self.font_small,
+                     wraplength=CONQ_CARD_W - 2 * CARTAO_PAD).pack()
             premios = [self.icon(arte.ITEM_ART[ik], 2, dark=not ok) for ik, it in M.ITEMS.items()
                        if it.get("req") == k and ik in arte.ITEM_ART]
             premios += [im for c in self.chars.values() if c.unlock == k for im in [self.hero_thumb(c, ok, 24)] if im]
             if premios:
-                linha = tk.Frame(card, bg=PANEL_BG)
-                linha.pack(side="bottom", pady=(0, 5))
-                tk.Label(linha, text="libera", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
-                for im in premios[:6]:
-                    tk.Label(linha, image=im, bg=PANEL_BG).pack(side="left", padx=1)
+                linha = tk.Frame(card, bg=CARD_BG)
+                linha.pack(side="bottom", pady=(0, CARTAO_PAD))
+                tk.Label(linha, text="libera", bg=CARD_BG, fg=MUTED, font=self.font_small).pack(side="left", padx=2)
+                for im in premios[:3]:
+                    tk.Label(linha, image=im, bg=CARD_BG).pack(side="left", padx=1)
+                if len(premios) > 3:
+                    tk.Label(linha, text=f"+{len(premios) - 3}", bg=CARD_BG, fg=MUTED, font=self.font_small).pack(side="left")
         self.ao_lado(w)
 
     def show_perfil(self):
@@ -2497,9 +2623,7 @@ class PetApp:
         w, f = self.janela("perfil_win", "Perfil")
 
         def barra(parent, frac, cor, larg=L, alto=6):
-            cv = tk.Canvas(parent, width=larg, height=alto, bg=BAR_BG, highlightthickness=0)
-            cv.create_rectangle(0, 0, larg * max(0.0, min(1.0, frac)), alto, fill=cor, width=0)
-            return cv
+            return self.barra(parent, larg, alto, frac, cor)
 
         def rotulo(parent, txt, fg=MUTED, font=fs):
             tk.Label(parent, text=txt, bg=PANEL_BG, fg=fg, font=font, anchor="w").pack(fill="x")
@@ -2555,10 +2679,11 @@ class PetApp:
         for c in range(3):
             grade.columnconfigure(c, weight=1, uniform="cartao")
         for i, (tit, val, sub) in enumerate(cartoes):
-            card = tk.Frame(grade, bg=PANEL_BG, padx=2, pady=3, highlightthickness=1, highlightbackground=PANEL_EDGE)
+            card = self.cartao(grade, espessura=1)
             card.grid(row=i // 3, column=i % 3, padx=2, pady=2, sticky="nsew")
-            for txt, fg, font in ((tit, MUTED, fs), (val, TEXT, self.font), (sub, MUTED, fs)):
-                tk.Label(card, text=txt, bg=PANEL_BG, fg=fg, font=font, anchor="w", padx=4).pack(fill="x")
+            for j, (txt, fg, font) in enumerate(((tit, MUTED, fs), (val, TEXT, self.font), (sub, MUTED, fs))):
+                tk.Label(card, text=txt, bg=CARD_BG, fg=fg, font=font, anchor="w", padx=0, pady=0).pack(
+                    fill="x", padx=CARTAO_PAD, pady=(CARTAO_PAD if j == 0 else 0, CARTAO_PAD if j == 2 else 0))
         # gráfico dos últimos 7 dias (energia por dia, de usage_hist)
         self.menu_sep(f)
         topo("Últimos 7 dias  (energia)", fmt(sum(v for _, v in dias)), GOLD)
@@ -2589,9 +2714,7 @@ class PetApp:
         bot.pack(fill="x", pady=(4, 0))
         for txt, fn in (("Conquistas", self.show_achievements), ("Cemitério", self.show_graveyard),
                         ("Itens", self.show_items)):
-            b = tk.Label(bot, text=txt, bg=BAR_BG, fg=TEXT, font=fs, padx=6, pady=1, cursor="hand2")
-            b.pack(side="left", padx=(0, 4))
-            b.bind("<Button-1>", lambda e, fn=fn: fn())
+            self.chip(bot, txt, False, fn).pack(side="left", padx=(0, 4))
         self.ao_lado(w)
 
     def save(self):
@@ -2636,6 +2759,7 @@ def run_gui(args):
     global tk
     migrate_old_data()
     import tkinter as _tk
+    import tkinter.font  # noqa: F401  (tk.font: medir texto para encurtar com "…")
     tk = _tk
     lock = acquire_lock("demo.lock" if args.demo else "tokenlike.lock")
     if lock is None:
