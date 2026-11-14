@@ -570,6 +570,7 @@ assert tp.heroi_proprio("slime") and tp.heroi_proprio("fantasma")
 assert not tp.heroi_proprio("bitty-openpets") and not tp.heroi_proprio("naoexiste") and not tp.heroi_proprio("x.y")
 # idioma: o chip EN do menu troca o HUD e reabre as janelas abertas; em EN não sobra texto em pt
 import re, idioma
+ev_m = types.SimpleNamespace(x_root=1900, y_root=1070)
 TEXTOS = []
 class Rotulo(Wid):
     def __init__(self, *a, **k): super().__init__(); TEXTOS.append(k.get("text", ""))
@@ -583,14 +584,14 @@ def tudo():
     TEXTOS.clear(); appm.update_panel()
     TEXTOS.extend(k.get("text", "") for kind, _, k in appm.canvas.it.values() if kind == "text")
     for fn in (appm.show_perfil, appm.show_stats, appm.show_achievements, appm.show_graveyard, appm.show_heroes,
-               appm.show_items, lambda: appm.on_menu(ev), appm.show_choice, lambda: appm.announce_unlocks(["ouro300"])):
+               appm.show_items, lambda: appm.on_menu(ev_m), appm.show_choice, lambda: appm.announce_unlocks(["ouro300"])):
         fn()
     appm.close_choice()
     return " | ".join(TEXTOS)
 pt = tudo()
 assert "Sair" in pt and "Andar" in pt and "Quit" not in pt
-appm.show_stats(); appm.show_achievements(); appm.on_menu(ev); antes = (appm.stats_win, appm.conq_win)
-appm.lang_var.set("en"); appm.change_lang()
+appm.show_stats(); appm.show_achievements(); appm.on_menu(ev_m); antes = (appm.stats_win, appm.conq_win)
+appm.lang_var.set("en"); appm.menu_do(appm.change_lang)   # como o chip EN do menu
 assert appm.state["lang"] == "en" and appm.menu_win is None
 assert appm.stats_win in VIVAS and appm.conq_win in VIVAS and (appm.stats_win, appm.conq_win) != antes   # reabriu
 assert appm.canvas.it[appm.info_txt][2]["text"].startswith("Floor ")
