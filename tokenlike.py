@@ -1402,16 +1402,43 @@ class PetApp:
         setattr(self, attr, w)
         top = tk.Frame(f, bg=PANEL_BG)
         top.pack(fill="x")
-        tk.Label(top, text=titulo, bg=PANEL_BG, fg=GOLD, font=self.font).pack(side="left")
+        nome = tk.Label(top, text=titulo, bg=PANEL_BG, fg=GOLD, font=self.font)
+        nome.pack(side="left")
+        self.arrastavel(w, attr, top, nome)
         fechar = tk.Label(top, text=" x ", bg=PANEL_BG, fg=MUTED, font=self.font)
         fechar.pack(side="right")
         self.hover((fechar,), fechar, MUTED, lambda: self.close_win(w))
         return w, f
 
+    def arrastavel(self, w, attr, *alcas):
+        """Arrasta a janela segurando a barra de título (`alcas`) e lembra a posição em state["janelas"][attr]."""
+        pega = {}
+
+        def aperta(e):
+            pega["d"] = (e.x_root - w.winfo_x(), e.y_root - w.winfo_y())
+
+        def move(e):
+            if "d" in pega:
+                x, y = e.x_root - pega["d"][0], e.y_root - pega["d"][1]
+                w.geometry(f"+{x}+{y}")
+                self.state.setdefault("janelas", {})[attr] = [x, y]
+        for a in alcas:
+            a.configure(cursor="fleur")
+            a.bind("<Button-1>", aperta)
+            a.bind("<B1-Motion>", move)
+        w.barra = alcas[0]          # para os testes
+
     def ao_lado(self, w):
-        """Ao lado do pet: à esquerda, ou à direita se não couber."""
-        x, y = self.root.winfo_x(), self.root.winfo_y()
+        """Na posição lembrada (arrastada antes), se ainda estiver na tela; senão ao lado do pet:
+        à esquerda, ou à direita se não couber."""
         w.update_idletasks()
+        attr = next((a for a in JANELAS if getattr(self, a) is w), None)
+        pos = (self.state.get("janelas") or {}).get(attr)
+        sw, sh = self.root.winfo_screenwidth(), self.root.winfo_screenheight()
+        if pos and 0 <= pos[0] < sw and 0 <= pos[1] < sh:   # ponytail: só o monitor principal (winfo_screen*)
+            self.place_win(w, pos[0], min(pos[1], max(0, sh - w.winfo_height())))
+            return
+        x, y = self.root.winfo_x(), self.root.winfo_y()
         left = x - w.winfo_width() - 6
         self.place_win(w, left if left >= 0 else x + self.W + 6, y)
 

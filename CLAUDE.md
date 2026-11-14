@@ -13,6 +13,8 @@ Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a An
   com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
   "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
   "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
+  Toda janela de `janela()` é arrastável pela barra de título (`arrastavel`, cursor `fleur`); a posição fica em
+  `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela (senão, ao lado do pet).
   Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
   `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
   e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,

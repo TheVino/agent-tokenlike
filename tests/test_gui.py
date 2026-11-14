@@ -64,7 +64,10 @@ class Var:
     def set(self,v): self.v=v
 fake = types.ModuleType("tkinter")
 fake.Tk, fake.Canvas, fake.PhotoImage, fake.Toplevel = Tk, Canvas, PhotoImage, Tk
-fake.Label = fake.Menu = fake.Button = fake.Frame = Noop
+class Wid(Noop):
+    def __init__(self,*a,**k): self.binds={}
+    def bind(self,seq,fn=None,*a): self.binds[seq]=fn
+fake.Label = fake.Menu = fake.Button = fake.Frame = Wid
 fake.StringVar = fake.BooleanVar = Var
 fake.TclError = TclError
 sys.modules["tkinter"] = fake
@@ -458,6 +461,7 @@ VIVAS = set()
 class Janela(Tk):
     def __init__(self, *a, **k): VIVAS.add(self)
     def destroy(self): VIVAS.discard(self)
+    def geometry(self, g=None): self.geo = g
 tkinter.Toplevel = Janela
 appm = tp.PetApp(Args()); PENDING.clear(); appm.close_choice(); VIVAS.clear()
 appm.meta["achievements"] = ["chefe1"]; appm.meta["next_char"] = "slime"; appm.char_var.set("slime")
@@ -500,6 +504,15 @@ appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40
                 consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
 assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
 abre_fecha()
+# janelas móveis: arrastar pela barra muda a geometria e grava; reabrir usa a posição; fora da tela volta ao lado do pet
+appm.show_achievements(); w = appm.conq_win
+w.barra.binds["<Button-1>"](types.SimpleNamespace(x_root=310, y_root=305))
+w.barra.binds["<B1-Motion>"](types.SimpleNamespace(x_root=510, y_root=405))
+assert w.geo == "+500+400" and appm.state["janelas"]["conq_win"] == [500, 400], w.geo
+appm.show_achievements(); assert appm.conq_win.geo == "+500+400", appm.conq_win.geo
+appm.state["janelas"]["conq_win"] = [500, 1070]; appm.show_achievements(); assert appm.conq_win.geo == "+500+960"
+appm.state["janelas"]["conq_win"] = [5000, -900]; appm.show_achievements(); assert appm.conq_win.geo == "+144+300"
+appm.close_win(appm.conq_win)
 # barra de rolagem: arrastar o polegar e clicar na trilha chamam yview_moveto com a fração certa
 cv = tkinter.Canvas(); tr = appm.rolagem(None, Tk(), cv, 100)
 cv.cfg["yscrollcommand"]("0.0", "0.25")                      # 1/4 visível: polegar de 0 a 25 px
