@@ -36,7 +36,7 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   `item_family`/`FAMILIES`, filter All/Unlocked/Locked; locked (`item_unlocked`, same rule as the roll; demo
   unlocks everything) = silhouette + padlock + achievement, no values. The window has two tabs, Items |
   Synergies (`synergy_card`: sets, pairs, reactions; undiscovered = silhouette + hint, secret pairs show "???";
-  active ones in the current run are highlighted).
+  discovered ones get a gold frame; a reaction fires only on a status the foe had before the hit).
   "Profile" (1st menu row) opens `show_profile`: hero/run/HP, tamer level (`level`: floor(sqrt(lifetime energy
   `xp_total` / 1M)), `LEVEL_XP`), medals from `art.ACH_ART` in fixed cells (`icon(..., side=)`, name on hover),
   6 cards (today and lifetime energy, `streak_days`, runs, best, heroes N/20 + bosses), last 7 days bars

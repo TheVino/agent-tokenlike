@@ -599,7 +599,8 @@ def active_synergies(run: dict) -> list[str]:
     keys = [i["key"] for i in run["items"]]
     count = {}
     for k in keys:
-        count[item_family(k)] = count.get(item_family(k), 0) + 1
+        fam = item_family(k)
+        count[fam] = count.get(fam, 0) + 1
     return [k for k, s in SYNERGIES.items()
             if (s["kind"] == "set" and count.get(s["req"]["family"], 0) >= s["req"]["n"])
             or (s["kind"] == "pair" and all(i in keys for i in s["req"]["items"]))]
