@@ -48,6 +48,8 @@ def round_(lang):
     app.meta["graveyard"] = [{"run": 99999 - i, "char": hero, "floor": 999, "room": 5, "killer": murderer,
                               "kind": "boss", "gold": 99999, "kills": 9999, "date": "2026-11-13",
                               "items": [{"key": k, "rar": "legendary"} for k in list(M.ITEMS)[:i]]} for i in range(50)]
+    app.meta["synergies"] = {k: {"runs": 999, "first_run": 99999} for k in M.SYNERGIES}
+    app.run["synergies"] = list(M.SYNERGIES)
     app.build(); app.update_panel(); app.root.update()
 
     looks("hud", app.root)
@@ -58,6 +60,11 @@ def round_(lang):
             fn(); looks(attr, getattr(app, attr)); app.close_win(getattr(app, attr))
         for filter_by in ("all", "locked"):
             app.items_filter = filter_by; app.show_items(); looks(f"itens/{filter_by}", app.items_win); app.close_win(app.items_win)
+        app.items_tab = "synergies"      # nothing discovered (secret + locked cards) and, in the demo round, everything
+        app.meta["synergies"] = {k: {"runs": 999, "first_run": 99999} for k in M.SYNERGIES} if demo else {}
+        for filter_by in ("all", "locked"):
+            app.items_filter = filter_by; app.show_items(); looks(f"sinergias/{filter_by}", app.items_win); app.close_win(app.items_win)
+        app.items_tab = "items"; app.meta["synergies"] = {k: {"runs": 999, "first_run": 99999} for k in M.SYNERGIES}
     lim, app.limits, app.state["calib"] = app.limits, None, {}   # no official % and no factor: bar of your peak
     app.update_panel(); looks("hud/pico", app.root)
     app.show_profile(); looks("perfil/pico", app.profile_win); app.close_win(app.profile_win)

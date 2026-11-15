@@ -977,6 +977,17 @@ STAT_LINES = (
 )
 
 
+# Reactions have no `fx`: a short fixed text each (the rules live in dungeon.combat)
+REACTION_TEXT = {
+    "shatter": "Extra damage equal to your ATK; removes the freeze",
+    "toxic_fumes": "1 poison stack spreads to every other enemy",
+    "overload": "An extra burn tick right away",
+    "conductor": "Shock jumps to another enemy",
+    "jolt_venom": "+1 poison stack",
+    "frostbite": "Freeze lasts +1 turn",
+}
+
+
 def stat_lines(run, st):
     """[(field, name, value)] for the Status window: the fixed ones always, the others only when they change something."""
     st = dict(st, grow=min([M.item_fx(i["key"], i["rar"]).get("grow", 0) for i in run["items"]
@@ -2075,7 +2086,7 @@ class PetApp:
     def _offer_steps(self, ev, at, t):
         """Animation of the lines and of the resolved offer (item taken or consumed); returns the new t."""
         for line in ev["lines"]:
-            at(t, lambda line=line: self.floater(_t(line), TEXT, life=24))
+            at(t, lambda line=line: self.floater(_t(line), GOLD if line.startswith("New synergy") else TEXT, life=24))
             t += 600
         if ev.get("item"):
             key, rar = ev["item"]["key"], ev["item"]["rar"]
@@ -2561,6 +2572,10 @@ class PetApp:
                 lbl.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
                 lbl.bind("<Leave>", lambda e: info.configure(text=tooltip, fg=MUTED))
         info.pack(fill="x")
+        if run.get("synergies"):
+            tk.Label(f, text=_t("Synergies ({n})", n=len(run["synergies"])) + ": "
+                     + ", ".join(_t(M.SYNERGIES[k]["name"]) for k in run["synergies"] if k in M.SYNERGIES),
+                     bg=PANEL_BG, fg=GOLD, font=self.font_small, anchor="w", justify="left", wraplength=330).pack(fill="x")
         self.menu_sep(f)
         best = meta["best"]
         footer = [_t("Stored energy: {n} room(s)", n=int(run['energy'] // M.room_cost(run))),
@@ -2719,10 +2734,54 @@ class PetApp:
         cv.tag_lower("cartao")
         return alto
 
+    def synergy_card(self, cv, x, y, key):
+        """Card of one synergy on the canvas at (x, y); returns its height. Discovered: icons, effect, counters.
+        Locked: silhouette plus the hint. Secret and not discovered: only "???" (no icons: they would give it away)."""
+        sy, fs = M.SYNERGIES[key], self.font_small
+        seen = self.meta.get("synergies", {}).get(key)
+        hidden = sy["secret"] and not seen
+        if sy["kind"] == "pair":
+            grids = [art.ITEM_ART[i] for i in sy["req"]["items"]]
+        elif sy["kind"] == "reaction":
+            grids = [art.STAT_ART[s] for s in sy["req"]["status"]]
+        else:
+            fields = next(f for n, f in M.FAMILIES if n == sy["req"]["family"])
+            grids = [art.STAT_ART[fields[0]]]
+        larg, ty = ITEMS_CARD_W - 20, y + 54
+        if hidden:
+            cv.create_image(x + 26, y + 26, image=self.menu_icon("padlock"))
+            cv.create_text(x + 54, y + 26, anchor="w", text="???", fill=MUTED, font=self.font)
+        else:
+            for n, g in enumerate(grids):
+                cv.create_image(x + 20 + n * 34, y + 26, image=self.icon(g, 2, dark=not seen, side=30))
+            nx = x + 10 + len(grids) * 34 + 6
+            cv.create_text(nx, y + 18, anchor="w", text=self.shorten(_t(sy["name"]), self.font, x + ITEMS_CARD_W - 8 - nx),
+                           fill=TEXT if seen else MUTED, font=self.font)
+            cv.create_text(nx, y + 35, anchor="w", font=fs, fill=MUTED,
+                           text=_t({"set": "Set", "pair": "Pair", "reaction": "Reaction"}[sy["kind"]]))
+            if seen:
+                fx = M.fx_text(sy["fx"]) if sy["fx"] else _t(REACTION_TEXT[key])
+                lines = [fx, _t("Active in {n} runs", n=seen["runs"]), _t("Discovered in run #{n}", n=seen["first_run"])]
+            else:
+                lines = [_t(sy["hint"])]
+                cv.create_image(x + 10, ty + 7, anchor="w", image=self.menu_icon("padlock"))
+            for i, line in enumerate(lines):
+                t = cv.create_text(x + (26 if not seen else 10), ty, anchor="nw", text=line,
+                                   fill=GOLD if seen and i == 0 else MUTED, font=fs, width=larg - (0 if seen else 16))
+                ty = cv.bbox(t)[3] + 3
+        alto = max(ty - y + 6, 60)
+        rounded_rect(cv, x, y, x + ITEMS_CARD_W, y + alto, CARD_R, CARD_BG, GOLD if seen else PANEL_EDGE, 2, tag="cartao",
+                     extra=(f"card:{key}",))
+        cv.tag_lower("cartao")
+        return alto
+
     def show_items(self):
         free = [k for k in M.ITEMS if self.item_unlocked(k)]
         w, f = self.window("items_win", _t("Items  ·  {a} of {b} unlocked", a=len(free), b=len(M.ITEMS)))
         self.items_filter = getattr(self, "items_filter", "all")
+        self.items_tab = getattr(self, "items_tab", "items")
+        tabs = tk.Frame(f, bg=PANEL_BG)
+        tabs.pack(fill="x", pady=(4, 0))
         chips = tk.Frame(f, bg=PANEL_BG)
         chips.pack(fill="x", pady=(4, 0))
         row = tk.Frame(f, bg=PANEL_BG)
@@ -2734,15 +2793,23 @@ class PetApp:
         self.scrollbar(row, w, cv, ITEMS_H)
         buttons = {}
 
-        def draw(filter_by):
-            self.items_filter = filter_by
+        def draw(filter_by, tab=None):
+            self.items_filter, self.items_tab = filter_by, tab or self.items_tab
             for name, b in buttons.items():
                 b.paint(name == filter_by)
+            for name, b in tab_buttons.items():
+                b.paint(name == self.items_tab)
             cv.delete("all")
-            keys = [k for k in M.ITEMS if filter_by == "all" or (k in free) == (filter_by == "unlocked")]
+            if self.items_tab == "synergies":
+                found = self.meta.get("synergies", {})
+                keys = [k for k in M.SYNERGIES if filter_by == "all" or (k in found) == (filter_by == "unlocked")]
+                card = self.synergy_card
+            else:
+                keys = [k for k in M.ITEMS if filter_by == "all" or (k in free) == (filter_by == "unlocked")]
+                card = self.item_card
             y = 0
             for i in range(0, len(keys), ITEMS_COLS):
-                y += 6 + max(self.item_card(cv, c * (ITEMS_CARD_W + 6), y, k)
+                y += 6 + max(card(cv, c * (ITEMS_CARD_W + 6), y, k)
                              for c, k in enumerate(keys[i:i + ITEMS_COLS]))
             if not keys:
                 cv.create_text(10, 20, anchor="w", text=_t("No items here."), fill=MUTED, font=self.font)
@@ -2752,6 +2819,11 @@ class PetApp:
             b = self.chip(chips, _t(text), False, lambda n=name: draw(n))
             b.pack(side="left", padx=(0, 3))
             buttons[name] = b
+        tab_buttons = {}
+        for name, text in (("items", "Items"), ("synergies", "Synergies")):
+            b = self.chip(tabs, _t(text), False, lambda n=name: draw(self.items_filter, n))
+            b.pack(side="left", padx=(0, 3))
+            tab_buttons[name] = b
         draw(self.items_filter)
         self.beside(w)
 
@@ -2831,6 +2903,7 @@ class PetApp:
             lb.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
             lb.bind("<Leave>", lambda e: info.configure(text=tooltip, fg=MUTED))
         info.pack(fill="x")
+        label(f, _t("Synergies {n}/{total}", n=len(set(meta.get("synergies", {})) & set(M.SYNERGIES)), total=len(M.SYNERGIES)))
         # number cards
         own = [c for k, c in self.chars.items() if own_hero(k)]
         best, dias = meta["best"], usage_per_day(state, now)
