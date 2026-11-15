@@ -14,10 +14,12 @@ def overlap(frame, extra, ax, ay):
 
 
 def states(hero, stage):
-    """The 9 states (run_l = run_r mirrored) with the stage's `extra` at each frame's anchor."""
-    extra = hero.STAGES[stage]["extra"]
+    """The 9 states (run_l = run_r mirrored) with the stage's `extra` at each frame's anchor.
+    Optional `extra_states` {state: grid} in a stage replaces `extra` for those states."""
+    st = hero.STAGES[stage]
     est = {}
     for e in DRAWN:
+        extra = st.get("extra_states", {}).get(e, st["extra"])
         qs = hero.FRAMES[e]
         est[e] = [overlap(q, extra, *hero.ANCHOR[e][i]) if extra else list(q) for i, q in enumerate(qs)]
     est["run_l"] = [[l[::-1] for l in q] for q in est["run_r"]]

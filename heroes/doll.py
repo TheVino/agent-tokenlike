@@ -281,5 +281,6 @@ BOW_NEEDLE = _extra(((_BOW, 12, 2), (_NEEDLE_BACK, 0, 0)))
 STAGES = [
     {"title": "Scrap", "floor": 1, "extra": None},
     {"title": "Rag Doll", "floor": 4, "extra": BOW},
-    {"title": "Patched Doll", "floor": 10, "extra": BOW_NEEDLE},
+    # when attacking she uses the back needle, so it leaves the hair
+    {"title": "Patched Doll", "floor": 10, "extra": BOW_NEEDLE, "extra_states": {"running": BOW}},
 ]

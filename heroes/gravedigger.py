@@ -152,7 +152,7 @@ def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", feet=(0, 0), behind=(), a
         _grave(g, *grave)
     for s, x, y in por:
         stamp(g, s, x, y)
-    return ["".join(l) for l in g], (hx - 12, hy - 12)
+    return ["".join(l) for l in g], (max(0, hx - 12), hy - 12)  # x < 0 would crop the lamp
 
 
 def _state(specs):
