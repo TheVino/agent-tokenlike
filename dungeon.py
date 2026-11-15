@@ -58,6 +58,9 @@ ACHIEVEMENTS = {
     "helpers3": "Take 3 helper items in a run",
     "no_consume10": "Reach floor 10 consuming nothing",
     "legendaries3": "Take 3 legendary items in a run",
+    "synergy5": "Discover 5 synergies",
+    "reactions_all": "Discover all 6 reactions",
+    "synergies3run": "Activate 3 synergies in a run",
     "poison3": "Kill 3 enemies with poison in a run",
     "floor13": "Die on floor 13",
     "bosses3run": "Beat 3 bosses in a single run",
@@ -370,11 +373,15 @@ for _k, _name, _a, _b, _fx, _sec in _PAIRS:
                      "hint": f"Have {ITEMS[_a]['name']} and {ITEMS[_b]['name']}"}
 
 # Reactions: the pet applies a status to an enemy that already has another one (effects live in combat()).
-for _k, _name, _a, _b in (("shatter", "Shatter", "burn", "freeze"), ("toxic_fumes", "Toxic Fumes", "burn", "poison"),
-                          ("overload", "Overload", "burn", "shock"), ("conductor", "Conductor", "shock", "freeze"),
-                          ("jolt_venom", "Jolt Venom", "shock", "poison"), ("frostbite", "Frostbite", "poison", "freeze")):
+for _k, _name, _a, _b, _hint in (
+        ("shatter", "Shatter", "burn", "freeze", "Burn and freeze the same enemy"),
+        ("toxic_fumes", "Toxic Fumes", "burn", "poison", "Burn and poison the same enemy"),
+        ("overload", "Overload", "burn", "shock", "Burn and shock the same enemy"),
+        ("conductor", "Conductor", "shock", "freeze", "Shock and freeze the same enemy"),
+        ("jolt_venom", "Jolt Venom", "shock", "poison", "Shock and poison the same enemy"),
+        ("frostbite", "Frostbite", "poison", "freeze", "Poison and freeze the same enemy")):
     SYNERGIES[_k] = {"name": _name, "kind": "reaction", "req": {"status": [_a, _b]}, "fx": {}, "secret": False,
-                     "hint": f"Apply {_a} and {_b} to the same enemy"}
+                     "hint": _hint}
 
 # sprite, name, health mult., attack mult., min floor, speed mult.
 MONSTERS = [
@@ -508,7 +515,8 @@ def fx_text(fx: dict) -> str:
 
 def new_meta() -> dict:
     return {"achievements": [], "graveyard": [], "runs": 0,
-            "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0}
+            "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0,
+            "synergies": {}}
 
 
 COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0}
@@ -526,7 +534,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = N
                  **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
         "trait": dict(trait or {}),
         "counters": dict(COUNTERS_ZERO),
-        "items": [], "consumed": [], "shield": 0, "pending": None,
+        "items": [], "consumed": [], "shield": 0, "pending": None, "synergies": [],
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
     }
@@ -569,6 +577,7 @@ def migrate_run(run: dict) -> dict:
         i.setdefault("kills0", 0)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
+    run.setdefault("synergies", [])
     run.setdefault("trait", {})
     cont = run.setdefault("counters", {})
     for k, v in COUNTERS_ZERO.items():
@@ -594,6 +603,22 @@ def active_synergies(run: dict) -> list[str]:
     return [k for k, s in SYNERGIES.items()
             if (s["kind"] == "set" and count.get(s["req"]["family"], 0) >= s["req"]["n"])
             or (s["kind"] == "pair" and all(i in keys for i in s["req"]["items"]))]
+
+
+def note_synergies(run: dict, meta: dict, ev: dict, extra=()) -> None:
+    """Records the synergies active now (+ `extra`, e.g. reactions seen in combat) in the run and in the meta;
+    new ones for this run go to ev["synergies"] and ev["lines"]."""
+    for k in [*active_synergies(run), *extra]:
+        if k in run["synergies"]:
+            continue
+        run["synergies"].append(k)
+        seen = meta.setdefault("synergies", {})
+        new = k not in seen
+        if new:
+            seen[k] = {"runs": 0, "first_run": run["id"]}
+        seen[k]["runs"] += 1
+        ev.setdefault("synergies", []).append({"key": k, "new": new})
+        ev.setdefault("lines", []).append(f"{'New synergy' if new else 'Synergy'}: {SYNERGIES[k]['name']}!")
 
 
 def stats(run: dict) -> dict:
@@ -735,6 +760,7 @@ def choose_pending(run: dict, meta: dict, choice: str) -> dict:
     offer, run["pending"] = run.get("pending"), None
     if offer:
         resolve_offer(run, offer, choice, ev)
+        note_synergies(run, meta, ev)
         _check_achievements(run, meta, ev)
     return ev
 
@@ -785,6 +811,8 @@ _REACTIONS = {frozenset(r["req"]["status"]): k for k, r in SYNERGIES.items() if 
 
 def _react(key, i, atk, f, foes, x, step):
     """Effect of reaction `key` on foe i (x). Uses _apply_status directly, so effects never chain."""
+    if x["hp"] <= 0:                  # an earlier reaction of the same hit already killed it
+        return
     others = [j for j, y in enumerate(foes) if j != i and y["hp"] > 0]
     d = 0
     if key == "shatter":
@@ -972,6 +1000,8 @@ def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> 
 
 
 def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
+    # every room outcome (and death) passes here: record synergies first so their achievements see them
+    note_synergies(run, meta, ev, [h["reaction"] for h in ev.get("hits", ()) if h.get("reaction")])
     have = set(meta["achievements"])
     new = []
 
@@ -1003,6 +1033,9 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("helpers3", sum(1 for it in run["items"] if "helper" in ITEMS[it["key"]]["fx"]) >= 3)
     grant("poison3", cont.get("poison_kills", 0) >= 3)
     grant("bosses3run", run["bosses"] >= 3)
+    grant("synergy5", len(meta.get("synergies", {})) >= 5)
+    grant("reactions_all", all(k in meta.get("synergies", {}) for k, s in SYNERGIES.items() if s["kind"] == "reaction"))
+    grant("synergies3run", len(run.get("synergies", ())) >= 3)
     grant("floor13", run.get("dead") and run["floor"] == 13)
     if run["floor"] >= 8 and "floor8full" not in have:
         grant("floor8full", run["hp"] >= stats(run)["maxhp"])
@@ -1244,5 +1277,5 @@ def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: l
         "items": [dict(i) for i in run["items"]], "consumed": [dict(i) for i in run["consumed"]],
         "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
         "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,
-        "achievements": list(achievements),
+        "achievements": list(achievements), "synergies": list(run.get("synergies", [])),
     }

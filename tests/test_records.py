@@ -14,7 +14,7 @@ old = {"items": [{"key": "dagger", "rar": "common"}], "hp": 5}
 M.migrate_run(old); assert old["items"][0]["floor"] is None and old["consumed"] == []
 rec = M.run_record(run, "Rat King", False, "auto", ["floor5"])
 assert set(rec) == {"run", "char", "floor", "room", "killer", "gave_up", "items", "consumed", "gold",
-                    "kills", "bosses", "date", "mode", "version", "achievements", "killer_kind"}
+                    "kills", "bosses", "date", "mode", "version", "achievements", "killer_kind", "synergies"}
 assert rec["killer_kind"] == ""
 assert M.run_record(run, "x", False, "auto", [], killer_kind="horde")["killer_kind"] == "horde"
 assert rec["version"] == M.BALANCE_VERSION and len(M.BALANCE_VERSION) == 8
@@ -59,4 +59,6 @@ m2 = M.new_meta(); r2 = M.new_run("slime", {"hp": 5, "atk": 1}, 0)
 M.die(r2, m2, {}, "Gave up", "gave_up"); assert m2["graveyard"][-1]["kind"] == "gave_up"
 r3 = M.new_run("slime", {}, 9); r3["items"] = [{"key": "dagger", "rar": "rare", "floor": 1, "kills0": 0}]; m3 = M.new_meta()
 M.die(r3, m3, {}, "x"); assert m3["graveyard"][-1]["items"] == [{"key": "dagger", "rar": "rare"}]   # the tombstone keeps the rarity
+r4 = M.new_run("slime", {}, 30); r4["synergies"] = ["defense2", "shatter"]
+assert M.run_record(r4, "x", False, "auto", [])["synergies"] == ["defense2", "shatter"]
 print("ok: records")

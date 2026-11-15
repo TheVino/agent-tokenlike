@@ -1095,6 +1095,10 @@ ACH_ART = {
     "poison3": [".v...v...v.", "vvv.vvv.vvv", "vvv.vvv.vvv", ".V...V...V."],
     "floor13": ["g.g...g.g", "gKgggggKg", "gKKKKKKKg", "gKyKKKyKg", "gKKKrKKKg", "gKwKKwwwg", "gwwKKKKwg",
                 "gKwKKKwwg", "gKwKKKKwg", "gwwwKwwwg", "ggggggggg"],
+    "synergy5": ["..y...y..", ".yyy.yyy.", "..y.y.y..", "....y....", "..y.y.y..", ".yyy.yyy.", "..y...y.."],
+    "reactions_all": ["..r.....c..", ".rOr...cic.", ".rOor.cicc.", "rOeoryciic.", ".rOor.cic..", "..rOr.cic..",
+                      "...r...c..."],
+    "synergies3run": ["...y...", "..yey..", "...y...", ".c.y.r.", "cic.rOr", ".c...r.", "ppp.ppp", ".p...p."],
     "bosses3run": ["y.y.y", "yyyyy", "y.y.y", "yyryy", "y.y.y", "yyryy"],
 }
 
