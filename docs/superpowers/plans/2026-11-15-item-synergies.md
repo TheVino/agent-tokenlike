@@ -35,8 +35,8 @@ after the builder check" section is binding.
 
 - **An old save without synergy keys loads and plays.** `migrate_run` and the meta loader fill in
   `run["synergies"] = []` and `meta["synergies"] = {}` (Task 3 test).
-- **An interactive-mode take records discovery.** The GUI path through `resolve_pending` must reach
-  `note_synergies` (Task 3 test on `resolve_pending`; Task 5 `test_gui` check).
+- **An interactive-mode take records discovery.** The GUI path through `choose_pending` (and `resolve_pending`, which calls it) must reach
+  `note_synergies` (Task 3 test on `choose_pending`; Task 5 `test_gui` check).
 - **Blood 2 never makes `attack_cost` negative.** `stats()` clamps `attack_cost` to ≥ 0 (Task 1 test).
 - **A secret synergy never leaks.** Its name, hint and icons are not shown in pt or en until it is in
   `meta["synergies"]` (Task 5 test).
@@ -195,7 +195,7 @@ r["items"].append({"key": b, "rar": "common"}); assert pk in M.active_synergies(
 - Modify: `dungeon.py`:
   - `new_run`, `new_meta`, `migrate_run`, meta loading;
   - a new `note_synergies`;
-  - calls in `enter_room` and `resolve_pending`;
+  - calls in `enter_room` and `choose_pending`;
   - `run_record`, `ACHIEVEMENTS`, `_check_achievements`.
 - Modify: `art.py` (`ACH_ART` × 3), `i18n.py`.
 - Test: `tests/test_items.py`, `tests/test_records.py`
@@ -219,7 +219,7 @@ r["items"].append({"key": b, "rar": "common"}); assert pk in M.active_synergies(
     - A new run with the same items gives `runs == 2` and `new` False.
     - `extra=["shatter"]` records the reaction the same way.
   - `test_items.py`, interactive path:
-    - A pending offer resolved by `resolve_pending(run, meta)` that completes a set records it.
+    - A pending offer resolved by `choose_pending(run, meta, "take")` that completes a set records it.
   - `test_items.py`, old saves:
     - `migrate_run` on a run dict without `"synergies"` gives `[]`.
     - The meta loader on a meta without `"synergies"` gives `{}`.
@@ -240,7 +240,7 @@ r["items"].append({"key": b, "rar": "common"}); assert pk in M.active_synergies(
   - **Call sites.**
     - `enter_room` calls it once at the end. `extra` = the `reaction` keys of `ev["hits"]` (combat runs once per
       room, at `dungeon.py:991`).
-    - `resolve_pending` calls it after resolving.
+    - `choose_pending` calls it after resolving. `resolve_pending` goes through `choose_pending`, so it is covered.
   - **Achievements.** The 3 new ones are checked in `_check_achievements`, wherever it already runs.
 
 - [ ] **Step 4: Run** every test file. Expected: all pass.
