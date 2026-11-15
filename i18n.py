@@ -293,6 +293,9 @@ PT = {
     "Hearthfire": "Fogo de Lareira", "Winter Carapace": "Carapaça de Inverno", "Night Prowler": "Caçador Noturno",
     "Pack Instinct": "Instinto de Bando", "Blood Debt": "Dívida de Sangue", "Loaded Dice": "Dados Viciados",
     "Miasma": "Miasma dos Pântanos", "Shattered Gaze": "Olhar Estilhaçado",
+    "Shatter": "Despedaçar", "Toxic Fumes": "Fumaça Tóxica", "Overload": "Sobrecarga", "Conductor": "Condutor",
+    "Jolt Venom": "Veneno Voltaico", "Frostbite": "Geladura",
+    "Apply {a} and {b} to the same enemy": "Aplique {a} e {b} no mesmo inimigo",
     # menu
     "Profile": "Perfil", "Status": "Status", "Graveyard": "Cemitério", "Achievements": "Conquistas", "Items": "Itens",
     "Heroes…": "Heróis…", "Size": "Tamanho", "Mode": "Modo", "Language": "Idioma", "Small": "Pequeno",

@@ -60,7 +60,7 @@ def pet(spd=10, atk=3, crit=0.0, **fx):
     return r
 
 
-KEYS = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge", "locked", "thorns", "double"}
+KEYS = {"who", "target", "dmg", "crit", "status", "skip", "dot", "dodge", "locked", "thorns", "double", "reaction"}
 # order: the faster enemy acts first; tie -> pet first
 r = pet(spd=5); won, steps, _, _ = M.combat(r, M.stats(r), [foe(spd=9)], random.Random(1), 1)
 assert steps[0]["who"] == 0 and all(set(x) == KEYS for x in steps)
@@ -149,7 +149,7 @@ for _ in range(200):
         assert all(set(x) == KEYS for x in ev["hits"])
     else:
         assert "foes" not in ev
-assert seen_n and not hasattr(M, "fight") and M.RULES_REV == 8
+assert seen_n and not hasattr(M, "fight") and M.RULES_REV == 9
 # tie via enter_room (boss): clears the room, but without gold, kills, boss bonus or item
 rounds = M.MAX_ROUNDS; M.MAX_ROUNDS = 1
 meta = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 1}, 1)
@@ -316,4 +316,73 @@ for tie, expected in ((True, 0), (False, 1)):
             break
     assert ev["name"] == "Horde (4)" and r["counters"]["horde4"] == expected, (tie, r["counters"])
 M.combat, M.ROOM_WEIGHTS, M.horde_max = _cb, _rw, _hm
+# --- Synergies Task 2: element reactions ---
+def react(first, hit, others=(), atk=3, f=1, seed=1, **fx):
+    """Foe 0 starts with status `first` (a dict); the pet hits with element `hit` at chance 1.0."""
+    fx = dict(fx); fx[hit] = 1.0
+    r = pet(atk=atk, **fx); r["shield"] = 10**6
+    mc = M.MAX_ELEM_CHANCE; M.MAX_ELEM_CHANCE = 1.0
+    x = foe(hp=500, atk=0, spd=1); x["status"] = dict(first)
+    fs = [x] + list(others)
+    try:
+        _, steps, _, _ = M.combat(r, M.stats(r), fs, random.Random(seed), f)
+    finally:
+        M.MAX_ELEM_CHANCE = mc
+    return fs, steps, [s_ for s_ in steps if s_["reaction"]]
+
+
+R = {k: s for k, s in M.SYNERGIES.items() if s["kind"] == "reaction"}
+assert set(R) == {"shatter", "toxic_fumes", "overload", "conductor", "jolt_venom", "frostbite"}
+assert len({s["name"] for s in R.values()}) == 6 and all(set(s["req"]["status"]) <= set(M.STATUS_NAME) for s in R.values())
+assert not M.active_synergies(pet()) or all(M.SYNERGIES[k]["kind"] != "reaction" for k in M.active_synergies(pet()))
+# Shatter: burn on a frozen foe = extra damage equal to the pet ATK, freeze removed
+fs, steps, rs = react({"freeze": 9}, "burn", atk=3)
+assert rs[0]["reaction"] == "shatter" and rs[0]["dmg"] == 3 and rs[0]["who"] == "pet" and fs[0]["status"]["freeze"] == 0
+assert len(rs) == 1
+# Toxic Fumes: poison stack on every other LIVING foe, none on a dead one
+dead = foe(hp=1); dead["hp"] = 0
+a, b = foe(hp=500, atk=0, spd=1), foe(hp=500, atk=0, spd=1)
+mr = M.MAX_ROUNDS; M.MAX_ROUNDS = 1       # one round: the poison has not worn off yet
+fs, steps, rs = react({"poison": [0]}, "burn", others=[a, dead, b]); M.MAX_ROUNDS = mr
+assert rs[0]["reaction"] == "toxic_fumes" and len(a["status"].get("poison", [])) >= 1 and len(b["status"].get("poison", [])) >= 1
+assert "poison" not in dead["status"] and len(rs) == 1
+# Overload: extra burn tick right away
+fs, steps, rs = react({"shock": 2}, "burn", f=10)
+assert rs[0]["reaction"] == "overload" and rs[0]["dmg"] == round(M.BURN[0] + M.BURN[1] * 10) and rs[0]["dot"] and len(rs) == 1
+# Conductor: shock jumps to another living foe
+a = foe(hp=500, atk=0, spd=1); M.MAX_ROUNDS = 1
+fs, steps, rs = react({"freeze": 9}, "shock", others=[a]); M.MAX_ROUNDS = mr
+assert rs[0]["reaction"] == "conductor" and a["status"].get("shock") and len(rs) == 1
+# Jolt Venom: +1 poison stack, never past the cap
+M.MAX_ROUNDS = 1
+fs, steps, rs = react({"poison": [0]}, "shock"); M.MAX_ROUNDS = mr
+assert rs[0]["reaction"] == "jolt_venom" and len(fs[0]["status"]["poison"]) == 2 and len(rs) == 1
+M.MAX_ROUNDS = 1
+fs, steps, rs = react({"poison": [0] * M.POISON_MAX_STACKS}, "shock"); M.MAX_ROUNDS = mr
+assert rs[0]["reaction"] == "jolt_venom" and len(fs[0]["status"]["poison"]) == M.POISON_MAX_STACKS
+# Frostbite: freeze +1 turn
+M.MAX_ROUNDS = 1
+fs, steps, rs = react({"freeze": 3}, "poison"); M.MAX_ROUNDS = mr
+assert rs[0]["reaction"] == "frostbite" and len(rs) == 1
+x = foe(); x["status"] = {"freeze": 3}; M._react("frostbite", 0, 3, 1, [x], x, lambda *a, **k: None)
+assert x["status"]["freeze"] == 4
+fs, steps, rs = react({"poison": [0]}, "freeze"); assert rs[0]["reaction"] == "frostbite"   # either order
+# no reaction: same status again, killing hit, statuses on the pet
+fs, steps, rs = react({"burn": 2}, "burn"); assert not rs
+r = pet(atk=50, burn=1.0); x = foe(hp=5, atk=0, spd=1); x["status"] = {"freeze": 3}
+_, steps, _, _ = M.combat(r, M.stats(r), [x], random.Random(1), 1); assert not any(s_["reaction"] for s_ in steps)
+r = pet(); _, steps, _, _ = M.combat(r, M.stats(r), [foe(hp=200, atk=1, boss=True, element="fire")], random.Random(8), 5)
+assert any(s_["target"] == "pet" and s_["status"] for s_ in steps) and not any(s_["reaction"] for s_ in steps)
+# a foe holding two other statuses: only the first in STATUS_NAME order reacts, once per applied status
+fs, steps, rs = react({"freeze": 9, "poison": [0]}, "burn")
+assert rs[0]["reaction"] == "toxic_fumes" and len([s_ for s_ in rs if s_["dmg"] == 3]) == 0
+# a reaction-made status never reacts again (Conductor onto a foe that is already burning: still one reaction)
+a = foe(hp=500, atk=0, spd=1); a["status"] = {"burn": 3}
+fs, steps, rs = react({"freeze": 9}, "shock", others=[a]); assert len(rs) == 1
+# status_turns: a fresh burn lasts BURN_TURNS + 1
+assert M.stats(pet(status_turns=1))["status_turns"] == 1
+M.ITEMS.pop("_t", None)
+_s = {}; M._apply_status(_s, "burn", 1); assert _s["burn"] == M.BURN_TURNS + 1
+_s = {}; M._apply_status(_s, "freeze", 1); assert _s["freeze"] == M.FREEZE_TURNS + 1
+_s = {}; M._apply_status(_s, "burn"); assert _s["burn"] == M.BURN_TURNS
 print("ok: combat")

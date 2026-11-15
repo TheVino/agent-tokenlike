@@ -369,6 +369,13 @@ for _k, _name, _a, _b, _fx, _sec in _PAIRS:
     SYNERGIES[_k] = {"name": _name, "kind": "pair", "req": {"items": [_a, _b]}, "fx": _fx, "secret": _sec,
                      "hint": f"Have {ITEMS[_a]['name']} and {ITEMS[_b]['name']}"}
 
+# Reactions: the pet applies a status to an enemy that already has another one (effects live in combat()).
+for _k, _name, _a, _b in (("shatter", "Shatter", "burn", "freeze"), ("toxic_fumes", "Toxic Fumes", "burn", "poison"),
+                          ("overload", "Overload", "burn", "shock"), ("conductor", "Conductor", "shock", "freeze"),
+                          ("jolt_venom", "Jolt Venom", "shock", "poison"), ("frostbite", "Frostbite", "poison", "freeze")):
+    SYNERGIES[_k] = {"name": _name, "kind": "reaction", "req": {"status": [_a, _b]}, "fx": {}, "secret": False,
+                     "hint": f"Apply {_a} and {_b} to the same enemy"}
+
 # sprite, name, health mult., attack mult., min floor, speed mult.
 MONSTERS = [
     ("bat", "Bat", 0.8, 0.9, 1, 1.4),
@@ -747,8 +754,9 @@ def apply_damage(run: dict, d: int) -> int:
     return d - absorbed
 
 
-def _apply_status(s: dict, name: str) -> None:
-    """Puts the status on s. Burn renews; poison gains a stack (at the cap, renews the oldest)."""
+def _apply_status(s: dict, name: str, turns_bonus: int = 0) -> None:
+    """Puts the status on s. Burn renews; poison gains a stack (at the cap, renews the oldest).
+    turns_bonus: extra turns on burn/shock/freeze (the Elemental 4 set)."""
     if name == "poison":
         v = s.setdefault("poison", [])
         if len(v) < POISON_MAX_STACKS:
@@ -756,7 +764,7 @@ def _apply_status(s: dict, name: str) -> None:
         else:
             v[v.index(max(v))] = 0
     else:
-        s[name] = {"burn": BURN_TURNS, "shock": SHOCK_TURNS, "freeze": FREEZE_TURNS}[name]
+        s[name] = {"burn": BURN_TURNS, "shock": SHOCK_TURNS, "freeze": FREEZE_TURNS}[name] + turns_bonus
 
 
 def _status_damage(s: dict, f: int) -> list[tuple[str, int]]:
@@ -770,6 +778,32 @@ def _status_damage(s: dict, f: int) -> list[tuple[str, int]]:
         out.append(("poison", sum(v)))
         s["poison"] = [t for t in v if t < POISON_TURNS]
     return out
+
+
+_REACTIONS = {frozenset(r["req"]["status"]): k for k, r in SYNERGIES.items() if r["kind"] == "reaction"}
+
+
+def _react(key, i, atk, f, foes, x, step):
+    """Effect of reaction `key` on foe i (x). Uses _apply_status directly, so effects never chain."""
+    others = [j for j, y in enumerate(foes) if j != i and y["hp"] > 0]
+    d = 0
+    if key == "shatter":
+        d, x["status"]["freeze"] = atk, 0
+    elif key == "toxic_fumes":
+        for j in others:
+            _apply_status(foes[j]["status"], "poison")
+    elif key == "overload":
+        d = round(BURN[0] + BURN[1] * f)
+    elif key == "conductor":
+        if others:
+            _apply_status(foes[others[0]]["status"], "shock")
+    elif key == "jolt_venom":
+        if len(x["status"].get("poison", [])) < POISON_MAX_STACKS:
+            _apply_status(x["status"], "poison")
+    elif key == "frostbite":
+        x["status"]["freeze"] = x["status"].get("freeze", 0) + 1
+    x["hp"] -= d
+    step("pet", i, d, status="burn" if key == "overload" else None, dot=key == "overload", reaction=key)
 
 
 def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
@@ -786,9 +820,10 @@ def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     charges = st["block"]                              # enemy hits the pet cancels in this fight
 
     def step(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False,
-              locked=False, thorns=False, double=False):
+              locked=False, thorns=False, double=False, reaction=None):
         steps.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status, "skip": skip,
-                       "dot": dot, "dodge": dodge, "locked": locked, "thorns": thorns, "double": double})
+                       "dot": dot, "dodge": dodge, "locked": locked, "thorns": thorns, "double": double,
+                       "reaction": reaction})
 
     def alive():
         return [i for i, x in enumerate(foes) if x["hp"] > 0]
@@ -858,13 +893,18 @@ def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                         e_crit, mult = critical(st["crit"], st["critdmg"], 0 if dup else st["spd"], x["spd"])
                         d = round(max(1, atk + rng.randint(-1, 1)) * mult)
                         x["hp"] -= d
-                        applied = None
+                        applied, reacts = None, []
                         if x["hp"] > 0:
+                            had = [n for n in STATUS_NAME if x["status"].get(n)]    # before this hit's elements
                             for el, name in STATUS_NAME.items():      # each element rolls separately
                                 if st[el] and rng.random() < st[el]:
-                                    _apply_status(x["status"], name)
+                                    _apply_status(x["status"], name, st["status_turns"])
                                     applied = applied or name
+                                    if name not in had and had:       # a new status next to another one
+                                        reacts.append(_REACTIONS[frozenset((name, had[0]))])
                         step("pet", i, d, e_crit, applied, double=dup)
+                        for key in reacts:
+                            _react(key, i, atk, f, foes, x, step)
                 if not alive():
                     return True, steps, "", False
             else:
@@ -1174,7 +1214,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Bump when a combat formula/rule or a number written straight in the code changes (the hash below does not see that).
-RULES_REV = 8
+RULES_REV = 9
 
 
 def _balance_version() -> str:

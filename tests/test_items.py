@@ -321,6 +321,17 @@ r = M.new_run("slime", {}, 10); r["items"] = [{"key": k, "rar": "legendary"} for
 st = M.stats(r)
 assert st["crit"] <= M.MAX_CRIT and st["block"] <= M.MAX_BLOCK and st["double"] <= M.MAX_DOUBLE
 assert st["thorns"] <= M.MAX_THORNS and st["luck"] <= M.MAX_LUCK and st["attack_cost"] >= 0
+assert all(st[el] <= M.MAX_ELEM_CHANCE for el in M.ELEMENTS.values())
+# elem_boost only lifts elements whose summed chance is already above 0
+M.ITEMS["_e"] = {"name": "e", "fx": {"burn": 0.1}, "rarities": ["common"], "consume": {"heal": 1},
+                 "look": {"type": "obj", "anchor": "top", "art": "dagger"}}
+r = M.new_run("slime", {}, 12); r["trait"] = {"elem_boost": 0.05}; r["items"] = [{"key": "_e", "rar": "common"}]
+st = M.stats(r); assert abs(st["burn"] - 0.15) < 1e-9 and st["shock"] == st["poison"] == st["freeze"] == 0
+del M.ITEMS["_e"]
+# Blood 2 alone (attack_cost -1) never makes attack_cost negative
+bk = [k for k in M.ITEMS if M.item_family(k) == "Blood"][:2]
+r = M.new_run("slime", {}, 13); r["items"] = [{"key": k, "rar": "common"} for k in bk]
+assert "blood2" in M.active_synergies(r) and M.stats(r)["attack_cost"] >= 0
 # a pair turns on only with both items
 pk = next(k for k, s in S.items() if s["kind"] == "pair"); a, b = S[pk]["req"]["items"]
 r = M.new_run("slime", {}, 11); r["items"] = [{"key": a, "rar": "common"}]
