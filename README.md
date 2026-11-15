@@ -105,6 +105,9 @@ elsewhere the pet sits on a dark background.
 
   Items come in a **rarity**: common, **rare** (blue), **epic** (purple) or **legendary** (gold); rarer means bigger
   bonuses (downsides don't grow). When you find an item you can **take** it (it joins the stack) or **consume** it (instant healing, or a **shield** that soaks damage before HP).
+- **Synergies:** certain combinations of items spark extra effects: **sets** (2 or 4 items of a family), **pairs** of
+  specific items (some secret) and **reactions** when the pet puts two different statuses on the same enemy (burn +
+  freeze shatters it). Discoveries are kept in the **Synergies** tab of the Items window.
 - **Modes:** in **Auto** the pet decides by itself (consumes when low on HP, otherwise takes). In **Interactive** a small
   window offers Take/Consume and the pet waits; if nobody picks within **30 seconds**, the automatic rule decides
   as soon as the next room is ready.

@@ -167,6 +167,18 @@ def heroes(recs) -> dict:
     return {c: {"n": len(fs), "median": statistics.median(fs), "p90": _p90(fs)} for c, fs in groups.items()}
 
 
+def synergies(recs) -> dict:
+    """Per synergy key: runs that had it and the median final floor with / without it."""
+    v = valid(recs)
+    out = {}
+    for k in M.SYNERGIES:
+        w = [r["floor"] for r in v if k in (r.get("synergies") or [])]
+        wo = [r["floor"] for r in v if k not in (r.get("synergies") or [])]
+        out[k] = {"n": len(w), "median_with": statistics.median(w) if w else None,
+                  "median_without": statistics.median(wo) if wo else None}
+    return out
+
+
 # ---------- collection, page and command line ----------
 
 def collect(n_sim: int, real_folder: Path, all_versions: bool, seed: int = 1) -> dict:
@@ -191,6 +203,7 @@ def collect(n_sim: int, real_folder: Path, all_versions: bool, seed: int = 1) ->
         "pairs": {"sim": pairs(sim_recs), "real": pairs(real_recs)},
         "deaths": {"sim": deaths(sim_recs), "real": deaths(real_recs)},
         "heroes": {"sim": heroes(sim_recs), "real": heroes(real_recs)},
+        "synergies": {"sim": synergies(sim_recs), "real": synergies(real_recs)},
     }
 
 
@@ -291,6 +304,28 @@ def _hero_icon(key) -> str:
     except (ImportError, AttributeError, KeyError):
         return ""
     return f'<span class="ic big">{_img(pm, 64)}</span>'
+
+
+def _syn_icon(key) -> str:
+    """Pair: its two items; set: first item of the family; reaction: none."""
+    req = M.SYNERGIES[key]["req"]
+    if "items" in req:
+        return "".join(_item_icon(i) for i in req["items"])
+    if "family" in req:
+        return next((_item_icon(i) for i in M.ITEMS if M.item_family(i) == req["family"]), "")
+    return ""
+
+
+def _synergies_table(sim, real, real_empty) -> str:
+    rows = []
+    for k, d in M.SYNERGIES.items():
+        def cel(x):
+            return "—" if not x["n"] else f'{x["n"]} · {_n(x["median_with"])} vs {_n(x["median_without"])}'
+        r = "—" if real_empty else cel(real[k])
+        rows.append(f'<tr><td><span class="name">{_syn_icon(k)}{_e(d["name"])}</span></td><td>{_e(d["kind"])}</td>'
+                    f'<td>{cel(sim[k])}</td><td>{r}</td></tr>')
+    return ('<div class="scroll"><table><thead><tr><th>Synergy</th><th>Kind</th><th>Sim: runs · median with vs without</th>'
+            '<th>Real</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table></div>")
 
 
 def _item_name(key, items) -> str:
@@ -443,6 +478,7 @@ def make_html(data: dict) -> str:
             body = '<p class="mu">no real runs</p>' if font == "real" and real_empty else _pairs_table(lst, items)
             p.append(f'<div><p class="source">{font}</p>{body}</div>')
         p.append("</div>")
+    p.append("<h2>Synergies</h2>" + _synergies_table(data["synergies"]["sim"], data["synergies"]["real"], real_empty))
     p.append('<h2>Where runs die</h2><div class="cols">')
     for font in ("sim", "real"):
         m = data["deaths"][font]

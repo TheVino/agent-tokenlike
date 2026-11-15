@@ -300,6 +300,19 @@ for fn in PENDING[:]:
     if fn is not None and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 PENDING.clear()
 assert ("+37 ♥", None) in texts, texts[-5:]
+# synergy log lines: a new discovery floats in gold, a known one in the normal color
+cols = []
+fl1 = app6.floater
+app6.floater = lambda text, color=tp.TEXT, *a, **k: (cols.append((text, color)), fl1(text, color, *a, **k))
+for new in (True, False):
+    line = f"{'New synergy' if new else 'Synergy'}: Shatter!"
+    M.enter_room = lambda *a, **k: {"kind": "shop", "name": "Loja", "sprite": "shop", "lines": [line], "won": False,
+                                    "died": False, "synergies": [{"key": "shatter", "new": new}]}
+    PENDING[:] = []; app6.play_room()
+    for fn in PENDING[:]:
+        if fn is not None and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
+    assert (tp._t(line), tp.GOLD if new else tp.TEXT) in cols, (new, cols[-4:])
+M.enter_room = er0; app6.floater = fl1
 del app6.floater, app6.anim_hit
 assert any(h["who"] == "helper" for h in steps_seen) and any(h["double"] for h in steps_seen)
 assert any(t.endswith(" x2") for t, _ in texts)
@@ -423,6 +436,8 @@ for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 PENDING.clear(); assert showing() is app9.art_img("tombstone")
 app9.new_run(); pump(app9, 400)
+if not any(i["key"] == "dagger" for i in app9.run["items"]):    # an asymmetric look, or mirroring changes nothing
+    app9.run["items"].append({"key": "dagger", "rar": "common"}); app9.refresh_look()
 # Flip hero: mirrors the final map around the pivot (x -> 16k-1-x), swaps run_r/run_l, persists in the state
 app9.flip_var.set(False); app9.toggle_flip(); assert not app9.flip
 normal = app9.look_maps; k = app9.hero_k
@@ -565,6 +580,42 @@ for achs in ([], list(M.ACHIEVEMENTS)):
         assert len(rar_txt(cv)) == (0 if k in bloq else len(M.ITEMS[k]["rarities"])), k
     appm.close_win(appm.items_win); assert not ALIVE - {appm.popup_win}
 appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_unlocked(k) for k in M.ITEMS); appm.demo = False
+# synergies tab: one card per synergy; a secret one undiscovered shows only "???" (no name, no hint, no icons), in pt and en
+import i18n
+appm.meta["synergies"] = {}
+secret = [k for k, s in M.SYNERGIES.items() if s["secret"]]
+assert len(secret) == 3
+for lang in ("pt", "en"):
+    i18n.set_lang(lang)
+    appm.items_tab = "synergies"; appm.show_items(); assert appm.items_win in ALIVE
+    assert all(appm.items_cv._ids(f"card:{k}") for k in M.SYNERGIES), lang
+    assert not appm.items_cv._ids("card:nope")
+    for k, s in M.SYNERGIES.items():
+        cv = tkinter.Canvas(); appm.synergy_card(cv, 0, 0, k)
+        tx = texts(cv)
+        if k in secret:
+            assert tx == ["???"], (k, tx)
+        else:
+            assert tp._t(s["name"]) in tx and tp._t(s["hint"]) in tx, (k, tx)
+    allt = " | ".join(texts(appm.items_cv))
+    assert not any(tp._t(M.SYNERGIES[k]["name"]) in allt or tp._t(M.SYNERGIES[k]["hint"]) in allt for k in secret)
+    appm.close_win(appm.items_win)
+appm.meta["synergies"] = {k: {"runs": 7, "first_run": 3} for k in M.SYNERGIES}
+for k, s in M.SYNERGIES.items():
+    cv = tkinter.Canvas(); appm.synergy_card(cv, 0, 0, k); tx = texts(cv)
+    assert tp._t(s["name"]) in tx and tp._t("Active in {n} runs", n=7) in tx and tp._t("Discovered in run #{n}", n=3) in tx, (k, tx)
+    assert (tp._t(M.fx_text(s["fx"])) if s["fx"] else tp._t(tp.REACTION_TEXT[k])) in tx, (k, tx)
+appm.items_tab = "items"; i18n.set_lang("pt")
+# Status window lists the active synergies; Profile shows the counter
+appm.run["synergies"] = ["shatter", "hearthfire"]
+TXT = []; _tl = tkinter.Label
+tkinter.Label = type("L", (Wid,), {"__init__": lambda self, *a, **k: (Wid.__init__(self), TXT.append(k.get("text", "")))[0]})
+appm.show_stats(); appm.show_profile(); tkinter.Label = _tl
+blob = " | ".join(TXT)
+assert tp._t("Shatter") in blob and tp._t("Hearthfire") in blob, blob[:400]
+assert tp._t("Synergies {n}/{total}", n=len(appm.meta["synergies"]), total=len(M.SYNERGIES)) in blob
+appm.run["synergies"] = []; appm.meta["synergies"] = {}
+appm.close_win(appm.stats_win); appm.close_win(appm.profile_win)
 # hero grid: ours (module in heroes/) apart from the imported ones (characters/ without a module, Petdex)
 assert tp.own_hero("slime") and tp.own_hero("ghost")
 assert not tp.own_hero("bitty-openpets") and not tp.own_hero("naoexiste") and not tp.own_hero("x.y")

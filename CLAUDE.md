@@ -34,7 +34,9 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   `show_graveyard` (tombstones on a scrolling `Canvas`). "Items" opens `show_items`: cards on a `Canvas`
   (`item_card`), every possible rarity with `fx_text` and `consume` in the `RAR_COLOR` color, family from
   `item_family`/`FAMILIES`, filter All/Unlocked/Locked; locked (`item_unlocked`, same rule as the roll; demo
-  unlocks everything) = silhouette + padlock + achievement, no values.
+  unlocks everything) = silhouette + padlock + achievement, no values. The window has two tabs, Items |
+  Synergies (`synergy_card`: sets, pairs, reactions; undiscovered = silhouette + hint, secret pairs show "???";
+  discovered ones get a gold frame; a reaction fires only on a status the foe had before the hit).
   "Profile" (1st menu row) opens `show_profile`: hero/run/HP, tamer level (`level`: floor(sqrt(lifetime energy
   `xp_total` / 1M)), `LEVEL_XP`), medals from `art.ACH_ART` in fixed cells (`icon(..., side=)`, name on hover),
   6 cards (today and lifetime energy, `streak_days`, runs, best, heroes N/20 + bosses), last 7 days bars
@@ -105,8 +107,9 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
 - `tests/`: `test_limits.py` (statusline writes only the limits; reading, stale data, colors, time zone; profile
   functions), `test_migration.py` (copy from `~/.tokenpet` to `~/.tokenlike`; Portuguese-key save conversion),
   `test_reader.py` (log reading, dedup, art), `test_items.py` (rarity, stacking, take/consume, shield, caps,
-  pending offer, 3-slot save migration), `test_records.py` (`run_record`, `runs.jsonl`), `test_balance_stats.py`
-  (metrics and page), `test_combat.py`, `test_sheet.py` (cutting and PNG decoder; `tests/_png.py` writes real
+  pending offer, 3-slot save migration; sets, pairs, discovery, synergy `fx` in `stats()`), `test_records.py`
+  (`run_record`, `runs.jsonl`, synergies in the record), `test_balance_stats.py` (metrics and page, synergy
+  section), `test_combat.py` (reaction effects), `test_sheet.py` (cutting and PNG decoder; `tests/_png.py` writes real
   PNGs), `test_visual.py` (effects of `visual.py` and pet composition), `test_texts.py` (real Tk, worst-case data
   in every window and the HUD, in pt and en; the reusable check is `tests/_texts.py: check(window)`, cards on a
   Canvas tagged `card:<id>` via `extra=`), `test_i18n.py` (every `t()` key and every game data text with a PT
@@ -187,6 +190,19 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   `_rarity_weights(floor)` rolls the rarity (the items' `luck` multiplies the rare, epic and legendary weights) and
   each item lists its possible `rarities`. 100 items: ~74 in 3 rarities, ~16 in 2 and 10 legendary only.
   Colors (`RAR_COLOR`): rare blue, epic purple, legendary gold.
+- **Synergies** (`dungeon.SYNERGIES`, 3 kinds): **sets** (2 / 4 items of the same `item_family`, 9 families x 2
+  steps), **pairs** (two named items, 8; 3 are `secret` and show "???" until discovered) and **reactions** (6, the
+  pet applies a status to an enemy that already has another one: `shatter` burn+freeze, `toxic_fumes` burn+poison,
+  `overload` burn+shock, `conductor` shock+freeze, `jolt_venom` shock+poison, `frostbite` poison+freeze; effects in
+  `_react`). Reaction rules: no chain (`_react` calls `_apply_status` directly, never triggers another reaction),
+  only when the two statuses differ, and if the foe has several the first in `STATUS_NAME` order decides.
+  Set/pair `fx` is summed in `stats()` like the hero trait (no rarity scaling, before the caps) from
+  `active_synergies(run)` (pure). Extra fields: `elem_boost` (added to each element chance already above 0) and
+  `status_turns` (+turns of statuses applied by the pet, used in `_apply_status`). Discovery: `run["synergies"]`
+  (this run) and `meta["synergies"]` ({key: {runs, first_run}}), both written by `note_synergies`, called from
+  `_check_achievements` (every room outcome and death, with the reactions seen in `ev["hits"]`) and
+  `choose_pending`; new ones add `ev["synergies"]` and a log line. Achievements `synergy5`, `reactions_all`,
+  `synergies3run`. The `SYNERGIES` numbers are part of `BALANCE_VERSION`. `run_record` keeps the run's synergies.
 - **Take or consume:** every offer (chest, mimic, boss, shop) can be taken (joins the list) or consumed
   (`consume`: `heal` heals right away, `shield` becomes a shield that absorbs damage before HP in `apply_damage`).
   `auto` mode (`state["mode"]`): `auto_choice` consumes a heal if HP < 40%, otherwise takes. `interactive` mode:
@@ -227,7 +243,7 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   `dungeon.run_record`, with `dungeon.BALANCE_VERSION` (8-char hash of the balance numbers only).
   A number changed, the version changed and the real history restarts (`--all-versions` shows everything).
   The hash does not see formulas or numbers written in the code: when changing a combat rule/formula, bump
-  `dungeon.RULES_REV` (now 8). Changing only a constant already changes the version by itself.
+  `dungeon.RULES_REV` (now 9). Changing only a constant already changes the version by itself.
 - Balance targets: in `TARGETS` of `tools/balance_stats.py` (pass the 1st boss 35-45%, p90 13-16, max <= 50).
   They are judged on the **calibration** (slime only, same as `simulate.py`, without and with achievements); the
   "sim" with all heroes mixed is informative only. Green/red item uses `vs_mean` (vs expected minus the items'
@@ -262,6 +278,14 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   (`attack_cost` always with `atk` or `fury`), blows (`crit`, `critdmg`, `double`), area (`area`), helpers
   (`helper`), growth (`grow`) and luck/gold (`luck`, `gold`, `discount`). Every item needs an icon and a non-empty
   `fx_text`; names never repeat. Run `tools/simulate.py` and `tools/balance_stats.py` afterwards.
+- **New synergy:** an entry in `dungeon.SYNERGIES` (`name`, `kind`, `req`, `fx`, `secret`, `hint`; add the PT
+  translation of `name` and `hint` to `i18n.PT`). Set: add the family to `_SETS` (two steps, 2 and 4 items).
+  Pair: a row in `_PAIRS` with two existing item keys (`secret` True shows "???" until discovered). Reaction:
+  a row in the reactions loop, a branch in `_react` (use `_apply_status` directly, never chain) and
+  `_REACTIONS` picks it up by its status pair. `fx` only takes `stats()` fields (plus `elem_boost`,
+  `status_turns`), no rarity scaling. Achievements that count synergies live in `_check_achievements`.
+  Changing a number changes `BALANCE_VERSION`; a combat rule/formula needs a `RULES_REV` bump. Run
+  `tools/simulate.py` and `tools/balance_stats.py` afterwards (synergy sections).
 - **New monster:** drawing in `art.FOE_ART`, entry in `dungeon.MONSTERS`
   `(sprite, name, mult_hp, mult_atk, min_floor, spd_mult)` (+ boss name in `BOSS_NAMES` and element in
   `BOSS_ELEMENT`: `fire|lightning|poison|ice`; without an element the boss breaks `make_foe`).
@@ -276,11 +300,10 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
 
 ## Before release
 
-- Visual polish of the stats page and item/hero icons on it.
 - Test interactive mode and the session/week bars on the real screen.
 
 ## Open ideas
 
 - Unlockable heroes with their own mechanic (e.g. mimic chest).
-- More rooms (rare event, secret room), more bosses with their own sprite, item synergies.
+- More rooms (rare event, secret room), more bosses with their own sprite.
 - More player choices (today only take/consume in interactive mode), sounds, run statistics.

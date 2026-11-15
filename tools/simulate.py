@@ -36,6 +36,8 @@ def sim(n=2000, achs=(), seed=1):
     print(f"achs={len(achs)} median floor={statistics.median(floors)} p10={q[0]} p90={q[-1]} max={max(floors)} rooms med={statistics.median(rooms)} items med={statistics.median(nitems)}")
     print("  passed the 1st boss:", sum(f>5 for f in floors)/n, " floor10+:", sum(f>=10 for f in floors)/n)
     print("  killers:", killers.most_common(6))
+    sy = collections.Counter(k for r in recs for k in r.get("synergies", []))
+    print("  synergies (% of runs):", {k: round(100 * sy[k] / n) for k in M.SYNERGIES}, "unused:", [k for k in M.SYNERGIES if not sy[k]])
     print("  deaths by kind:", dict(collections.Counter(r["killer_kind"] for r in recs if r["killer"] != "—").most_common()))
 
 def main():

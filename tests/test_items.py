@@ -295,4 +295,104 @@ assert abs(M.stats(run)["poison"] - expected) < 1e-9
 del M.ITEMS["_tr"]
 stale = M.new_run("x", {"hp": 20}, 1); before = M.stats(stale); del stale["trait"]
 assert M.stats(M.migrate_run(stale)) == before and stale["trait"] == {}
+# synergies: data
+S = M.SYNERGIES
+assert sum(1 for s in S.values() if s["kind"] == "set") == 18
+assert sum(1 for s in S.values() if s["kind"] == "pair") == 8
+secret = [k for k, s in S.items() if s.get("secret")]
+assert len(secret) == 3 and all(S[k]["kind"] == "pair" for k in secret)
+for k, s in S.items():
+    assert s["name"] and (s.get("secret") or s["hint"]), k
+    if s["kind"] == "pair":
+        a, b = s["req"]["items"]
+        assert a in M.ITEMS and b in M.ITEMS and M.item_family(a) != M.item_family(b), k
+        assert "Basic" not in (M.item_family(a), M.item_family(b)), k
+assert len({s["name"] for s in S.values()} | {it["name"] for it in M.ITEMS.values()}) == len(S) + len(M.ITEMS)
+# sets switch on at exactly 2 and 4
+fam = "Defense"
+keys = [k for k in M.ITEMS if M.item_family(k) == fam][:4]
+r = M.new_run("slime", {}, 9)
+def sets_on(r): return [k for k in M.active_synergies(r) if S[k]["kind"] == "set" and S[k]["req"]["family"] == fam]
+for n, want in ((1, 0), (2, 1), (3, 1), (4, 2)):
+    r["items"] = [{"key": k, "rar": "common"} for k in keys[:n]]
+    assert len(sets_on(r)) == want, (n, sets_on(r))
+# caps hold with every synergy on
+r = M.new_run("slime", {}, 10); r["items"] = [{"key": k, "rar": "legendary"} for k in M.ITEMS]
+st = M.stats(r)
+assert st["crit"] <= M.MAX_CRIT and st["block"] <= M.MAX_BLOCK and st["double"] <= M.MAX_DOUBLE
+assert st["thorns"] <= M.MAX_THORNS and st["luck"] <= M.MAX_LUCK and st["attack_cost"] >= 0
+assert all(st[el] <= M.MAX_ELEM_CHANCE for el in M.ELEMENTS.values())
+# elem_boost only lifts elements whose summed chance is already above 0
+M.ITEMS["_e"] = {"name": "e", "fx": {"burn": 0.1}, "rarities": ["common"], "consume": {"heal": 1},
+                 "look": {"type": "obj", "anchor": "top", "art": "dagger"}}
+r = M.new_run("slime", {}, 12); r["trait"] = {"elem_boost": 0.05}; r["items"] = [{"key": "_e", "rar": "common"}]
+st = M.stats(r); assert abs(st["burn"] - 0.15) < 1e-9 and st["shock"] == st["poison"] == st["freeze"] == 0
+del M.ITEMS["_e"]
+# Blood 2 alone (attack_cost -1) never makes attack_cost negative
+bk = [k for k in M.ITEMS if M.item_family(k) == "Blood"][:2]
+r = M.new_run("slime", {}, 13); r["items"] = [{"key": k, "rar": "common"} for k in bk]
+assert "blood2" in M.active_synergies(r) and M.stats(r)["attack_cost"] >= 0
+# a pair turns on only with both items
+pk = next(k for k, s in S.items() if s["kind"] == "pair"); a, b = S[pk]["req"]["items"]
+r = M.new_run("slime", {}, 11); r["items"] = [{"key": a, "rar": "common"}]
+assert pk not in M.active_synergies(r)
+r["items"].append({"key": b, "rar": "common"}); assert pk in M.active_synergies(r)
+# --- Task 3: discovery ---
+dk = [k for k in M.ITEMS if M.item_family(k) == "Defense"][:3]
+meta = M.new_meta(); assert meta["synergies"] == {}
+r = M.new_run("slime", {}, 21); assert r.get("synergies") == []
+ev = {"lines": []}
+M.resolve_offer(r, {"key": dk[0], "rar": "common"}, "take", ev); M.note_synergies(r, meta, ev)
+assert r["synergies"] == [] and not ev.get("synergies")
+ev = {"lines": []}
+M.resolve_offer(r, {"key": dk[1], "rar": "common"}, "take", ev); M.note_synergies(r, meta, ev)
+assert "defense2" in r["synergies"] and meta["synergies"]["defense2"] == {"runs": 1, "first_run": 21}
+assert {"key": "defense2", "new": True} in ev["synergies"]
+assert any("New synergy: Sturdy Habit!" == l for l in ev["lines"]), ev["lines"]
+n = len(r["synergies"]); ev2 = {"lines": []}; M.note_synergies(r, meta, ev2)
+assert len(r["synergies"]) == n and not ev2.get("synergies") and not ev2["lines"] and meta["synergies"]["defense2"]["runs"] == 1
+r2 = M.new_run("slime", {}, 22); r2["items"] = [{"key": k, "rar": "common"} for k in dk[:2]]; ev3 = {"lines": []}
+M.note_synergies(r2, meta, ev3)
+assert meta["synergies"]["defense2"] == {"runs": 2, "first_run": 21} and {"key": "defense2", "new": False} in ev3["synergies"]
+assert "Synergy: Sturdy Habit!" in ev3["lines"]
+r3 = M.new_run("slime", {}, 23); ev4 = {"lines": []}; M.note_synergies(r3, meta, ev4, ["shatter"])
+assert r3["synergies"] == ["shatter"] and meta["synergies"]["shatter"] == {"runs": 1, "first_run": 23}
+# interactive path
+meta = M.new_meta(); r = M.new_run("slime", {}, 24); r["items"] = [{"key": dk[0], "rar": "common"}]
+r["pending"] = {"key": dk[1], "rar": "common", "source": "chest"}
+ev = M.choose_pending(r, meta, "take")
+assert "defense2" in r["synergies"] and "defense2" in meta["synergies"] and {"key": "defense2", "new": True} in ev["synergies"]
+# old saves
+old = {"items": [], "hp": 10, "base": {"maxhp": 20, "atk": 3, "def": 0, "dodge": 0}}
+assert M.migrate_run(old)["synergies"] == []
+mm = M.new_meta(); mm.update({"achievements": ["floor5"], "runs": 3}); assert mm["synergies"] == {}
+# achievements
+meta = M.new_meta(); r = M.new_run("slime", {}, 25)
+meta["synergies"] = {k: {"runs": 1, "first_run": 1} for k in list(M.SYNERGIES)[:4]}; M._check_achievements(r, meta, {"lines": []})
+assert "synergy5" not in meta["achievements"]
+meta["synergies"]["x5"] = {"runs": 1, "first_run": 1}; M._check_achievements(r, meta, {"lines": []})
+assert "synergy5" in meta["achievements"]
+meta = M.new_meta(); meta["synergies"] = {k: {"runs": 1, "first_run": 1} for k, s in M.SYNERGIES.items() if s["kind"] == "reaction"}
+M._check_achievements(r, meta, {"lines": []}); assert "reactions_all" in meta["achievements"] and "synergy5" in meta["achievements"]
+meta = M.new_meta(); r = M.new_run("slime", {}, 26); r["synergies"] = ["a", "b"]
+M._check_achievements(r, meta, {"lines": []}); assert "synergies3run" not in meta["achievements"]
+r["synergies"].append("c"); M._check_achievements(r, meta, {"lines": []}); assert "synergies3run" in meta["achievements"]
+# enter_room records reactions from the combat steps
+meta = M.new_meta(); r = M.new_run("slime", {"hp": 30, "atk": 3}, 27); r["energy"] = 1e9
+orig = M.combat
+def fake(run, st, foes, rng, f):
+    for x in foes: x["hp"] = 0
+    return True, [{"who": "pet", "target": 0, "dmg": 1, "crit": False, "status": None, "skip": False, "dot": False,
+                   "dodge": False, "locked": False, "thorns": False, "double": False, "reaction": "shatter"}], "", False
+M.combat = fake
+try:
+    for _ in range(50):
+        ev = M.enter_room(r, meta, random.Random(_), mode="auto")
+        if "hits" in ev: break
+finally:
+    M.combat = orig
+assert "shatter" in r["synergies"] and "shatter" in meta["synergies"]
+# per-reaction hints are plain texts (translated whole)
+for k, s in M.SYNERGIES.items():
+    if s["kind"] == "reaction": assert "{" not in s["hint"] and s["hint"]
 print("ok: items")

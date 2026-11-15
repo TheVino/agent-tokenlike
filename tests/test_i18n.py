@@ -36,8 +36,10 @@ for n in list(M.RAR_NAMES.values()) + list(M.STATUS_NAME.values()):
     needs(n, "rarity/status")
 for _, name, *_ in tp.STAT_LINES:
     needs(name, "STAT_LINES")
-for name, _ in tp.FAMILIES + (("Basic", ()),):
+for name, _ in M.FAMILIES + (("Basic", ()),):
     needs(name, "family")
+for sy in M.SYNERGIES.values():
+    needs(sy["name"], "synergy")
 for n in list(tp.SIZES) + list(tp.MODES.values()) + list(tp.DAYS):
     needs(n, "menu/days")
 for k, c in tp.all_characters().items():
@@ -55,6 +57,9 @@ assert PT["Empty Knight"] == "Cavaleiro Oco" and len(set(PT.values())) == len(PT
 
 # 4) en returns the text itself; pt translates templates and built lines; unknown passes through
 i18n.set_lang("pt")
+for sy in M.SYNERGIES.values():                 # hints translate by template (family and item names too)
+    assert i18n.t(sy["hint"]) != sy["hint"], sy["hint"]
+assert i18n.t("Have 2 Luck & gold items") == "Tenha 2 itens de Sorte e ouro"
 assert i18n.t("Floor {n}", n=3) == "Andar 3" and i18n.t("Quit") == "Sair"
 assert i18n.t("Paid 12 gold") == "Pagou 12 ouro" and i18n.t("Bitty") == "Bitty"
 assert i18n.t("Defeated by: Rat King") == "Derrotado por: Rei Rato"     # the template translates the piece too
@@ -72,8 +77,9 @@ i18n.set_lang("xx"); assert i18n.LANG == "pt"; i18n.set_lang("en")
 fields = {"atk": 1, "def": 1, "maxhp": 1, "dodge": 0.1, "gold": 0.1, "energy": 0.1, "lifesteal": 1, "trap": 0.5,
           "spd": 2, "crit": 0.1, "critdmg": 0.5, "area": True, "burn": 0.1, "shock": 0.1, "poison": 0.1,
           "freeze": 0.1, "block": 1, "thorns": 0.1, "heal_room": 1, "heal_floor": 1, "attack_cost": 1,
-          "fury": 1, "double": 0.1, "helper": 1, "grow": 5, "luck": 0.1, "discount": 0.1}
-used = {c for it in M.ITEMS.values() for c in it["fx"]} | set(M.stats(M.new_run("slime", {"hp": 20, "atk": 3, "def": 0}, 1)))
+          "fury": 1, "double": 0.1, "helper": 1, "grow": 5, "luck": 0.1, "discount": 0.1,
+          "elem_boost": 0.03, "status_turns": 1}
+used = {c for it in M.ITEMS.values() for c in it["fx"]} | {c for s in M.SYNERGIES.values() for c in s["fx"]} | set(M.stats(M.new_run("slime", {"hp": 20, "atk": 3, "def": 0}, 1)))
 assert used - {"spd", "crit", "critdmg"} <= set(fields), used - set(fields)   # every item field is here
 PT_WORDS = re.compile(r"[à-úÀ-Ú]|\b(por|de|do|da|ouro|golpe|dano|sorte|esquiva|cura|ataque|velocidade|loja|ajudante)\b")
 txt = M.fx_text(fields)

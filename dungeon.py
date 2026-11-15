@@ -58,6 +58,9 @@ ACHIEVEMENTS = {
     "helpers3": "Take 3 helper items in a run",
     "no_consume10": "Reach floor 10 consuming nothing",
     "legendaries3": "Take 3 legendary items in a run",
+    "synergy5": "Discover 5 synergies",
+    "reactions_all": "Discover all 6 reactions",
+    "synergies3run": "Activate 3 synergies in a run",
     "poison3": "Kill 3 enemies with poison in a run",
     "floor13": "Die on floor 13",
     "bosses3run": "Beat 3 bosses in a single run",
@@ -323,6 +326,63 @@ ITEMS = {
                      "consume": {"heal": 7}, "look": {"type": "sticker", "art": "leech", "at": [0.25, 0.7]}},
 }
 
+
+# item families (first fx field found in this order; none: "Basic"); sets count items by this single family
+FAMILIES = (("Elemental", ("burn", "shock", "poison", "freeze")), ("Helper", ("helper",)),
+            ("Growth", ("grow",)), ("Area", ("area",)), ("Blood", ("attack_cost", "fury")),
+            ("Strikes", ("crit", "critdmg", "double")), ("Defense", ("block", "thorns", "dodge")),
+            ("Regeneration", ("heal_room", "heal_floor", "lifesteal")), ("Luck & gold", ("luck", "gold", "discount")))
+
+
+def item_family(key: str) -> str:
+    fx = ITEMS[key]["fx"]
+    return next((name for name, fields in FAMILIES if any(fx.get(c) for c in fields)), "Basic")
+
+
+# Synergies: kind set (2 / 4 items of a family), pair (two named items), reaction (added later).
+# fx of sets and pairs is summed in stats() with no rarity scaling, like the hero trait.
+# family -> (key slug, [(name, fx) for 2 items, (name, fx) for 4 items])
+_SETS = {
+    "Elemental": ("elemental", ("Elemental Whispers", {"elem_boost": 0.02}), ("Lingering Elements", {"status_turns": 1})),
+    "Defense": ("defense", ("Sturdy Habit", {"thorns": 0.05}), ("Thorny Fortress", {"thorns": 0.1})),
+    "Regeneration": ("regeneration", ("Slow Mending", {"heal_floor": 2}), ("Living Warmth", {"heal_room": 1})),
+    "Blood": ("blood", ("Thrifty Pain", {"attack_cost": -1}), ("Cornered Rage", {"fury": 1})),
+    "Strikes": ("strikes", ("Steady Hand", {"crit": 0.02}), ("Rhythm of Blows", {"double": 0.05})),
+    "Area": ("area", ("Wide Stance", {"atk": 1}), ("Sweeping Might", {"atk": 1, "critdmg": 0.25})),
+    "Helper": ("helper", ("Small Company", {"helper": 1}), ("Loyal Crowd", {"helper": 2})),
+    "Growth": ("growth", ("Sprouting", {"maxhp": 4}), ("Full Bloom", {"atk": 2})),
+    "Luck & gold": ("luck", ("Pocket Charm", {"luck": 0.05}), ("Merchant's Grin", {"gold": 0.25, "discount": 0.1})),
+}
+SYNERGIES = {
+    f"{slug}{n}": {"name": name, "kind": "set", "req": {"family": fam, "n": n}, "fx": fx,
+                   "secret": False, "hint": f"Have {n} {fam} items"}
+    for fam, (slug, *steps) in _SETS.items() for n, (name, fx) in zip((2, 4), steps)
+}
+_PAIRS = (
+    ("hearthfire", "Hearthfire", "torch", "hearth_lamp", {"heal_room": 1}, False),
+    ("winter_carapace", "Winter Carapace", "frost_bark", "turtle_shell", {"thorns": 0.05}, False),
+    ("night_prowler", "Night Prowler", "cat_eye", "cat_whiskers", {"dodge": 0.05}, True),
+    ("pack_instinct", "Pack Instinct", "beetle", "ringed_horn", {"helper": 1}, False),
+    ("blood_debt", "Blood Debt", "ruby_chalice", "leech", {"lifesteal": 1}, True),
+    ("loaded_dice", "Loaded Dice", "crown_coin", "bone_die", {"crit": 0.03}, False),
+    ("miasma", "Miasma", "censer", "whirlwind", {"poison": 0.04}, False),
+    ("shattered_gaze", "Shattered Gaze", "cracked_mirror", "monocle", {"atk": 1}, True),
+)
+for _k, _name, _a, _b, _fx, _sec in _PAIRS:
+    SYNERGIES[_k] = {"name": _name, "kind": "pair", "req": {"items": [_a, _b]}, "fx": _fx, "secret": _sec,
+                     "hint": f"Have {ITEMS[_a]['name']} and {ITEMS[_b]['name']}"}
+
+# Reactions: the pet applies a status to an enemy that already has another one (effects live in combat()).
+for _k, _name, _a, _b, _hint in (
+        ("shatter", "Shatter", "burn", "freeze", "Burn and freeze the same enemy"),
+        ("toxic_fumes", "Toxic Fumes", "burn", "poison", "Burn and poison the same enemy"),
+        ("overload", "Overload", "burn", "shock", "Burn and shock the same enemy"),
+        ("conductor", "Conductor", "shock", "freeze", "Shock and freeze the same enemy"),
+        ("jolt_venom", "Jolt Venom", "shock", "poison", "Shock and poison the same enemy"),
+        ("frostbite", "Frostbite", "poison", "freeze", "Poison and freeze the same enemy")):
+    SYNERGIES[_k] = {"name": _name, "kind": "reaction", "req": {"status": [_a, _b]}, "fx": {}, "secret": False,
+                     "hint": _hint}
+
 # sprite, name, health mult., attack mult., min floor, speed mult.
 MONSTERS = [
     ("bat", "Bat", 0.8, 0.9, 1, 1.4),
@@ -446,12 +506,17 @@ def fx_text(fx: dict) -> str:
         parts.append(t("+{v}% luck", v=round(fx['luck'] * 100)))
     if fx.get("discount"):
         parts.append(t("-{v}% shop price", v=round(fx['discount'] * 100)))
+    if fx.get("elem_boost"):
+        parts.append(t("+{v}% chance to each element", v=round(fx['elem_boost'] * 100)))
+    if fx.get("status_turns"):
+        parts.append(t("statuses last +{v} turn", v=fx['status_turns']))
     return ", ".join(parts)
 
 
 def new_meta() -> dict:
     return {"achievements": [], "graveyard": [], "runs": 0,
-            "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0}
+            "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0,
+            "synergies": {}}
 
 
 COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0}
@@ -469,7 +534,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = N
                  **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
         "trait": dict(trait or {}),
         "counters": dict(COUNTERS_ZERO),
-        "items": [], "consumed": [], "shield": 0, "pending": None,
+        "items": [], "consumed": [], "shield": 0, "pending": None, "synergies": [],
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
     }
@@ -512,6 +577,7 @@ def migrate_run(run: dict) -> dict:
         i.setdefault("kills0", 0)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
+    run.setdefault("synergies", [])
     run.setdefault("trait", {})
     cont = run.setdefault("counters", {})
     for k, v in COUNTERS_ZERO.items():
@@ -528,6 +594,34 @@ def migrate_run(run: dict) -> dict:
     return run
 
 
+def active_synergies(run: dict) -> list[str]:
+    """Keys of the sets and pairs whose condition holds now, in SYNERGIES order (pure)."""
+    keys = [i["key"] for i in run["items"]]
+    count = {}
+    for k in keys:
+        fam = item_family(k)
+        count[fam] = count.get(fam, 0) + 1
+    return [k for k, s in SYNERGIES.items()
+            if (s["kind"] == "set" and count.get(s["req"]["family"], 0) >= s["req"]["n"])
+            or (s["kind"] == "pair" and all(i in keys for i in s["req"]["items"]))]
+
+
+def note_synergies(run: dict, meta: dict, ev: dict, extra=()) -> None:
+    """Records the synergies active now (+ `extra`, e.g. reactions seen in combat) in the run and in the meta;
+    new ones for this run go to ev["synergies"] and ev["lines"]."""
+    for k in [*active_synergies(run), *extra]:
+        if k in run["synergies"]:
+            continue
+        run["synergies"].append(k)
+        seen = meta.setdefault("synergies", {})
+        new = k not in seen
+        if new:
+            seen[k] = {"runs": 0, "first_run": run["id"]}
+        seen[k]["runs"] += 1
+        ev.setdefault("synergies", []).append({"key": k, "new": new})
+        ev.setdefault("lines", []).append(f"{'New synergy' if new else 'Synergy'}: {SYNERGIES[k]['name']}!")
+
+
 def stats(run: dict) -> dict:
     b = run["base"]
     st = {"maxhp": b["maxhp"], "atk": b["atk"], "def": b["def"], "dodge": b["dodge"],
@@ -535,11 +629,16 @@ def stats(run: dict) -> dict:
           "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
           "area": False, "burn": 0.0, "shock": 0.0, "poison": 0.0, "freeze": 0.0,
           "block": 0, "thorns": 0.0, "heal_room": 0, "heal_floor": 0, "attack_cost": 0, "fury": 0,
-          "double": 0.0, "helper": 0, "luck": 0.0, "discount": 0.0}
-    # the hero trait adds up like an item, but without rarity scaling
-    for kills0, fx in [(0, run.get("trait", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
-                                                      for it in run["items"]]:
+          "double": 0.0, "helper": 0, "luck": 0.0, "discount": 0.0, "status_turns": 0}
+    # the hero trait and the active synergies add up like an item, but without rarity scaling
+    boost = 0.0
+    for kills0, fx in ([(0, run.get("trait", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
+                                                       for it in run["items"]]
+                       + [(0, SYNERGIES[k]["fx"]) for k in active_synergies(run)]):
         for k, v in fx.items():
+            if k == "elem_boost":                  # not an output field: added to each element already above 0
+                boost += v
+                continue
             if k == "grow":                        # +1 ATK every v kills made after taking the item
                 st["atk"] += max(0, run["kills"] - kills0) // v
             elif k == "trap":
@@ -548,6 +647,10 @@ def stats(run: dict) -> dict:
                 st["area"] = st["area"] or bool(v)
             else:
                 st[k] += v
+    for el in ELEMENTS.values():
+        if st[el] > 0:
+            st[el] += boost
+    st["attack_cost"] = max(0, st["attack_cost"])
     st["maxhp"] = max(5, st["maxhp"])
     st["atk"] = max(1, st["atk"])
     st["dodge"] = min(MAX_DODGE, st["dodge"])
@@ -658,6 +761,7 @@ def choose_pending(run: dict, meta: dict, choice: str) -> dict:
     offer, run["pending"] = run.get("pending"), None
     if offer:
         resolve_offer(run, offer, choice, ev)
+        note_synergies(run, meta, ev)
         _check_achievements(run, meta, ev)
     return ev
 
@@ -677,8 +781,9 @@ def apply_damage(run: dict, d: int) -> int:
     return d - absorbed
 
 
-def _apply_status(s: dict, name: str) -> None:
-    """Puts the status on s. Burn renews; poison gains a stack (at the cap, renews the oldest)."""
+def _apply_status(s: dict, name: str, turns_bonus: int = 0) -> None:
+    """Puts the status on s. Burn renews; poison gains a stack (at the cap, renews the oldest).
+    turns_bonus: extra turns on burn/shock/freeze (the Elemental 4 set)."""
     if name == "poison":
         v = s.setdefault("poison", [])
         if len(v) < POISON_MAX_STACKS:
@@ -686,7 +791,7 @@ def _apply_status(s: dict, name: str) -> None:
         else:
             v[v.index(max(v))] = 0
     else:
-        s[name] = {"burn": BURN_TURNS, "shock": SHOCK_TURNS, "freeze": FREEZE_TURNS}[name]
+        s[name] = {"burn": BURN_TURNS, "shock": SHOCK_TURNS, "freeze": FREEZE_TURNS}[name] + turns_bonus
 
 
 def _status_damage(s: dict, f: int) -> list[tuple[str, int]]:
@@ -700,6 +805,34 @@ def _status_damage(s: dict, f: int) -> list[tuple[str, int]]:
         out.append(("poison", sum(v)))
         s["poison"] = [t for t in v if t < POISON_TURNS]
     return out
+
+
+_REACTIONS = {frozenset(r["req"]["status"]): k for k, r in SYNERGIES.items() if r["kind"] == "reaction"}
+
+
+def _react(key, i, atk, f, foes, x, step):
+    """Effect of reaction `key` on foe i (x). Uses _apply_status directly, so effects never chain."""
+    if x["hp"] <= 0:                  # an earlier reaction of the same hit already killed it
+        return
+    others = [j for j, y in enumerate(foes) if j != i and y["hp"] > 0]
+    d = 0
+    if key == "shatter":
+        d, x["status"]["freeze"] = atk, 0
+    elif key == "toxic_fumes":
+        for j in others:
+            _apply_status(foes[j]["status"], "poison")
+    elif key == "overload":
+        d = round(BURN[0] + BURN[1] * f)
+    elif key == "conductor":
+        if others:
+            _apply_status(foes[others[0]]["status"], "shock")
+    elif key == "jolt_venom":
+        if len(x["status"].get("poison", [])) < POISON_MAX_STACKS:
+            _apply_status(x["status"], "poison")
+    elif key == "frostbite":
+        x["status"]["freeze"] = x["status"].get("freeze", 0) + 1
+    x["hp"] -= d
+    step("pet", i, d, status="burn" if key == "overload" else None, dot=key == "overload", reaction=key)
 
 
 def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
@@ -716,9 +849,10 @@ def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     charges = st["block"]                              # enemy hits the pet cancels in this fight
 
     def step(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False,
-              locked=False, thorns=False, double=False):
+              locked=False, thorns=False, double=False, reaction=None):
         steps.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status, "skip": skip,
-                       "dot": dot, "dodge": dodge, "locked": locked, "thorns": thorns, "double": double})
+                       "dot": dot, "dodge": dodge, "locked": locked, "thorns": thorns, "double": double,
+                       "reaction": reaction})
 
     def alive():
         return [i for i, x in enumerate(foes) if x["hp"] > 0]
@@ -788,13 +922,18 @@ def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                         e_crit, mult = critical(st["crit"], st["critdmg"], 0 if dup else st["spd"], x["spd"])
                         d = round(max(1, atk + rng.randint(-1, 1)) * mult)
                         x["hp"] -= d
-                        applied = None
+                        applied, reacts = None, []
                         if x["hp"] > 0:
+                            had = [n for n in STATUS_NAME if x["status"].get(n)]    # before this hit's elements
                             for el, name in STATUS_NAME.items():      # each element rolls separately
                                 if st[el] and rng.random() < st[el]:
-                                    _apply_status(x["status"], name)
+                                    _apply_status(x["status"], name, st["status_turns"])
                                     applied = applied or name
+                                    if name not in had and had:       # a new status next to another one
+                                        reacts.append(_REACTIONS[frozenset((name, had[0]))])
                         step("pet", i, d, e_crit, applied, double=dup)
+                        for key in reacts:
+                            _react(key, i, atk, f, foes, x, step)
                 if not alive():
                     return True, steps, "", False
             else:
@@ -862,6 +1001,8 @@ def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> 
 
 
 def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
+    # every room outcome (and death) passes here: record synergies first so their achievements see them
+    note_synergies(run, meta, ev, [h["reaction"] for h in ev.get("hits", ()) if h.get("reaction")])
     have = set(meta["achievements"])
     new = []
 
@@ -893,6 +1034,9 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("helpers3", sum(1 for it in run["items"] if "helper" in ITEMS[it["key"]]["fx"]) >= 3)
     grant("poison3", cont.get("poison_kills", 0) >= 3)
     grant("bosses3run", run["bosses"] >= 3)
+    grant("synergy5", len(meta.get("synergies", {})) >= 5)
+    grant("reactions_all", all(k in meta.get("synergies", {}) for k, s in SYNERGIES.items() if s["kind"] == "reaction"))
+    grant("synergies3run", len(run.get("synergies", ())) >= 3)
     grant("floor13", run.get("dead") and run["floor"] == 13)
     if run["floor"] >= 8 and "floor8full" not in have:
         grant("floor8full", run["hp"] >= stats(run)["maxhp"])
@@ -1104,7 +1248,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Bump when a combat formula/rule or a number written straight in the code changes (the hash below does not see that).
-RULES_REV = 8
+RULES_REV = 9
 
 
 def _balance_version() -> str:
@@ -1117,7 +1261,8 @@ def _balance_version() -> str:
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
             PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOCK, MAX_THORNS, MAX_DOUBLE, MAX_LUCK, MAX_DISCOUNT, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOUBLE_CRIT, BURN,
             BURN_TURNS, SHOCK_CHANCE, SHOCK_TURNS, POISON_TURNS, POISON_MAX_STACKS, FREEZE_CHANCE, FREEZE_TURNS,
-            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT]
+            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT,
+            {k: {f: v[f] for f in ("kind", "req", "fx")} for k, v in sorted(SYNERGIES.items())}]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
 
@@ -1133,5 +1278,5 @@ def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: l
         "items": [dict(i) for i in run["items"]], "consumed": [dict(i) for i in run["consumed"]],
         "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
         "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,
-        "achievements": list(achievements),
+        "achievements": list(achievements), "synergies": list(run.get("synergies", [])),
     }
