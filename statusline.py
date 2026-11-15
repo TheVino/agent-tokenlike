@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 
 DATA_DIR = Path.home() / ".tokenlike"
-JANELAS = ("five_hour", "seven_day")
+WINDOW_ATTRS = ("five_hour", "seven_day")
 
 
 def _epoch(v) -> float | None:
@@ -36,13 +36,13 @@ def _epoch(v) -> float | None:
     return None
 
 
-def extrair(payload: dict) -> dict | None:
+def extract(payload: dict) -> dict | None:
     """Só os limites. None se o Claude Code ainda não mandou (antes da 1ª resposta)."""
     rl = payload.get("rate_limits") if isinstance(payload, dict) else None
     if not isinstance(rl, dict):
         return None
     out = {}
-    for k in JANELAS:
+    for k in WINDOW_ATTRS:
         w = rl.get(k)
         if not isinstance(w, dict):
             continue
@@ -56,19 +56,19 @@ def extrair(payload: dict) -> dict | None:
     return out
 
 
-def formatar_linha(lim: dict | None) -> str:
+def format_line(lim: dict | None) -> str:
     if not lim:
         return ""
-    partes = []
-    for k, nome in (("five_hour", "sessão"), ("seven_day", "semana")):
+    parts = []
+    for k, name in (("five_hour", "sessão"), ("seven_day", "semana")):
         if k in lim:
-            partes.append(f"{nome} {round(lim[k]['used_percentage'])}%")
-    return " · ".join(partes)
+            parts.append(f"{name} {round(lim[k]['used_percentage'])}%")
+    return " · ".join(parts)
 
 
 def main(stdin=sys.stdin, stdout=sys.stdout, data_dir: Path = DATA_DIR) -> None:
     try:
-        lim = extrair(json.loads(stdin.read() or "{}"))
+        lim = extract(json.loads(stdin.read() or "{}"))
     except ValueError:
         lim = None
     if lim:
@@ -79,7 +79,7 @@ def main(stdin=sys.stdin, stdout=sys.stdout, data_dir: Path = DATA_DIR) -> None:
             os.replace(tmp, data_dir / "limites.json")
         except OSError:
             pass                      # a statusline nunca pode quebrar o Claude Code
-    stdout.write(formatar_linha(lim) + "\n")
+    stdout.write(format_line(lim) + "\n")
 
 
 if __name__ == "__main__":

@@ -47,7 +47,7 @@ xp, raw = r3.poll(); assert raw == 1998+1130+10+2, raw
 assert tp.fmt(1500)=="1.5K" and tp.fmt(1000)=="1K" and tp.fmt(2_340_000)=="2.3M" and tp.fmt(12)=="12"
 chars = tp.all_characters(); print({k:[s["title"] for s in c.stages] for k,c in chars.items()})
 assert chars["slime"].stage_floors == [1, 4, 10] and chars["fantasma"].unlock == "chefe1"
-import arte; arte.validate()
+import art; art.validate()
 print("reader tests ok")
 
 # horário das respostas: histórico de uso por baldes de 5 min (só o timestamp, nada de conteúdo)
@@ -86,7 +86,7 @@ assert tp.load_petdex_characters() == []
 _l = tp.LOG_FILE.read_text(encoding="utf-8")
 assert "converta para PNG" in _l and "converter_webp.py" in _l and "erro" not in _l
 # OpenPets: displayName + spritesheetPath .webp com .png de mesmo nome ao lado
-sys.path.insert(0, str(Path(__file__).parent)); from _png import folha_png as _png0
+sys.path.insert(0, str(Path(__file__).parent)); from _png import sheet_png as _png0
 def _png(path): _png0(path, 8 * 9, 9 * 8)
 (dex/"o").mkdir(); (dex/"o"/"pet.json").write_text('{"displayName":"Bitty","spritesheetPath":"sheet.webp"}')
 (dex/"o"/"sheet.webp").write_bytes(b"w"); _png(dex/"o"/"sheet.png")

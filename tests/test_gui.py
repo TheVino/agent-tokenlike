@@ -84,7 +84,7 @@ fake.StringVar = fake.BooleanVar = Var
 fake.TclError = TclError
 sys.modules["tkinter"] = fake
 SEED = 1
-import tokenlike as tp, masmorra as M
+import tokenlike as tp, dungeon as M
 tp.DATA_DIR = Path(home)/".tokenlike"; tp.LOG_FILE = tp.DATA_DIR/"tokenlike.log"
 import tkinter; tp.tk = tkinter
 Args = lambda **k: types.SimpleNamespace(**{"demo":False,"import_history":False,"reset":False, **k})
@@ -199,10 +199,10 @@ for f in app4.floaters[:]:
     for i in f[0]: cv.delete(i)
 app4.floaters.clear()
 for i in range(6): app4.floater(f"-{i}", x=app4.fcx)
-caixas = [cv.bbox(f[0][0]) for f in app4.floaters]
-for i, a in enumerate(caixas):
+boxes = [cv.bbox(f[0][0]) for f in app4.floaters]
+for i, a in enumerate(boxes):
     assert a[3] < app4.panel_y
-    for b in caixas[i+1:]:
+    for b in boxes[i+1:]:
         assert not (a[0] < b[2] and b[0] < a[2] and a[1] < b[3] and b[1] < a[3]), (a, b)
 lim_file.unlink(); app4.refresh_limits()
 assert app4.limits is None and set(app4.limit_rows) == {"sessao", "semana"}
@@ -240,14 +240,14 @@ for _ in range(600):
     for fn in fns:
         if fn is None or getattr(fn, "__name__", "") in ("tick", "poll"): continue
         fn()
-    seen_horde = seen_horde or any(k == "horde" for k in getattr(app6, "_ultimo_kind", [""]))
+    seen_horde = seen_horde or any(k == "horde" for k in getattr(app6, "_last_kind", [""]))
 assert seen_horde
 # ataque elemental com área (item _t temporário): tinta e clarão no inimigo; status do pet some no fim da luta
 M.ITEMS["_t"] = {"name": "t", "fx": {"queimar": 0.6, "area": True}, "rarities": ["comum"], "consume": {"heal": 1},
                  "look": {"type": "obj", "anchor": "topo", "art": "adaga"}}
-tintas, status_pet = [], []
+inks, status_pet = [], []
 draw0, set0 = app6.draw_foe, app6.set_pet_status
-app6.draw_foe = lambda i, status=None: (status and tintas.append(status), draw0(i, status))
+app6.draw_foe = lambda i, status=None: (status and inks.append(status), draw0(i, status))
 app6.set_pet_status = lambda s: (s and status_pet.append(s), set0(s))
 for _ in range(400):
     app6.busy_until = 0
@@ -264,7 +264,7 @@ for _ in range(400):
     assert app6.pet_status is None, app6.pet_status
 app6.run["items"] = []; del M.ITEMS["_t"]; app6.refresh_look()
 del app6.draw_foe, app6.set_pet_status
-assert tintas and status_pet, (len(tintas), len(status_pet))
+assert inks and status_pet, (len(inks), len(status_pet))
 # pet tingido na cor do status (só quando muda); sem status volta ao normal; run nova limpa o status
 normal = app6.look_maps[0]
 app6.set_pet_status("veneno"); assert app6.pet_status == "veneno" and app6.look_maps[0] != normal
@@ -273,11 +273,11 @@ app6.set_pet_status("queimadura"); app6.new_run(); assert app6.pet_status is Non
 # golpe duplo e ajudante (item _t temporário): centenas de salas sem exceção; "x2" e o número do ajudante na tela
 M.ITEMS["_t"] = {"name": "t", "fx": {"duplo": 0.5, "ajudante": 3}, "rarities": ["comum"], "consume": {"heal": 1},
                  "look": {"type": "obj", "anchor": "flutua", "art": "adaga"}}
-textos, fl0 = [], app6.floater
-app6.floater = lambda text, *a, **k: (textos.append((text, k.get("x"))), fl0(text, *a, **k))
-passos_vistos = []
+texts, fl0 = [], app6.floater
+app6.floater = lambda text, *a, **k: (texts.append((text, k.get("x"))), fl0(text, *a, **k))
+steps_seen = []
 hit0 = app6.anim_hit
-app6.anim_hit = lambda h, *a: (passos_vistos.append(h), hit0(h, *a))
+app6.anim_hit = lambda h, *a: (steps_seen.append(h), hit0(h, *a))
 for _ in range(300):
     app6.busy_until = 0
     if app6.run["dead"]:
@@ -299,11 +299,11 @@ M.enter_room = er0
 for fn in PENDING[:]:
     if fn is not None and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 PENDING.clear()
-assert ("+37 ♥", None) in textos, textos[-5:]
+assert ("+37 ♥", None) in texts, texts[-5:]
 del app6.floater, app6.anim_hit
-assert any(h["who"] == "ajudante" for h in passos_vistos) and any(h["duplo"] for h in passos_vistos)
-assert any(t.endswith(" x2") for t, _ in textos)
-assert any(t == f"-{h['dmg']}" and x is None for h in passos_vistos if h["who"] == "ajudante" for t, x in textos)
+assert any(h["who"] == "ajudante" for h in steps_seen) and any(h["duplo"] for h in steps_seen)
+assert any(t.endswith(" x2") for t, _ in texts)
+assert any(t == f"-{h['dmg']}" and x is None for h in steps_seen if h["who"] == "ajudante" for t, x in texts)
 app6.show_stats(); app6.quit()
 # looks elementais animados: 3 fases por quadro (e no piscar/dormir); sem animação, 1 fase só
 app7 = tp.PetApp(Args()); PENDING.clear(); app7.rng = random.Random(SEED)
@@ -323,23 +323,23 @@ app7.run["items"] = []; app7.refresh_look(); assert len(app7.frames_fx[0]) == 1 
 for t in ELEM: M.ITEMS.pop("_" + t)
 app7.quit()
 # herói com stats inválidos é ignorado (e logado) no carregamento, não a cada tick
-pasta = Path(tempfile.mkdtemp())
-for nome, stats in (("ruim1", {"spd": "rapido"}), ("ruim2", {"hp": None}), ("bom", {"spd": 12, "hp": "18"})):
-    (pasta / nome).mkdir(); (pasta / nome / "a.png").write_bytes(b"x")
-    (pasta / nome / "character.json").write_text(json.dumps({"stats": stats, "stages": [{"frames": ["a.png"]}]}))
-heroes = tp.load_png_characters(pasta)
+folder = Path(tempfile.mkdtemp())
+for name, stats in (("ruim1", {"spd": "rapido"}), ("ruim2", {"hp": None}), ("bom", {"spd": 12, "hp": "18"})):
+    (folder / name).mkdir(); (folder / name / "a.png").write_bytes(b"x")
+    (folder / name / "character.json").write_text(json.dumps({"stats": stats, "stages": [{"frames": ["a.png"]}]}))
+heroes = tp.load_png_characters(folder)
 assert [c.key for c in heroes] == ["bom"] and heroes[0].stats["spd"] == 12.0 and heroes[0].stats["hp"] == 18
 assert tp.LOG_FILE.read_text().count("ignorado") >= 2
 # traço: chave inválida ignora o herói (e loga); chave válida chega no CharacterDef
-for nome, tr in (("tr_ruim", {"voar": 1}), ("tr_bom", {"envenenar": 0.1})):
-    (pasta / nome).mkdir(); (pasta / nome / "a.png").write_bytes(b"x")
-    (pasta / nome / "character.json").write_text(json.dumps({"traço": tr, "stages": [{"frames": ["a.png"]}]}))
-heroes = tp.load_png_characters(pasta)
-assert "tr_ruim" not in [c.key for c in heroes] and [c.traco for c in heroes if c.key == "tr_bom"] == [{"envenenar": 0.1}]
+for name, tr in (("tr_ruim", {"voar": 1}), ("tr_bom", {"envenenar": 0.1})):
+    (folder / name).mkdir(); (folder / name / "a.png").write_bytes(b"x")
+    (folder / name / "character.json").write_text(json.dumps({"traço": tr, "stages": [{"frames": ["a.png"]}]}))
+heroes = tp.load_png_characters(folder)
+assert "tr_ruim" not in [c.key for c in heroes] and [c.trait for c in heroes if c.key == "tr_bom"] == [{"envenenar": 0.1}]
 assert "voar" in tp.LOG_FILE.read_text(encoding="utf-8")
 # heróis por spritesheet: folha sintética de 9 linhas x 8 quadros, corpo opaco no meio de cada célula
-sys.path.insert(0, str(ROOT / "tests")); from _png import folha_png   # PNG de verdade: exercita o decodificador
-def pronto(app):   # espera a thread da folha e roda os after pendentes (o Tk falso não tem mainloop)
+sys.path.insert(0, str(ROOT / "tests")); from _png import sheet_png   # PNG de verdade: exercita o decodificador
+def ready(app):   # espera a thread da folha e roda os after pendentes (o Tk falso não tem mainloop)
     for st in app.char.stages:
         if st.get("thread"): st["thread"].join()
     for _ in range(5):
@@ -347,20 +347,20 @@ def pronto(app):   # espera a thread da folha e roda os after pendentes (o Tk fa
         for fn in fns:
             if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 chars = Path(tempfile.mkdtemp())
-folha_png(chars/"x"/"spritesheet.png", 512, 576, sobe={4: 10})   # grade 8x9 de 64 px; "jumping" 10 px acima
+sheet_png(chars/"x"/"spritesheet.png", 512, 576, rises={4: 10})   # grade 8x9 de 64 px; "jumping" 10 px acima
 x = {c.key: c for c in tp.load_png_characters(chars)}["x"]
 assert "estados" not in x.stages[0]                               # a descoberta não corta a folha
-st = tp.completar_estagio(x.stages[0]); assert "erro" not in st, st.get("erro")
-assert set(st["estados"]) == set(tp.folha.ESTADOS) and all(len(v) == 8 for v in st["estados"].values())
+st = tp.complete_stage(x.stages[0]); assert "erro" not in st, st.get("erro")
+assert set(st["estados"]) == set(tp.sheet.STATES) and all(len(v) == 8 for v in st["estados"].values())
 # ruído de alfa 8 no fundo todo não conta como opaco: a caixa é o corpo, não a célula
 assert st["estados"]["failed"][0][2] == (16, 5 * 64 + 6, 48, 5 * 64 + 62) and st["estados"]["failed"][0][3] == 2
-assert tp.spec_altura(st["frames"][0]) == 28 and tp.spec_k(st["frames"][0]) == 2   # 56 px aparados, N = 2
+assert tp.spec_height(st["frames"][0]) == 28 and tp.spec_k(st["frames"][0]) == 2   # 56 px aparados, N = 2
 pm = tp.spec_to_map(st["frames"][0], 2); pj = tp.spec_to_map(st["estados"]["jumping"][0], 2)
 assert max(y for _, y in pm) == 31 and min(y for _, y in pm) == 9 and set(pm.values()) == {"#c86432"}
 assert max(y for _, y in pj) == 26 and min(x for x, _ in pj) == min(x for x, _ in pm)   # pulo sai do chão, mesmo pivô
 # linhas com menos de 8 quadros: célula vazia não vira quadro (nunca pisca invisível); estado sem quadros usa o idle
-folha_png(chars/"v"/"spritesheet.png", 512, 576, vazias={0: 2, 3: 5, 6: 8})
-v = tp.completar_estagio({c.key: c for c in tp.load_png_characters(chars)}["v"].stages[0])
+sheet_png(chars/"v"/"spritesheet.png", 512, 576, empties={0: 2, 3: 5, 6: 8})
+v = tp.complete_stage({c.key: c for c in tp.load_png_characters(chars)}["v"].stages[0])
 assert "erro" not in v, v.get("erro")
 cont = {e: len(q) for e, q in v["estados"].items()}
 assert cont["idle"] == 6 and cont["waving"] == 3 and cont["waiting"] == 6 and cont["run_r"] == 8, cont   # waiting (linha 6) vazia -> idle
@@ -370,86 +370,86 @@ assert all(tp.spec_to_map(sp, 2) for q in v["estados"].values() for sp in q)   #
 assert "q" not in {c.key for c in tp.load_png_characters(chars)} and "formato de PNG não suportado" in tp.LOG_FILE.read_text(encoding="utf-8")
 # Petdex num HOME temporário: PNG vira herói da comunidade; só WebP é ignorado; pet.json inválido não derruba
 pets = Path(home)/".petdex"/"pets"
-folha_png(pets/"y"/"spritesheet.png", 512, 576); (pets/"y"/"pet.json").write_text('{"name": "Yzinho", "x": 1}')
+sheet_png(pets/"y"/"spritesheet.png", 512, 576); (pets/"y"/"pet.json").write_text('{"name": "Yzinho", "x": 1}')
 (pets/"w").mkdir(); (pets/"w"/"spritesheet.webp").write_bytes(b"w")
-folha_png(pets/"z"/"a.png", 500, 600); (pets/"z"/"pet.json").write_text("{nada")   # corte automático
-folha_png(Path(home)/".codex"/"pets"/"g"/"spritesheet.png", 1536, 1872)
-grande = (Path(home)/".codex"/"pets"/"g"/"spritesheet.png").read_bytes()
+sheet_png(pets/"z"/"a.png", 500, 600); (pets/"z"/"pet.json").write_text("{nada")   # corte automático
+sheet_png(Path(home)/".codex"/"pets"/"g"/"spritesheet.png", 1536, 1872)
+big = (Path(home)/".codex"/"pets"/"g"/"spritesheet.png").read_bytes()
 for i in range(4):
-    (Path(home)/".codex"/"pets"/f"g{i}").mkdir(); (Path(home)/".codex"/"pets"/f"g{i}"/"spritesheet.png").write_bytes(grande)
+    (Path(home)/".codex"/"pets"/f"g{i}").mkdir(); (Path(home)/".codex"/"pets"/f"g{i}"/"spritesheet.png").write_bytes(big)
 t0 = time.time(); dex = {c.key: c for c in tp.load_petdex_characters()}
 dt = time.time() - t0; assert dt < 0.5, dt                        # 5 folhas grandes: só o cabeçalho é lido
 y = dex["petdex:y"]
-assert y.name == "Yzinho" and y.comunidade and y.unlock is None and y.stats["hp"] == 20 and y.stats["spd"] == 10
+assert y.name == "Yzinho" and y.community and y.unlock is None and y.stats["hp"] == 20 and y.stats["spd"] == 10
 assert "petdex:w" not in dex and "converta para PNG" in tp.LOG_FILE.read_text()
-z = tp.completar_estagio(dex["petdex:z"].stages[0]); assert dex["petdex:z"].name == "z" and len(z["estados"]["idle"]) == 8
+z = tp.complete_stage(dex["petdex:z"].stages[0]); assert dex["petdex:z"].name == "z" and len(z["estados"]["idle"]) == 8
 assert "petdex:y" in tp.all_characters()
 t0 = time.time()
 app8 = tp.PetApp(Args()); PENDING.clear(); app8.rng = random.Random(SEED)
 app8.char_var.set("petdex:g"); app8.change_character(); app8.new_run()
 assert app8.char.key == "petdex:g" and "estados" not in app8.char.stages[0]   # ainda cortando: visual anterior
-pronto(app8)
-g = app8.char.stages[0]["frames"]; assert len(g) == 8 and tp.spec_altura(g[0]) <= 48
-assert app8.hero_k >= 2 and set(app8.estados_fx) == set(tp.folha.ESTADOS)
+ready(app8)
+g = app8.char.stages[0]["frames"]; assert len(g) == 8 and tp.spec_height(g[0]) <= 48
+assert app8.hero_k >= 2 and set(app8.states_fx) == set(tp.sheet.STATES)
 dt = time.time() - t0; assert dt < 3.0, dt
 pump(app8, 300); app8.quit()
 # estados da folha na GUI: cada estado tem as próprias imagens, compostas uma vez
 app9 = tp.PetApp(Args()); PENDING.clear(); app9.rng = random.Random(SEED)
-app9.char_var.set("petdex:y"); app9.change_character(); app9.new_run(); pronto(app9)
-fx = app9.estados_fx; assert set(fx) == set(tp.folha.ESTADOS)
-def compostos(): return {ck[0] for ck in app9.fx_cache if ck[1] == app9.fx_sig}
-assert compostos() <= {"idle"}, compostos()
-def mostrando(): return cv9.it[app9.sprite][2]["image"]
+app9.char_var.set("petdex:y"); app9.change_character(); app9.new_run(); ready(app9)
+fx = app9.states_fx; assert set(fx) == set(tp.sheet.STATES)
+def composed(): return {ck[0] for ck in app9.fx_cache if ck[1] == app9.fx_sig}
+assert composed() <= {"idle"}, composed()
+def showing(): return cv9.it[app9.sprite][2]["image"]
 cv9 = app9.canvas
-def todas(e): return {id(i) for q in fx[e] for i in q}
+def all_(e): return {id(i) for q in fx[e] for i in q}
 app9.busy_until = time.time() + 99; app9.state["last_fed"] = time.time()
-app9.tick(); assert id(mostrando()) in todas("idle")
+app9.tick(); assert id(showing()) in all_("idle")
 app9.state["last_fed"] = time.time() - tp.REST_AFTER_S - 5; app9.busy_until = 0
-app9.run["energy"] = 0; app9.tick(); assert id(mostrando()) in todas("waiting")
+app9.run["energy"] = 0; app9.tick(); assert id(showing()) in all_("waiting")
 app9.run["pending"] = {"key": next(iter(M.ITEMS)), "rar": "comum"}; app9.busy_until = time.time() + 99
-app9.tick(); assert id(mostrando()) in todas("review")          # escolha vence o descanso
+app9.tick(); assert id(showing()) in all_("review")          # escolha vence o descanso
 app9.run["pending"] = None; app9.state["last_fed"] = time.time()
-app9.luta_until = time.time() + 5; app9.tick(); assert id(mostrando()) in todas("running")
-app9.luta_until = 0
+app9.fight_until = time.time() + 5; app9.tick(); assert id(showing()) in all_("running")
+app9.fight_until = 0
 app9.on_release(types.SimpleNamespace(x=app9.pcx, y=app9.base_y - 1)); app9.tick()
-assert id(mostrando()) in todas("waving")
+assert id(showing()) in all_("waving")
 app9.run["dead"] = True; app9.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
 # pegar item recompõe só o idle e o estado na tela; outro estado é composto uma vez, na 1ª vez que aparece
 app9.run["items"].append({"key": next(iter(M.ITEMS)), "rar": "comum"}); app9.refresh_look()
-fx = app9.estados_fx; assert compostos() == {"idle", "waving"}, compostos()
-assert fx["jumping"] is fx["jumping"] and compostos() == {"idle", "waving", "jumping"}
-app9.on_death(); app9.tick(); assert id(mostrando()) in todas("failed")
+fx = app9.states_fx; assert composed() == {"idle", "waving"}, composed()
+assert fx["jumping"] is fx["jumping"] and composed() == {"idle", "waving", "jumping"}
+app9.on_death(); app9.tick(); assert id(showing()) in all_("failed")
 for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
-PENDING.clear(); assert mostrando() is app9.art_img("lapide")
+PENDING.clear(); assert showing() is app9.art_img("lapide")
 app9.new_run(); pump(app9, 400)
 # Virar herói: espelha o mapa final em torno do pivô (x -> 16k-1-x), troca run_r/run_l, persiste no state
-app9.virar_var.set(False); app9.toggle_virar(); assert not app9.virar
+app9.flip_var.set(False); app9.toggle_flip(); assert not app9.flip
 normal = app9.look_maps; k = app9.hero_k
-app9.virar_var.set(True); app9.toggle_virar()
-assert app9.virar and app9.state["virar"][app9.run["char"]] is True and app9.fx_sig[4] is True
+app9.flip_var.set(True); app9.toggle_flip()
+assert app9.flip and app9.state["virar"][app9.run["char"]] is True and app9.fx_sig[4] is True
 assert app9.look_maps == [{(16 * k - 1 - x, y): c for (x, y), c in m.items()} for m in normal] and app9.look_maps != normal
-n0 = len(app9.fx_cache); app9.estados_fx["run_r"]; app9.estados_fx["run_r"]; assert len(app9.fx_cache) == n0 + 1   # compõe uma vez
+n0 = len(app9.fx_cache); app9.states_fx["run_r"]; app9.states_fx["run_r"]; assert len(app9.fx_cache) == n0 + 1   # compõe uma vez
 saved = json.loads((tp.DATA_DIR / "state.json").read_text(encoding="utf-8")); assert saved["virar"][app9.run["char"]] is True
 app9.fill_char_menu(); app9.quit()
 # Slime (grade) e Fantasma (folha) têm os 9 estados, >= 4 quadros cada, mesmo pivô (base em y = 15)
 app10 = tp.PetApp(Args()); PENDING.clear(); app10.char_var.set("slime"); app10.change_character(); app10.new_run()
-assert app10.char.key == "slime" and set(app10.estados_fx) == set(tp.folha.ESTADOS)
-assert app10.estado_atual(time.time(), True) == "waiting"
+assert app10.char.key == "slime" and set(app10.states_fx) == set(tp.sheet.STATES)
+assert app10.current_state(time.time(), True) == "waiting"
 for st in tp.all_characters()["slime"].stages + tp.all_characters()["fantasma"].stages:
-    if st.get("sheet"): tp.completar_estagio(st)
-    assert set(st["estados"]) == set(tp.folha.ESTADOS) and all(len(v) >= 4 for v in st["estados"].values())
+    if st.get("sheet"): tp.complete_stage(st)
+    assert set(st["estados"]) == set(tp.sheet.STATES) and all(len(v) >= 4 for v in st["estados"].values())
     base = {e: max(y for sp in v for _, y in tp.spec_to_map(sp, 1)) for e, v in st["estados"].items() if e != "jumping"}
     assert set(base.values()) == {15}, (st["title"], base)
-    assert max(tp.spec_altura(sp) for v in st["estados"].values() for sp in v) > 16 or not st.get("sheet")   # Fantasma 32 px
+    assert max(tp.spec_height(sp) for v in st["estados"].values() for sp in v) > 16 or not st.get("sheet")   # Fantasma 32 px
 app10.run["dead"] = True; app10.meta["graveyard"].append({"killer": "x", "floor": 1, "room": 1, "kills": 0, "gold": 0, "kind": "monster"})
-app10.on_death(); app10.tick(); assert app10.estado_visto == "failed"
+app10.on_death(); app10.tick(); assert app10.state_seen == "failed"
 app10.new_run(); pump(app10, 300); app10.quit()
 # test_slime_32: 3 estágios, 9 estados, quadros 32x32
 sl = tp.builtin_characters()[0]
 assert [s["title"] for s in sl.stages] == ["Gotinha", "Slime", "Rei Slime"] and sl.stage_floors == [1, 4, 10]
 for st in sl.stages:
-    assert set(st["estados"]) == set(tp.folha.ESTADOS)
+    assert set(st["estados"]) == set(tp.sheet.STATES)
     assert all(len(sp[1]) == 32 and all(len(l) == 32 for l in sp[1]) for v in st["estados"].values() for sp in v)
     assert len(st["blink"][1]) == 32 and st["blink"][1] != st["frames"][0][1]
 # herói com unlock: bloqueado sem a conquista; next_char nele cai no Slime
@@ -469,71 +469,71 @@ assert app11.hero_k == 2 and abs(32 * app11.hero_px - 16 * app11.px) <= 2, (app1
 app11.run["stage"] = 3; app11.load_images(); app11.refresh_look()   # save antigo de 4 estágios: não quebra
 app11.quit()
 # menu em pixel art: abre, grade lista todos os heróis, bloqueado não troca, liberado troca, sem vazar janelas
-VIVAS = set()
-class Janela(Tk):
-    def __init__(self, *a, **k): VIVAS.add(self)
-    def destroy(self): VIVAS.discard(self)
+ALIVE = set()
+class Window(Tk):
+    def __init__(self, *a, **k): ALIVE.add(self)
+    def destroy(self): ALIVE.discard(self)
     def geometry(self, g=None): self.geo = g
-tkinter.Toplevel = Janela
-appm = tp.PetApp(Args()); PENDING.clear(); appm.close_choice(); VIVAS.clear()
+tkinter.Toplevel = Window
+appm = tp.PetApp(Args()); PENDING.clear(); appm.close_choice(); ALIVE.clear()
 appm.meta["achievements"] = ["chefe1"]; appm.meta["next_char"] = "slime"; appm.char_var.set("slime")
 ev = types.SimpleNamespace(x_root=1900, y_root=1070)
 for _ in range(2):
-    appm.on_menu(ev); assert appm.menu_win in VIVAS
-    appm.menu_do(appm.show_heroes); assert appm.menu_win is None and appm.heroes_win in VIVAS
+    appm.on_menu(ev); assert appm.menu_win in ALIVE
+    appm.menu_do(appm.show_heroes); assert appm.menu_win is None and appm.heroes_win in ALIVE
     assert set(appm.hero_cards) == set(appm.chars)
     bloq = [k for k, c in appm.chars.items() if not appm.is_unlocked(c)]
     assert bloq and all(appm.hero_cards[k] is None for k in bloq)
-    appm.show_heroes(); appm.on_menu(ev); assert len(VIVAS) == 2     # reabrir troca a janela, não empilha
-    appm.close_win(appm.menu_win); appm.close_win(appm.heroes_win); assert not VIVAS
-appm.show_heroes(); appm.hero_cards["fantasma"](); assert appm.meta["next_char"] == "fantasma" and not VIVAS - {appm.popup_win}
+    appm.show_heroes(); appm.on_menu(ev); assert len(ALIVE) == 2     # reabrir troca a janela, não empilha
+    appm.close_win(appm.menu_win); appm.close_win(appm.heroes_win); assert not ALIVE
+appm.show_heroes(); appm.hero_cards["fantasma"](); assert appm.meta["next_char"] == "fantasma" and not ALIVE - {appm.popup_win}
 for fn in PENDING[:]:
-    if fn and getattr(fn, "__name__", "") == "esperar": fn()    # thread das miniaturas
+    if fn and getattr(fn, "__name__", "") == "wait": fn()    # thread das miniaturas
 # janelas de conquistas, cemitério e status: vazias e cheias, reabrir troca a janela, fechar não vaza
-import arte
-assert set(arte.CONQ_ART) == set(M.ACHIEVEMENTS)
-campos = set(M.stats(appm.run)) | {"crescer"}
-assert campos <= set(arte.STAT_ART) and campos == {k for k, *_ in tp.STAT_LINHAS}
-JAN = (("cemi_win", appm.show_graveyard), ("conq_win", appm.show_achievements), ("stats_win", appm.show_stats), ("perfil_win", appm.show_perfil))
-def abre_fecha():
+import art
+assert set(art.ACH_ART) == set(M.ACHIEVEMENTS)
+fields = set(M.stats(appm.run)) | {"crescer"}
+assert fields <= set(art.STAT_ART) and fields == {k for k, *_ in tp.STAT_LINES}
+JAN = (("grave_win", appm.show_graveyard), ("ach_win", appm.show_achievements), ("stats_win", appm.show_stats), ("profile_win", appm.show_perfil))
+def open_close():
     for _ in range(2):
         for attr, fn in JAN:
-            fn(); fn(); assert getattr(appm, attr) in VIVAS
-        assert len(VIVAS - {appm.popup_win}) == len(JAN)
+            fn(); fn(); assert getattr(appm, attr) in ALIVE
+        assert len(ALIVE - {appm.popup_win}) == len(JAN)
         for attr, _ in JAN:
             appm.close_win(getattr(appm, attr)); assert getattr(appm, attr) is None
-        assert not VIVAS - {appm.popup_win}
+        assert not ALIVE - {appm.popup_win}
 appm.meta.update(graveyard=[], achievements=[]); appm.run.update(items=[], consumed=[], traco={})
 appm.state.update(usage_hist={}, daily={}, tokens_total=0); appm.limits = None
-abre_fecha()
-mortes = [("Rato", "monster"), ("Rei Rato", "boss"), ("Veneno", "status"), ("Queimadura", "status"), ("Mímico", "mimic"),
+open_close()
+deaths = [("Rato", "monster"), ("Rei Rato", "boss"), ("Veneno", "status"), ("Queimadura", "status"), ("Mímico", "mimic"),
           ("Armadilha", "trap"), ("Desistiu", "desistiu"), ("Coisa Nova", "monster")]
 appm.meta["graveyard"] = [{"run": i, "char": "naoexiste" if i % 3 else "slime", "floor": 9, "room": 2,
-                           "killer": mortes[i % 8][0], "kind": mortes[i % 8][1], "gold": 5, "kills": 3, "date": "2026-11-13",
+                           "killer": deaths[i % 8][0], "kind": deaths[i % 8][1], "gold": 5, "kills": 3, "date": "2026-11-13",
                            "items": [k if i % 2 else {"key": k, "rar": "epico"} for k in list(M.ITEMS)[:i]]}
                           for i in range(50)]
 appm.meta["achievements"] = list(M.ACHIEVEMENTS)[::2]
 appm.run.update(items=[{"key": k, "rar": "lendario"} for k in M.ITEMS], kills=40, shield=3, traco={"dodge": 0.1},
                 consumed=[{"key": k, "rar": "comum", "floor": 1} for k in list(M.ITEMS)[:4]])
-assert len(tp.stat_linhas(appm.run, M.stats(appm.run))) == len(tp.STAT_LINHAS)   # todo campo aparece
+assert len(tp.stat_lines(appm.run, M.stats(appm.run))) == len(tp.STAT_LINES)   # todo campo aparece
 for d in range(8): tp.add_usage(appm.state, time.time() - d * 86400, 1e6 * d)
 appm.state.update(tokens_total=47_000_000, daily={date.today().isoformat(): 5e6})
 appm.limits = {"sessao": (42, time.time() + 3600), "semana": (None, None), "updated": time.time()}
-abre_fecha()
+open_close()
 # janelas móveis: arrastar pela barra muda a geometria e grava; reabrir usa a posição; fora da tela volta ao lado do pet
-appm.show_achievements(); w = appm.conq_win
-w.barra.binds["<Button-1>"](types.SimpleNamespace(x_root=310, y_root=305))
-w.barra.binds["<B1-Motion>"](types.SimpleNamespace(x_root=510, y_root=405))
-assert w.geo == "+500+400" and appm.state["janelas"]["conq_win"] == [500, 400], w.geo
-appm.show_achievements(); assert appm.conq_win.geo == "+500+400", appm.conq_win.geo
-appm.state["janelas"]["conq_win"] = [500, 1070]; appm.show_achievements(); assert appm.conq_win.geo == "+500+960"
-appm.state["janelas"]["conq_win"] = [5000, -900]; appm.show_achievements(); assert appm.conq_win.geo == "+144+300"
+appm.show_achievements(); w = appm.ach_win
+w.progress_bar.binds["<Button-1>"](types.SimpleNamespace(x_root=310, y_root=305))
+w.progress_bar.binds["<B1-Motion>"](types.SimpleNamespace(x_root=510, y_root=405))
+assert w.geo == "+500+400" and appm.state["janelas"]["ach_win"] == [500, 400], w.geo
+appm.show_achievements(); assert appm.ach_win.geo == "+500+400", appm.ach_win.geo
+appm.state["janelas"]["ach_win"] = [500, 1070]; appm.show_achievements(); assert appm.ach_win.geo == "+500+960"
+appm.state["janelas"]["ach_win"] = [5000, -900]; appm.show_achievements(); assert appm.ach_win.geo == "+144+300"
 appm.root.winfo_vrootx = lambda: -1680; appm.root.winfo_vrootwidth = lambda: 3600   # monitor à esquerda
-appm.state["janelas"]["conq_win"] = [-1000, 200]; appm.show_achievements(); assert appm.conq_win.geo == "+-1000+200"
+appm.state["janelas"]["ach_win"] = [-1000, 200]; appm.show_achievements(); assert appm.ach_win.geo == "+-1000+200"
 del appm.root.winfo_vrootx, appm.root.winfo_vrootwidth
-appm.close_win(appm.conq_win)
+appm.close_win(appm.ach_win)
 # barra de rolagem: arrastar o polegar e clicar na trilha chamam yview_moveto com a fração certa
-cv = tkinter.Canvas(); tr = appm.rolagem(None, Tk(), cv, 100)
+cv = tkinter.Canvas(); tr = appm.scrollbar(None, Tk(), cv, 100)
 cv.cfg["yscrollcommand"]("0.0", "0.25")                      # 1/4 visível: polegar de 0 a 25 px
 ev = lambda y: types.SimpleNamespace(y=y)
 tr.binds["<Button-1>"](ev(10)); assert cv.moveto == 0.0       # pegou o polegar a 10 px do topo
@@ -542,91 +542,91 @@ tr.binds["<ButtonRelease-1>"](ev(60)); tr.binds["<B1-Motion>"](ev(0)); assert ab
 tr.binds["<Button-1>"](ev(90)); assert abs(cv.moveto - 0.75) < 1e-9   # trilha embaixo: vai ao fim (limitado a 1 - 0,25)
 tr.binds["<Button-1>"](ev(5)); assert cv.moveto == 0.0
 # cantos arredondados: só retângulos retos, o canto (0,0) fica de fora e o miolo é todo coberto
-assert tp.degraus(8) == [5, 3, 2, 1, 1, 0, 0, 0] and tp.degraus(0) == []
-cv = tkinter.Canvas(); tp.retangulo_arredondado(cv, 0, 0, 40, 20, 8, "#000000", "#ffffff", 2, tag="t", extra=("card:1",))
+assert tp.steps(8) == [5, 3, 2, 1, 1, 0, 0, 0] and tp.steps(0) == []
+cv = tkinter.Canvas(); tp.rounded_rect(cv, 0, 0, 40, 20, 8, "#000000", "#ffffff", 2, tag="t", extra=("card:1",))
 rs = [c for kind, c, k in cv.it.values()]
-cobre = lambda x, y, tag: any(c[0] <= x < c[2] and c[1] <= y < c[3] for kind, c, k in cv.it.values() if tag in k["tags"])
-assert not cobre(0, 0, "t") and not cobre(39, 19, "t") and cobre(20, 10, "t_f") and cobre(0, 10, "t_b") and not cobre(0, 10, "t_f")
+covers = lambda x, y, tag: any(c[0] <= x < c[2] and c[1] <= y < c[3] for kind, c, k in cv.it.values() if tag in k["tags"])
+assert not covers(0, 0, "t") and not covers(39, 19, "t") and covers(20, 10, "t_f") and covers(0, 10, "t_b") and not covers(0, 10, "t_f")
 assert all(0 <= c[0] <= c[2] <= 40 and 0 <= c[1] <= c[3] <= 20 for c in rs) and cv.bbox("card:1") == (0, 0, 40, 20)
 # página de itens: todo item tem card; bloqueado mostra silhueta e conquista, sem valores; demo libera tudo
-textos = lambda cv: [k.get("text", "") for kind, _, k in cv.it.values() if kind == "text"]
-rar_txt = lambda cv: [t for t in textos(cv) if any(t.startswith(n + ":") for n in M.RAR_NAMES.values())]
-for conqs in ([], list(M.ACHIEVEMENTS)):
-    appm.meta["achievements"] = conqs
-    for filtro in ("todos", "liberados", "bloqueados", "todos"):
-        appm.itens_filtro = filtro; appm.show_items(); assert appm.itens_win in VIVAS
-    nomes = set(textos(appm.itens_cv))
-    assert all(it["name"] in nomes for it in M.ITEMS.values())
-    bloq = [k for k in M.ITEMS if not appm.item_liberado(k)]
+texts = lambda cv: [k.get("text", "") for kind, _, k in cv.it.values() if kind == "text"]
+rar_txt = lambda cv: [t for t in texts(cv) if any(t.startswith(n + ":") for n in M.RAR_NAMES.values())]
+for achs in ([], list(M.ACHIEVEMENTS)):
+    appm.meta["achievements"] = achs
+    for filter_by in ("todos", "liberados", "bloqueados", "todos"):
+        appm.items_filter = filter_by; appm.show_items(); assert appm.items_win in ALIVE
+    names = set(texts(appm.items_cv))
+    assert all(it["name"] in names for it in M.ITEMS.values())
+    bloq = [k for k in M.ITEMS if not appm.item_unlocked(k)]
     assert len(bloq) == (len(M.ITEMS) - len(M.unlocked_items(appm.meta)))
-    assert bool(bloq) == (not conqs)
+    assert bool(bloq) == (not achs)
     for k in M.ITEMS:
         cv = tkinter.Canvas(); appm.item_card(cv, 0, 0, k)
         assert len(rar_txt(cv)) == (0 if k in bloq else len(M.ITEMS[k]["rarities"])), k
-    appm.close_win(appm.itens_win); assert not VIVAS - {appm.popup_win}
-appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_liberado(k) for k in M.ITEMS); appm.demo = False
+    appm.close_win(appm.items_win); assert not ALIVE - {appm.popup_win}
+appm.meta["achievements"] = []; appm.demo = True; assert all(appm.item_unlocked(k) for k in M.ITEMS); appm.demo = False
 # grade de heróis: os nossos (módulo em herois/) separados dos importados (characters/ sem módulo, Petdex)
-assert tp.heroi_proprio("slime") and tp.heroi_proprio("fantasma")
-assert not tp.heroi_proprio("bitty-openpets") and not tp.heroi_proprio("naoexiste") and not tp.heroi_proprio("x.y")
+assert tp.own_hero("slime") and tp.own_hero("fantasma")
+assert not tp.own_hero("bitty-openpets") and not tp.own_hero("naoexiste") and not tp.own_hero("x.y")
 # idioma: o chip EN do menu troca o HUD e reabre as janelas abertas; em EN não sobra texto em pt
-import re, idioma
+import re, i18n
 ev_m = types.SimpleNamespace(x_root=1900, y_root=1070)
-TEXTOS = []
-class Rotulo(Wid):
-    def __init__(self, *a, **k): super().__init__(); TEXTOS.append(k.get("text", ""))
-    def configure(self, **k): TEXTOS.append(k.get("text", ""))
+TEXTS = []
+class TextLabel(Wid):
+    def __init__(self, *a, **k): super().__init__(); TEXTS.append(k.get("text", ""))
+    def configure(self, **k): TEXTS.append(k.get("text", ""))
     config = configure
 _ct = Canvas.create_text
-Canvas.create_text = lambda self, *a, **k: (TEXTOS.append(k.get("text", "")), _ct(self, *a, **k))[1]
-tkinter.Label = Rotulo
+Canvas.create_text = lambda self, *a, **k: (TEXTS.append(k.get("text", "")), _ct(self, *a, **k))[1]
+tkinter.Label = TextLabel
 appm.run["pending"] = {"key": "adaga", "rar": "raro", "source": "chest"}
-def tudo():
-    TEXTOS.clear(); appm.update_panel()
-    TEXTOS.extend(k.get("text", "") for kind, _, k in appm.canvas.it.values() if kind == "text")
+def everything():
+    TEXTS.clear(); appm.update_panel()
+    TEXTS.extend(k.get("text", "") for kind, _, k in appm.canvas.it.values() if kind == "text")
     for fn in (appm.show_perfil, appm.show_stats, appm.show_achievements, appm.show_graveyard, appm.show_heroes,
                appm.show_items, lambda: appm.on_menu(ev_m), appm.show_choice, lambda: appm.announce_unlocks(["ouro300"])):
         fn()
     appm.close_choice()
-    return " | ".join(TEXTOS)
-pt = tudo()
+    return " | ".join(TEXTS)
+pt = everything()
 assert "Sair" in pt and "Andar" in pt and "Quit" not in pt
-appm.show_stats(); appm.show_achievements(); appm.on_menu(ev_m); antes = (appm.stats_win, appm.conq_win)
+appm.show_stats(); appm.show_achievements(); appm.on_menu(ev_m); before_ = (appm.stats_win, appm.ach_win)
 appm.lang_var.set("en"); appm.menu_do(appm.change_lang)   # como o chip EN do menu
 assert appm.state["lang"] == "en" and appm.menu_win is None
-assert appm.stats_win in VIVAS and appm.conq_win in VIVAS and (appm.stats_win, appm.conq_win) != antes   # reabriu
+assert appm.stats_win in ALIVE and appm.ach_win in ALIVE and (appm.stats_win, appm.ach_win) != before_   # reabriu
 assert appm.canvas.it[appm.info_txt][2]["text"].startswith("Floor ")
-en = tudo()
+en = everything()
 assert "Quit" in en and "Sair" not in en and "Graveyard" in en, en[:400]
-sobra = re.findall(r"\S*[ãõáéíóúâêôçàÃÕÁÉÍÓÚÂÊÔÇ]\S*|\b(?:Andar|andar|Sair|Itens|Modo|ouro|sala|morto|nenhum|passe)\b", en)
-assert not sobra, sobra
-appm.lang_var.set("pt"); appm.change_lang(); assert idioma.LANG == "pt" and tudo().count("Sair") == 1
+spare = re.findall(r"\S*[ãõáéíóúâêôçàÃÕÁÉÍÓÚÂÊÔÇ]\S*|\b(?:Andar|andar|Sair|Itens|Modo|ouro|sala|morto|nenhum|passe)\b", en)
+assert not spare, spare
+appm.lang_var.set("pt"); appm.change_lang(); assert i18n.LANG == "pt" and everything().count("Sair") == 1
 tkinter.Label = Wid; Canvas.create_text = _ct
 PENDING.clear(); appm.quit(); tkinter.Toplevel = Tk
 # "Aparecer só com uso": some após ESCONDER_S sem tokens, volta no 1º token; desligado nunca some
 appv = tp.PetApp(Args()); PENDING.clear(); vis = []
 appv.root.withdraw = lambda: vis.append("some"); appv.root.deiconify = lambda: vis.append("volta")
 t = time.time(); appv.busy_until = 0; appv.run["pending"] = None
-appv.state["last_fed"] = appv.aberto_em = t - tp.ESCONDER_S - 5
-appv.ajustar_visivel(t); assert vis == []                                       # opção desligada
-appv.uso_var.set(True); appv.toggle_uso(); appv.ajustar_visivel(time.time()); assert vis == []   # ligou agora: fica
-appv.aberto_em = t - tp.ESCONDER_S - 5
-appv.run["pending"] = {"key": next(iter(M.ITEMS)), "rar": "comum"}; appv.ajustar_visivel(t); assert vis == []  # escolha aberta
-appv.run["pending"] = None; appv.ajustar_visivel(t); assert vis == ["some"] and appv.escondido
-appv.feed(1000, 1000); appv.ajustar_visivel(time.time()); assert vis == ["some", "volta"] and not appv.escondido
+appv.state["last_fed"] = appv.opened_at = t - tp.HIDE_S - 5
+appv.adjust_visibility(t); assert vis == []                                       # opção desligada
+appv.usage_var.set(True); appv.toggle_usage(); appv.adjust_visibility(time.time()); assert vis == []   # ligou agora: fica
+appv.opened_at = t - tp.HIDE_S - 5
+appv.run["pending"] = {"key": next(iter(M.ITEMS)), "rar": "comum"}; appv.adjust_visibility(t); assert vis == []  # escolha aberta
+appv.run["pending"] = None; appv.adjust_visibility(t); assert vis == ["some"] and appv.escondido
+appv.feed(1000, 1000); appv.adjust_visibility(time.time()); assert vis == ["some", "volta"] and not appv.escondido
 # atalho de inicialização (APPDATA temporário)
-os.environ["APPDATA"] = home; ini = tp.atalho_inicio(); ini.parent.mkdir(parents=True)
-appv.inicio_var.set(True); appv.toggle_inicio(); assert ini.is_file() and "tokenlike.py" in ini.read_text()
-appv.inicio_var.set(False); appv.toggle_inicio(); assert not ini.exists() and appv.inicio_var.get() is False
+os.environ["APPDATA"] = home; ini = tp.startup_shortcut(); ini.parent.mkdir(parents=True)
+appv.startup_var.set(True); appv.toggle_startup(); assert ini.is_file() and "tokenlike.py" in ini.read_text()
+appv.startup_var.set(False); appv.toggle_startup(); assert not ini.exists() and appv.startup_var.get() is False
 # bandeja: 0 = mostrar (mesmo escondido pelo "só com uso"), 1 = sair; ícone .ico com PNG 32x32 dentro
-import bandeja, queue
-icone = bandeja.ico(tp.png_bytes(tp.heroi_idle("slime"), 32, quadrado=True)[0], 32)
-assert icone[:6] == b"\0\0\1\0\1\0" and icone[22:26] == b"\x89PNG"
-appv.state["last_fed"] = appv.aberto_em = time.time() - tp.ESCONDER_S - 1; appv.ajustar_visivel(time.time())
+import tray, queue
+icon_file = tray.ico(tp.png_bytes(tp.hero_idle("slime"), 32, square=True)[0], 32)
+assert icon_file[:6] == b"\0\0\1\0\1\0" and icon_file[22:26] == b"\x89PNG"
+appv.state["last_fed"] = appv.opened_at = time.time() - tp.HIDE_S - 1; appv.adjust_visibility(time.time())
 assert appv.escondido
-fechou = []
-appv.bandeja = types.SimpleNamespace(fila=queue.Queue(), fechar=lambda: fechou.append(1))
-appv.bandeja.fila.put(0); appv.ouvir_bandeja(); assert not appv.escondido
-appv.bandeja.fila.put(1); PENDING.clear(); appv.ouvir_bandeja(); assert fechou == [1] and appv.bandeja is None
+closed = []
+appv.tray = types.SimpleNamespace(events=queue.Queue(), shutdown=lambda: closed.append(1))
+appv.tray.events.put(0); appv.listen_tray(); assert not appv.escondido
+appv.tray.events.put(1); PENDING.clear(); appv.listen_tray(); assert closed == [1] and appv.tray is None
 log =tp.LOG_FILE.read_text() if tp.LOG_FILE.exists() else ""
 assert "erro" not in log, log[-3000:]
 print("gui ok; W,H =", app.W, app.H)
