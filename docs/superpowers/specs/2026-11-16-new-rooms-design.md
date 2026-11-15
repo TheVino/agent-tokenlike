@@ -129,6 +129,24 @@ lines are **collected in a Journal**, a compendium like the Graveyard.
 - `test_texts.py`: the choice window for each kind and the Journal, with worst-case data, in pt and en.
 - `test_i18n.py`: every new text.
 
+## Rules settled after the builder check (my calls, owner can override)
+
+- **When the choice resolves:**
+  - Idol and campfire effects apply when the choice resolves: inline in auto mode, or in `choose_pending` in
+    interactive mode.
+  - "Next N rooms" counts rooms entered **after** the choice resolves. Stairs do not count.
+- **Idol success item:** it goes through the normal offer path (`deliver`). In interactive mode that opens a second,
+  chained `offer` pending (take/consume).
+  - `migrate_run` must only drop an `offer` pending whose `key` is unknown. It must keep the `idol` and `campfire`
+    pendings.
+- **Balance budget:** the new rooms take their weight from `monster`, so the room total stays the same.
+  `simulate.py` must stay inside the targets with the new rooms in. Tune the new rooms' numbers first.
+- **Idol at very low HP:** "accept" is offered only when current HP ≥ 4. Below that, the idol shows only "decline",
+  and auto mode declines.
+- **Counters:** `meta["secrets"]` counts Secret Rooms found. `run["rooms"]` holds per-kind counts and goes into
+  `run_record` as a new `rooms` field; a new field is fine.
+- **Tales:** a campfire prefers unheard tales. Once all are heard, it repeats at random.
+
 ## Left to the builder
 
 - Exact numbers: weights, idol odds and cost, boon sizes, gold amounts. Set them with the simulator and the targets.
