@@ -343,15 +343,15 @@ def item_family(key: str) -> str:
 # fx of sets and pairs is summed in stats() with no rarity scaling, like the hero trait.
 # family -> (key slug, [(name, fx) for 2 items, (name, fx) for 4 items])
 _SETS = {
-    "Elemental": ("elemental", ("Elemental Whispers", {"elem_boost": 0.03}), ("Lingering Elements", {"status_turns": 1})),
-    "Defense": ("defense", ("Sturdy Habit", {"block": 1}), ("Thorny Fortress", {"thorns": 0.1})),
+    "Elemental": ("elemental", ("Elemental Whispers", {"elem_boost": 0.02}), ("Lingering Elements", {"status_turns": 1})),
+    "Defense": ("defense", ("Sturdy Habit", {"thorns": 0.05}), ("Thorny Fortress", {"thorns": 0.1})),
     "Regeneration": ("regeneration", ("Slow Mending", {"heal_floor": 2}), ("Living Warmth", {"heal_room": 1})),
     "Blood": ("blood", ("Thrifty Pain", {"attack_cost": -1}), ("Cornered Rage", {"fury": 1})),
-    "Strikes": ("strikes", ("Steady Hand", {"crit": 0.03}), ("Rhythm of Blows", {"double": 0.05})),
+    "Strikes": ("strikes", ("Steady Hand", {"crit": 0.02}), ("Rhythm of Blows", {"double": 0.05})),
     "Area": ("area", ("Wide Stance", {"atk": 1}), ("Sweeping Might", {"atk": 1, "critdmg": 0.25})),
     "Helper": ("helper", ("Small Company", {"helper": 1}), ("Loyal Crowd", {"helper": 2})),
     "Growth": ("growth", ("Sprouting", {"maxhp": 4}), ("Full Bloom", {"atk": 2})),
-    "Luck & gold": ("luck", ("Pocket Charm", {"luck": 0.1}), ("Merchant's Grin", {"gold": 0.25, "discount": 0.1})),
+    "Luck & gold": ("luck", ("Pocket Charm", {"luck": 0.05}), ("Merchant's Grin", {"gold": 0.25, "discount": 0.1})),
 }
 SYNERGIES = {
     f"{slug}{n}": {"name": name, "kind": "set", "req": {"family": fam, "n": n}, "fx": fx,
