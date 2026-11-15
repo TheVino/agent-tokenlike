@@ -973,6 +973,7 @@ STAT_LINES = (
     ("trap", "Traps", lambda v: f"×{v:g}", None, False),
     ("luck", "Luck", lambda v: f"+{_pct(v)}", M.MAX_LUCK, False),
     ("discount", "Discount", _pct, M.MAX_DISCOUNT, False),
+    ("status_turns", "Status duration", lambda v: _t("+{v} turn", v=v), None, False),
 )
 
 
@@ -986,18 +987,6 @@ def stat_lines(run, st):
         if always or (v != 1 if k == "trap" else v):
             out.append((k, _t(name), fmt_(v) + (f" / {fmt_(cap)}" if cap is not None else "")))
     return out
-
-
-# items page: family from the 1st fx field found in this order (none: "Basic")
-FAMILIES = (("Elemental", ("burn", "shock", "poison", "freeze")), ("Helper", ("helper",)),
-            ("Growth", ("grow",)), ("Area", ("area",)), ("Blood", ("attack_cost", "fury")),
-            ("Strikes", ("crit", "critdmg", "double")), ("Defense", ("block", "thorns", "dodge")),
-            ("Regeneration", ("heal_room", "heal_floor", "lifesteal")), ("Luck & gold", ("luck", "gold", "discount")))
-
-
-def item_family(key):
-    fx = M.ITEMS[key]["fx"]
-    return next((name for name, fields in FAMILIES if any(fx.get(c) for c in fields)), "Basic")
 
 
 @lru_cache(maxsize=None)
@@ -2711,7 +2700,7 @@ class PetApp:
         cv.create_text(x + 54, y + 16, anchor="w", text=_t(it["name"]), fill=TEXT if ok else MUTED, font=self.font)
         eat = _t("heal" if "heal" in it["consume"] else "shield")
         cv.create_text(x + 54, y + 33, anchor="w", font=fs, fill=MUTED,
-                       text=_t(item_family(key)) + ("  ·  " + _t("consume: {x}", x=eat) if ok else ""))
+                       text=_t(M.item_family(key)) + ("  ·  " + _t("consume: {x}", x=eat) if ok else ""))
         ty, larg = y + 54, ITEMS_CARD_W - 20
         if not ok:
             cv.create_image(x + 10, ty + 7, anchor="w", image=self.menu_icon("padlock"))

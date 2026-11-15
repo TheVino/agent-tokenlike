@@ -295,4 +295,35 @@ assert abs(M.stats(run)["poison"] - expected) < 1e-9
 del M.ITEMS["_tr"]
 stale = M.new_run("x", {"hp": 20}, 1); before = M.stats(stale); del stale["trait"]
 assert M.stats(M.migrate_run(stale)) == before and stale["trait"] == {}
+# synergies: data
+S = M.SYNERGIES
+assert sum(1 for s in S.values() if s["kind"] == "set") == 18
+assert sum(1 for s in S.values() if s["kind"] == "pair") == 8
+secret = [k for k, s in S.items() if s.get("secret")]
+assert len(secret) == 3 and all(S[k]["kind"] == "pair" for k in secret)
+for k, s in S.items():
+    assert s["name"] and (s.get("secret") or s["hint"]), k
+    if s["kind"] == "pair":
+        a, b = s["req"]["items"]
+        assert a in M.ITEMS and b in M.ITEMS and M.item_family(a) != M.item_family(b), k
+        assert "Basic" not in (M.item_family(a), M.item_family(b)), k
+assert len({s["name"] for s in S.values()} | {it["name"] for it in M.ITEMS.values()}) == len(S) + len(M.ITEMS)
+# sets switch on at exactly 2 and 4
+fam = "Defense"
+keys = [k for k in M.ITEMS if M.item_family(k) == fam][:4]
+r = M.new_run("slime", {}, 9)
+def sets_on(r): return [k for k in M.active_synergies(r) if S[k]["kind"] == "set" and S[k]["req"]["family"] == fam]
+for n, want in ((1, 0), (2, 1), (3, 1), (4, 2)):
+    r["items"] = [{"key": k, "rar": "common"} for k in keys[:n]]
+    assert len(sets_on(r)) == want, (n, sets_on(r))
+# caps hold with every synergy on
+r = M.new_run("slime", {}, 10); r["items"] = [{"key": k, "rar": "legendary"} for k in M.ITEMS]
+st = M.stats(r)
+assert st["crit"] <= M.MAX_CRIT and st["block"] <= M.MAX_BLOCK and st["double"] <= M.MAX_DOUBLE
+assert st["thorns"] <= M.MAX_THORNS and st["luck"] <= M.MAX_LUCK and st["attack_cost"] >= 0
+# a pair turns on only with both items
+pk = next(k for k, s in S.items() if s["kind"] == "pair"); a, b = S[pk]["req"]["items"]
+r = M.new_run("slime", {}, 11); r["items"] = [{"key": a, "rar": "common"}]
+assert pk not in M.active_synergies(r)
+r["items"].append({"key": b, "rar": "common"}); assert pk in M.active_synergies(r)
 print("ok: items")

@@ -323,6 +323,52 @@ ITEMS = {
                      "consume": {"heal": 7}, "look": {"type": "sticker", "art": "leech", "at": [0.25, 0.7]}},
 }
 
+
+# item families (first fx field found in this order; none: "Basic"); sets count items by this single family
+FAMILIES = (("Elemental", ("burn", "shock", "poison", "freeze")), ("Helper", ("helper",)),
+            ("Growth", ("grow",)), ("Area", ("area",)), ("Blood", ("attack_cost", "fury")),
+            ("Strikes", ("crit", "critdmg", "double")), ("Defense", ("block", "thorns", "dodge")),
+            ("Regeneration", ("heal_room", "heal_floor", "lifesteal")), ("Luck & gold", ("luck", "gold", "discount")))
+
+
+def item_family(key: str) -> str:
+    fx = ITEMS[key]["fx"]
+    return next((name for name, fields in FAMILIES if any(fx.get(c) for c in fields)), "Basic")
+
+
+# Synergies: kind set (2 / 4 items of a family), pair (two named items), reaction (added later).
+# fx of sets and pairs is summed in stats() with no rarity scaling, like the hero trait.
+# family -> (key slug, [(name, fx) for 2 items, (name, fx) for 4 items])
+_SETS = {
+    "Elemental": ("elemental", ("Elemental Whispers", {"elem_boost": 0.03}), ("Lingering Elements", {"status_turns": 1})),
+    "Defense": ("defense", ("Sturdy Habit", {"block": 1}), ("Thorny Fortress", {"thorns": 0.1})),
+    "Regeneration": ("regeneration", ("Slow Mending", {"heal_floor": 2}), ("Living Warmth", {"heal_room": 1})),
+    "Blood": ("blood", ("Thrifty Pain", {"attack_cost": -1}), ("Cornered Rage", {"fury": 1})),
+    "Strikes": ("strikes", ("Steady Hand", {"crit": 0.03}), ("Rhythm of Blows", {"double": 0.05})),
+    "Area": ("area", ("Wide Stance", {"atk": 1}), ("Sweeping Might", {"atk": 1, "critdmg": 0.25})),
+    "Helper": ("helper", ("Small Company", {"helper": 1}), ("Loyal Crowd", {"helper": 2})),
+    "Growth": ("growth", ("Sprouting", {"maxhp": 4}), ("Full Bloom", {"atk": 2})),
+    "Luck & gold": ("luck", ("Pocket Charm", {"luck": 0.1}), ("Merchant's Grin", {"gold": 0.25, "discount": 0.1})),
+}
+SYNERGIES = {
+    f"{slug}{n}": {"name": name, "kind": "set", "req": {"family": fam, "n": n}, "fx": fx,
+                   "secret": False, "hint": f"Have {n} {fam} items"}
+    for fam, (slug, *steps) in _SETS.items() for n, (name, fx) in zip((2, 4), steps)
+}
+_PAIRS = (
+    ("hearthfire", "Hearthfire", "torch", "hearth_lamp", {"heal_room": 1}, False),
+    ("winter_carapace", "Winter Carapace", "frost_bark", "turtle_shell", {"thorns": 0.05}, False),
+    ("night_prowler", "Night Prowler", "cat_eye", "cat_whiskers", {"dodge": 0.05}, True),
+    ("pack_instinct", "Pack Instinct", "beetle", "ringed_horn", {"helper": 1}, False),
+    ("blood_debt", "Blood Debt", "ruby_chalice", "leech", {"lifesteal": 1}, True),
+    ("loaded_dice", "Loaded Dice", "crown_coin", "bone_die", {"crit": 0.03}, False),
+    ("miasma", "Miasma", "censer", "whirlwind", {"poison": 0.04}, False),
+    ("shattered_gaze", "Shattered Gaze", "cracked_mirror", "monocle", {"atk": 1}, True),
+)
+for _k, _name, _a, _b, _fx, _sec in _PAIRS:
+    SYNERGIES[_k] = {"name": _name, "kind": "pair", "req": {"items": [_a, _b]}, "fx": _fx, "secret": _sec,
+                     "hint": f"Have {ITEMS[_a]['name']} and {ITEMS[_b]['name']}"}
+
 # sprite, name, health mult., attack mult., min floor, speed mult.
 MONSTERS = [
     ("bat", "Bat", 0.8, 0.9, 1, 1.4),
@@ -446,6 +492,10 @@ def fx_text(fx: dict) -> str:
         parts.append(t("+{v}% luck", v=round(fx['luck'] * 100)))
     if fx.get("discount"):
         parts.append(t("-{v}% shop price", v=round(fx['discount'] * 100)))
+    if fx.get("elem_boost"):
+        parts.append(t("+{v}% chance to each element", v=round(fx['elem_boost'] * 100)))
+    if fx.get("status_turns"):
+        parts.append(t("statuses last +{v} turn", v=fx['status_turns']))
     return ", ".join(parts)
 
 
@@ -528,6 +578,17 @@ def migrate_run(run: dict) -> dict:
     return run
 
 
+def active_synergies(run: dict) -> list[str]:
+    """Keys of the sets and pairs whose condition holds now, in SYNERGIES order (pure)."""
+    keys = [i["key"] for i in run["items"]]
+    count = {}
+    for k in keys:
+        count[item_family(k)] = count.get(item_family(k), 0) + 1
+    return [k for k, s in SYNERGIES.items()
+            if (s["kind"] == "set" and count.get(s["req"]["family"], 0) >= s["req"]["n"])
+            or (s["kind"] == "pair" and all(i in keys for i in s["req"]["items"]))]
+
+
 def stats(run: dict) -> dict:
     b = run["base"]
     st = {"maxhp": b["maxhp"], "atk": b["atk"], "def": b["def"], "dodge": b["dodge"],
@@ -535,11 +596,16 @@ def stats(run: dict) -> dict:
           "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
           "area": False, "burn": 0.0, "shock": 0.0, "poison": 0.0, "freeze": 0.0,
           "block": 0, "thorns": 0.0, "heal_room": 0, "heal_floor": 0, "attack_cost": 0, "fury": 0,
-          "double": 0.0, "helper": 0, "luck": 0.0, "discount": 0.0}
-    # the hero trait adds up like an item, but without rarity scaling
-    for kills0, fx in [(0, run.get("trait", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
-                                                      for it in run["items"]]:
+          "double": 0.0, "helper": 0, "luck": 0.0, "discount": 0.0, "status_turns": 0}
+    # the hero trait and the active synergies add up like an item, but without rarity scaling
+    boost = 0.0
+    for kills0, fx in ([(0, run.get("trait", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
+                                                       for it in run["items"]]
+                       + [(0, SYNERGIES[k]["fx"]) for k in active_synergies(run)]):
         for k, v in fx.items():
+            if k == "elem_boost":                  # not an output field: added to each element already above 0
+                boost += v
+                continue
             if k == "grow":                        # +1 ATK every v kills made after taking the item
                 st["atk"] += max(0, run["kills"] - kills0) // v
             elif k == "trap":
@@ -548,6 +614,10 @@ def stats(run: dict) -> dict:
                 st["area"] = st["area"] or bool(v)
             else:
                 st[k] += v
+    for el in ELEMENTS.values():
+        if st[el] > 0:
+            st[el] += boost
+    st["attack_cost"] = max(0, st["attack_cost"])
     st["maxhp"] = max(5, st["maxhp"])
     st["atk"] = max(1, st["atk"])
     st["dodge"] = min(MAX_DODGE, st["dodge"])
@@ -1117,7 +1187,8 @@ def _balance_version() -> str:
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
             PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOCK, MAX_THORNS, MAX_DOUBLE, MAX_LUCK, MAX_DISCOUNT, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOUBLE_CRIT, BURN,
             BURN_TURNS, SHOCK_CHANCE, SHOCK_TURNS, POISON_TURNS, POISON_MAX_STACKS, FREEZE_CHANCE, FREEZE_TURNS,
-            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT]
+            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT,
+            {k: {f: v[f] for f in ("kind", "req", "fx")} for k, v in sorted(SYNERGIES.items())}]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
 

@@ -423,6 +423,8 @@ for fn in PENDING[:]:
     if fn and getattr(fn, "__name__", "") not in ("tick", "poll"): fn()
 PENDING.clear(); assert showing() is app9.art_img("tombstone")
 app9.new_run(); pump(app9, 400)
+if not any(i["key"] == "dagger" for i in app9.run["items"]):    # an asymmetric look, or mirroring changes nothing
+    app9.run["items"].append({"key": "dagger", "rar": "common"}); app9.refresh_look()
 # Flip hero: mirrors the final map around the pivot (x -> 16k-1-x), swaps run_r/run_l, persists in the state
 app9.flip_var.set(False); app9.toggle_flip(); assert not app9.flip
 normal = app9.look_maps; k = app9.hero_k

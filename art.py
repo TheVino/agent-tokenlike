@@ -1050,6 +1050,7 @@ STAT_ART = {
     "grow": ["..v.v..", ".vVvVv.", "..vVv..", "...V...", "...V...", ".bbbbb.", "..bbb.."],
     "luck": [".vv.vv.", "vVvvvVv", ".vvVvv.", "vVvvvVv", ".vv.vv.", "...V...", "...V..."],
     "discount": ["rr...r", "rr..r.", "...r..", "..r...", ".r..rr", "r...rr"],
+    "status_turns": ["..KKK..", ".KwwwK.", "KwwKwwK", "KwwKKwK", "KwwwwwK", ".KwwwK.", "..KKK.."],
 }
 
 
