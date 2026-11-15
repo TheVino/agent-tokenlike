@@ -30,6 +30,7 @@ import os
 import random
 import shutil
 import struct
+import types
 import sys
 import threading
 import time
@@ -80,6 +81,7 @@ BAR_BG = "#35315a"
 ENERGY = "#5fd3c6"
 ENERGY_SHIMMER = "#c8f5ef"     # shimmer that runs along the energy bar
 SHIMMER_S = 2.4                # seconds per shimmer pass
+LIM_HALF = 5                   # half height of the Session/Week bars (10 px)
 PEAK_COLOR = "#8f88d6"          # limit bar without an official %: window usage / your peak (neutral, not a warning)
 GOOD = "#7ee081"
 HURT = "#ff6b81"
@@ -1156,7 +1158,7 @@ class PetApp:
         self.base_y = self.top + self.T
         self.below = (by1 - 16) * px        # what can hang below the base (drops)
         # session/week bars: official (statusline), estimated (~) or tokens only
-        self.limit_h = 30
+        self.limit_h = 38
         self.H = self.base_y + self.below + 64 + self.limit_h
 
         self.art = {}
@@ -1211,9 +1213,9 @@ class PetApp:
         lx1 = max(lx0 + 4, c.bbox(probe)[0] - 8)
         c.delete(probe)
         for i, (key, label) in enumerate((("session", _t("Session")), ("week", _t("Week")))):
-            y = py + 52 + 4 + i * 13
+            y = py + 52 + 7 + i * 17
             back = f"lim_t_{key}"       # tags: track and fill (redrawn in update_limits)
-            rounded_rect(c, lx0, y - 3, lx1, y + 3, 3, BAR_BG, tag=back)
+            rounded_rect(c, lx0, y - LIM_HALF, lx1, y + LIM_HALF, 3, BAR_BG, tag=back)
             self.limit_rows[key] = (
                 label,
                 c.create_text(14, y, anchor="w", fill=MUTED, font=self.font_small),
@@ -1388,12 +1390,12 @@ class PetApp:
                 self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
                 p = peak(self.state, key, tok)
                 if tok and p:
-                    rounded_rect(self.canvas, lx0, y - 3, round(lx0 + (lx1 - lx0) * tok / p), y + 3, 3,
+                    rounded_rect(self.canvas, lx0, y - LIM_HALF, round(lx0 + (lx1 - lx0) * tok / p), y + LIM_HALF, 3,
                                           PEAK_COLOR, tag=fill)
                 continue
             self.canvas.itemconfigure(txt, text=f"{label}  {'~' if est else ''}{round(pct)}%")
             frac = max(0.0, min(1.0, pct / 100))
-            rounded_rect(self.canvas, lx0, y - 3, round(lx0 + (lx1 - lx0) * frac), y + 3, 3, limit_color(pct),
+            rounded_rect(self.canvas, lx0, y - LIM_HALF, round(lx0 + (lx1 - lx0) * frac), y + LIM_HALF, 3, limit_color(pct),
                                   tag=fill)
 
     def refresh_limits(self):
@@ -2767,8 +2769,12 @@ class PetApp:
             for n, g in enumerate(grids):
                 cv.create_image(x + 20 + n * 34, y + 26, image=self.icon(g, 2, dark=not seen, side=30))
             nx = x + 10 + len(grids) * 34 + 6
-            cv.create_text(nx, y + 18, anchor="w", text=self.shorten(_t(sy["name"]), self.font, x + ITEMS_CARD_W - 8 - nx),
-                           fill=TEXT if seen else MUTED, font=self.font)
+            full = _t(sy["name"])
+            short = self.shorten(full, self.font, x + ITEMS_CARD_W - 8 - nx)
+            name_item = cv.create_text(nx, y + 18, anchor="w", text=short, fill=TEXT if seen else MUTED, font=self.font)
+            if short != full:           # shortened: full name on hover (tooltip binds like a widget)
+                self.tooltip(types.SimpleNamespace(
+                    bind=lambda ev, f, add=None, it=name_item: cv.tag_bind(it, ev, f, add)), full)
             cv.create_text(nx, y + 35, anchor="w", font=fs, fill=MUTED,
                            text=_t({"set": "Set", "pair": "Pair", "reaction": "Reaction"}[sy["kind"]]))
             if seen:
