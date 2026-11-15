@@ -1,0 +1,30 @@
+{
+  "name": "Cave Mushroom",
+  "unlock": "floor8full",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0
+  },
+  "trait": {
+    "heal_room": 1
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Sporeling",
+      "floor": 1,
+      "sheet": "sheet1.png"
+    },
+    {
+      "title": "Cave Mushroom",
+      "floor": 4,
+      "sheet": "sheet2.png"
+    },
+    {
+      "title": "Mycelium Elder",
+      "floor": 10,
+      "sheet": "sheet3.png"
+    }
+  ]
+}

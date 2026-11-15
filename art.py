@@ -14,7 +14,7 @@ BOSS_PAL = dict(PAL, p="#3d1f6e", P="#7a3fd1", g="#5a5f73", G="#a3a9bb", n="#cfc
 
 # ------------------------------------------------------------------ items
 ITEM_ART = {
-    "adaga": [
+    "dagger": [
         "..K..",
         ".KoK.",
         ".KoK.",
@@ -24,7 +24,7 @@ ITEM_ART = {
         ".KbK.",
         "..K..",
     ],
-    "espada_osso": [
+    "bone_sword": [
         "..K..",
         ".KnK.",
         ".KnK.",
@@ -35,7 +35,7 @@ ITEM_ART = {
         ".KbK.",
         ".KKK.",
     ],
-    "cajado": [
+    "staff": [
         ".KKK.",
         "KcwcK",
         "KcccK",
@@ -46,7 +46,7 @@ ITEM_ART = {
         ".KbK.",
         "..K..",
     ],
-    "foice": [
+    "scythe": [
         "KKKKK.",
         "KPPPPK",
         ".KKKpK",
@@ -57,7 +57,7 @@ ITEM_ART = {
         "...KbK",
         "...KK.",
     ],
-    "tampa": [
+    "pot_lid": [
         "..KKK..",
         ".KGKGK.",
         "KGGGGGK",
@@ -66,7 +66,7 @@ ITEM_ART = {
         ".KgggK.",
         "..KKK..",
     ],
-    "escudo_ferro": [
+    "iron_shield": [
         "KKKKKK",
         "KGGGgK",
         "KGrrgK",
@@ -76,7 +76,7 @@ ITEM_ART = {
         ".KggK.",
         "..KK..",
     ],
-    "lanterna": [
+    "lantern": [
         "..K..",
         ".K.K.",
         "KKKKK",
@@ -86,7 +86,7 @@ ITEM_ART = {
         "KKKKK",
         ".KKK.",
     ],
-    "grimorio": [
+    "grimoire": [
         "KKKKKKK",
         "KpppppK",
         "KpPyPpK",
@@ -94,7 +94,7 @@ ITEM_ART = {
         "KpppppK",
         "KKKKKKK",
     ],
-    "chapeu": [
+    "hat": [
         ".....KK...",
         "....KpK...",
         "...KppK...",
@@ -103,24 +103,24 @@ ITEM_ART = {
         "KppppppppK",
         "KKKKKKKKKK",
     ],
-    "gorro": [
+    "beanie": [
         "...KKKK...",
         ".KKggggKK.",
         "KggggggggK",
         "KKKKKKKKKK",
     ],
-    "chifres": [
+    "horns": [
         "K..........K",
         "KrK......KrK",
         ".KrK....KrK.",
         "..KRK..KRK..",
     ],
-    "aureola": [
+    "halo": [
         ".KKKKKKKK.",
         "KyyyKyyyyK",
         ".KKKKKKKK.",
     ],
-    "vela": [
+    "candle": [
         "..K..",
         ".KoK.",
         ".KeK.",
@@ -131,7 +131,7 @@ ITEM_ART = {
         "KwwwK",
         "KKKKK",
     ],
-    "carapaca": [
+    "carapace": [
         "..K.K.K..",
         ".KgKgKgK.",
         "KgGgGgGgK",
@@ -140,7 +140,7 @@ ITEM_ART = {
         ".KgggggK.",
         "..KKKKK..",
     ],
-    "baba": [
+    "slobber": [
         ".KKKKK.",
         "KvvvvvK",
         "KvKvvvK",
@@ -158,7 +158,7 @@ ITEM_ART = {
         ".KpPPPpK.",
         "..KKKKK..",
     ],
-    "veneno": [
+    "poison": [
         "..KKK..",
         "..KgK..",
         ".KKrKK.",
@@ -167,14 +167,14 @@ ITEM_ART = {
         "KrrrrrK",
         ".KKKKK.",
     ],
-    "terceiro_olho": [
+    "third_eye": [
         ".KKKKK.",
         "KwwpwwK",
         "KwpxpwK",
         "KwwpwwK",
         ".KKKKK.",
     ],
-    "orbe": [
+    "orb": [
         "..KKK..",
         ".KcwcK.",
         "KcwccPK",
@@ -182,7 +182,7 @@ ITEM_ART = {
         ".KcPPK.",
         "..KKK..",
     ],
-    "coroa_cinzas": [
+    "ash_crown": [
         "K..K.K..K",
         "KgKKgKKgK",
         "KgGgGgGgK",
@@ -191,7 +191,7 @@ ITEM_ART = {
         "KKKKKKKKK",
     ],
     # batch A: elementals
-    "brasa": [
+    "ember": [
         "..o..",
         ".oeo.",
         ".oyo.",
@@ -199,14 +199,14 @@ ITEM_ART = {
         "KOOOK",
         ".KKK.",
     ],
-    "pelagem_chamuscada": [
+    "singed_fur": [
         ".o.o.",
         "oeoeo",
         "KbobK",
         "KbbbK",
         ".KKK.",
     ],
-    "tocha": [
+    "torch": [
         ".o.",
         "oeo",
         "oyo",
@@ -216,7 +216,7 @@ ITEM_ART = {
         "KbK",
         ".K.",
     ],
-    "fogo_fatuo": [
+    "wisp": [
         "..o..",
         ".oro.",
         "orrro",
@@ -224,7 +224,7 @@ ITEM_ART = {
         "rrrrr",
         ".r.r.",
     ],
-    "coracao_magma": [
+    "magma_heart": [
         ".KK.KK.",
         "KoOKOoK",
         "KoeoOOK",
@@ -233,14 +233,14 @@ ITEM_ART = {
         "..KOK..",
         "...K...",
     ],
-    "pelo_estatico": [
+    "static_fur": [
         "e.e.e",
         ".PeP.",
         "ePwPe",
         ".PPP.",
         "e.e.e",
     ],
-    "limao_eletrico": [
+    "electric_lemon": [
         "....e.",
         "...Ke.",
         ".KKyK.",
@@ -249,7 +249,7 @@ ITEM_ART = {
         "KyyyYK",
         ".KKKK.",
     ],
-    "para_raios": [
+    "lightning_rod": [
         "...e",
         "..e.",
         ".Ke.",
@@ -258,7 +258,7 @@ ITEM_ART = {
         "KgK.",
         "KKK.",
     ],
-    "nuvem_raivosa": [
+    "angry_cloud": [
         "..KKK...",
         ".KGGGKK.",
         "KGwGGGGK",
@@ -267,7 +267,7 @@ ITEM_ART = {
         "..e..e..",
         ".e..e...",
     ],
-    "antena": [
+    "antenna": [
         "e...e",
         ".eKe.",
         "..K..",
@@ -275,14 +275,14 @@ ITEM_ART = {
         ".KcK.",
         "KcccK",
     ],
-    "musgo": [
+    "moss": [
         ".v.v.",
         "vVvVv",
         "VvVvV",
         ".V.V.",
         "..v..",
     ],
-    "dente_sapo": [
+    "frog_tooth": [
         "KKK",
         "KnK",
         "KnK",
@@ -290,7 +290,7 @@ ITEM_ART = {
         ".v.",
         ".v.",
     ],
-    "cogumelo": [
+    "mushroom": [
         "..KKK..",
         ".KpPpK.",
         "KpwpPpK",
@@ -299,7 +299,7 @@ ITEM_ART = {
         "..KnK..",
         "..KKK..",
     ],
-    "lodo": [
+    "sludge": [
         ".v..v.",
         "v.vv.v",
         ".KvvK.",
@@ -307,7 +307,7 @@ ITEM_ART = {
         "KVvvVK",
         ".KKKK.",
     ],
-    "incensario": [
+    "censer": [
         ".v.v.",
         "v.v.v",
         ".v.v.",
@@ -316,14 +316,14 @@ ITEM_ART = {
         ".KgK.",
         "..K..",
     ],
-    "bafo_gelido": [
+    "icy_breath": [
         "i.i.i",
         ".iwi.",
         "iwwwi",
         ".iwi.",
         "i.i.i",
     ],
-    "estilhaco": [
+    "ice_shard": [
         ".w.",
         "KwK",
         "KiK",
@@ -332,7 +332,7 @@ ITEM_ART = {
         "KcK",
         ".K.",
     ],
-    "cachecol": [
+    "scarf": [
         "KKKKKK",
         "KwiwiK",
         "KKKKiK",
@@ -340,14 +340,14 @@ ITEM_ART = {
         "...KiK",
         "...KKK",
     ],
-    "casca_geada": [
+    "frost_bark": [
         ".KKKKK.",
         "KiwiwiK",
         "KwcicwK",
         "KiccciK",
         ".KKKKK.",
     ],
-    "floco_eterno": [
+    "eternal_flake": [
         "...w...",
         ".w.i.w.",
         "..iwi..",
@@ -357,7 +357,7 @@ ITEM_ART = {
         "...w...",
     ],
     # batch B: defense, regeneration and blood
-    "broquel": [            # small round tree-bark shield
+    "buckler": [            # small round tree-bark shield
         ".KKKK.",
         "KbBbBK",
         "KBbKbK",
@@ -365,14 +365,14 @@ ITEM_ART = {
         "KBbBbK",
         ".KKKK.",
     ],
-    "casco_tartaruga": [    # old patched shell
+    "turtle_shell": [    # old patched shell
         "..KKKKK..",
         ".KvVvVvK.",
         "KVvKVKvVK",
         "KvVvVvVvK",
         "KKKKKKKKK",
     ],
-    "manopla_rebite": [     # riveted iron glove
+    "riveted_gauntlet": [     # riveted iron glove
         ".KKKK.",
         "KGGGGK",
         "KgwgwK",
@@ -380,7 +380,7 @@ ITEM_ART = {
         ".KggK.",
         ".KbbK.",
     ],
-    "sino_guarda": [        # little bell that warns of the hit
+    "guard_bell": [        # little bell that warns of the hit
         "..K..",
         ".KyK.",
         "KyeyK",
@@ -388,7 +388,7 @@ ITEM_ART = {
         "KKKKK",
         "..Y..",
     ],
-    "muralha_viva": [       # stone block with tiny eyes
+    "living_wall": [       # stone block with tiny eyes
         "KKKKKKK",
         "KgGgKGK",
         "KKKKKKK",
@@ -396,7 +396,7 @@ ITEM_ART = {
         "KgKgKgK",
         "KKKKKKK",
     ],
-    "ourico": [             # chestnut burr
+    "burr": [             # chestnut burr
         "K.K.K.K",
         ".KbKbK.",
         "KbBbBbK",
@@ -405,7 +405,7 @@ ITEM_ART = {
         ".KbKbK.",
         "K.K.K.K",
     ],
-    "cacto_mal": [          # scowling cactus
+    "grumpy_cactus": [          # scowling cactus
         "..KvK..",
         "K.KvK.K",
         "vKvxvKv",
@@ -414,7 +414,7 @@ ITEM_ART = {
         ".KbbbK.",
         ".KKKKK.",
     ],
-    "armadura_farpas": [    # leather doublet with golden barbs
+    "barbed_armor": [    # leather doublet with golden barbs
         "Y.KKK.Y",
         "KKbbbKK",
         "YKbYbKY",
@@ -422,14 +422,14 @@ ITEM_ART = {
         "YKbYbKY",
         ".KKKKK.",
     ],
-    "colar_presas": [       # cord with three fangs
+    "fang_necklace": [       # cord with three fangs
         "KKKKKKK",
         ".K...K.",
         "..KnK..",
         ".KnKnK.",
         ".KK.KK.",
     ],
-    "espelho_rachado": [    # cracked hand mirror
+    "cracked_mirror": [    # cracked hand mirror
         ".KKKK.",
         "KcwccK",
         "KcKwcK",
@@ -439,7 +439,7 @@ ITEM_ART = {
         "..KY..",
         "..KK..",
     ],
-    "chazinho": [           # small steaming teapot
+    "little_tea": [           # small steaming teapot
         ".w..w..",
         "..KK...",
         ".KoOK..",
@@ -447,7 +447,7 @@ ITEM_ART = {
         "KoOooK.",
         ".KKKK..",
     ],
-    "raiz_teimosa": [       # root with a green sprout
+    "stubborn_root": [       # root with a green sprout
         "...v...",
         "..vVv..",
         "...b...",
@@ -455,7 +455,7 @@ ITEM_ART = {
         ".b.B.b.",
         "b..b..b",
     ],
-    "lamparina_lar": [      # portable little fireplace
+    "hearth_lamp": [      # portable little fireplace
         ".KKKKK.",
         "KgKKKgK",
         "Kg.o.gK",
@@ -463,7 +463,7 @@ ITEM_ART = {
         "KgOoOgK",
         "KKKKKKK",
     ],
-    "fonte_bolso": [        # water drop hanging on a thread
+    "pocket_spring": [        # water drop hanging on a thread
         "..K..",
         "..K..",
         ".KcK.",
@@ -471,7 +471,7 @@ ITEM_ART = {
         "KcccK",
         ".KKK.",
     ],
-    "seiva_antiga": [       # amber drop with a trapped leaf
+    "ancient_sap": [       # amber drop with a trapped leaf
         "..KK..",
         ".KoeK.",
         "KoyvoK",
@@ -479,7 +479,7 @@ ITEM_ART = {
         "KOoooK",
         ".KKKK.",
     ],
-    "adaga_sangria": [      # dripping blade
+    "bleeding_dagger": [      # dripping blade
         "..K..",
         ".KrK.",
         ".KwK.",
@@ -488,14 +488,14 @@ ITEM_ART = {
         ".KRK.",
         "..r..",
     ],
-    "coracao_costurado": [  # heart with stitches
+    "stitched_heart": [  # heart with stitches
         ".K.K.",
         "KrKrK",
         "KwrwK",
         ".KrK.",
         "..K..",
     ],
-    "mascara_furia": [      # mask of gritted teeth
+    "fury_mask": [      # mask of gritted teeth
         ".KKKKK.",
         "KRrRrRK",
         "KxRrRxK",
@@ -503,7 +503,7 @@ ITEM_ART = {
         "KwKwKwK",
         ".KKKKK.",
     ],
-    "calice_rubro": [       # chalice with dark liquid
+    "ruby_chalice": [       # chalice with dark liquid
         "KKKKK",
         "KrRrK",
         ".KRK.",
@@ -511,7 +511,7 @@ ITEM_ART = {
         ".KYK.",
         "KKKKK",
     ],
-    "pacto_carmesim": [     # scroll sealed with a drop of blood
+    "crimson_pact": [     # scroll sealed with a drop of blood
         "KKKKKK.",
         "KnnnnK.",
         "KnKKnK.",
@@ -520,7 +520,7 @@ ITEM_ART = {
         "KKKKrK.",
     ],
     # batch C: blows, area, helpers and crit
-    "luvinha_ligeira": [    # small leather glove with speed streaks
+    "swift_glove": [    # small leather glove with speed streaks
         ".KKK...",
         "KnKnK..",
         "KnnnKK.",
@@ -529,7 +529,7 @@ ITEM_ART = {
         ".KbbK.w",
         ".KKKK..",
     ],
-    "ferrao_gemeo": [       # two stingers on the same handle
+    "twin_stinger": [       # two stingers on the same handle
         ".K.K.",
         "KyKyK",
         "KyKyK",
@@ -538,7 +538,7 @@ ITEM_ART = {
         ".KbK.",
         "..K..",
     ],
-    "rabicho": [            # curled little tail with a tuft at the tip
+    "pigtail": [            # curled little tail with a tuft at the tip
         ".KKKK..",
         "KbbbbK.",
         "Kb..KbK",
@@ -547,7 +547,7 @@ ITEM_ART = {
         "..KbbKw",
         "...KKK.",
     ],
-    "pulseira_eco": [       # golden hoop with a resonating pebble
+    "echo_bracelet": [       # golden hoop with a resonating pebble
         "..KKK..",
         ".KYyYK.",
         "KY...YK",
@@ -556,7 +556,7 @@ ITEM_ART = {
         ".KYyYK.",
         "..KKK..",
     ],
-    "garras_gemeas": [      # two silver claws on a hoop
+    "twin_claws": [      # two silver claws on a hoop
         "w..w..",
         "GK.GK.",
         "GwKGwK",
@@ -565,7 +565,7 @@ ITEM_ART = {
         "..KPPK",
         "..KKKK",
     ],
-    "piao_laminas": [       # spinning top with blades at the waist
+    "blade_top": [       # spinning top with blades at the waist
         "...K...",
         "..KbK..",
         "wKbbbKw",
@@ -574,7 +574,7 @@ ITEM_ART = {
         "..KgK..",
         "...K...",
     ],
-    "corrente_torta": [     # slightly bent iron links
+    "bent_chain": [     # slightly bent iron links
         ".KK....",
         "KgGK...",
         "KG.KK..",
@@ -583,7 +583,7 @@ ITEM_ART = {
         "...KKgK",
         ".....KK",
     ],
-    "uivo_garrafa": [       # little bottle with a howl trapped inside
+    "bottled_howl": [       # little bottle with a howl trapped inside
         "..KK..",
         "..bb..",
         ".KKKK.",
@@ -592,7 +592,7 @@ ITEM_ART = {
         "KcwxwK",
         ".KKKK.",
     ],
-    "leque_penas": [        # fan of dark feathers
+    "feather_fan": [        # fan of dark feathers
         "P.P.P.P",
         "KPKPKPK",
         ".KxxxK.",
@@ -600,7 +600,7 @@ ITEM_ART = {
         "...K...",
         "...b...",
     ],
-    "redemoinho": [         # trapped whirlwind, spinning
+    "whirlwind": [         # trapped whirlwind, spinning
         ".KKKKK.",
         "KiiiiiK",
         ".KcccK.",
@@ -608,7 +608,7 @@ ITEM_ART = {
         ".KcK...",
         "..K....",
     ],
-    "besourinho": [         # green-shelled beetle
+    "beetle": [         # green-shelled beetle
         "K...K",
         ".KKK.",
         "KvKvK",
@@ -616,7 +616,7 @@ ITEM_ART = {
         "KvKvK",
         ".KKK.",
     ],
-    "morceguinho": [        # stitched cloth bat
+    "little_bat": [        # stitched cloth bat
         "K.....K",
         "KK.K.KK",
         "KgKgKgK",
@@ -624,7 +624,7 @@ ITEM_ART = {
         ".KgggK.",
         "..KKK..",
     ],
-    "caveirinha": [         # hopping little skull
+    "little_skull": [         # hopping little skull
         ".KKK.",
         "KnnnK",
         "KxnxK",
@@ -632,7 +632,7 @@ ITEM_ART = {
         ".KnK.",
         ".KKK.",
     ],
-    "fantoche": [           # sock puppet with a button eye
+    "puppet": [           # sock puppet with a button eye
         ".KKKK.",
         "KoowoK",
         "KooxoK",
@@ -641,7 +641,7 @@ ITEM_ART = {
         "KoooK.",
         ".KKK..",
     ],
-    "corvo_cinza": [        # grey crow with a red eye
+    "grey_crow": [        # grey crow with a red eye
         "..KKK..",
         ".KgrgKy",
         ".KgggK.",
@@ -650,21 +650,21 @@ ITEM_ART = {
         ".KKKK..",
         ".K..K..",
     ],
-    "monoculo": [           # cracked lens on a chain
+    "monocle": [           # cracked lens on a chain
         ".KK.",
         "KwcK",
         "KccK",
         ".KK.",
         "...Y",
     ],
-    "pedra_amolar": [       # sparking whetstone
+    "whetstone": [       # sparking whetstone
         "....w.",
         ".KKKKw",
         "KgGgK.",
         "KgggGK",
         ".KKKKK",
     ],
-    "trevo_murcho": [       # clover with fallen leaves
+    "wilted_clover": [       # clover with fallen leaves
         ".KK.KK.",
         "KVvKvVK",
         ".KvVvK.",
@@ -673,7 +673,7 @@ ITEM_ART = {
         "....b..",
         "...b...",
     ],
-    "presa_lobo": [         # curved fang with a purple shadow
+    "wolf_fang": [         # curved fang with a purple shadow
         ".KKK.",
         "KnnnK",
         "KnnPK",
@@ -681,7 +681,7 @@ ITEM_ART = {
         "..KnK",
         "...K.",
     ],
-    "olho_gato": [          # cat's-eye gem
+    "cat_eye": [          # cat's-eye gem
         ".KKKKK.",
         "KxyyyxK",
         "KyyKyyK",
@@ -690,14 +690,14 @@ ITEM_ART = {
         ".KKKKK.",
     ],
     # batch D: growth, luck and gold
-    "dente_leite": [        # sharp little milk tooth
+    "milk_tooth": [        # sharp little milk tooth
         ".KKK.",
         "KwwwK",
         "KwwwK",
         "KwKwK",
         ".K.K.",
     ],
-    "casulo": [             # curled cocoon with a peeking eye
+    "cocoon": [             # curled cocoon with a peeking eye
         "..K..",
         ".KnK.",
         "KnGnK",
@@ -707,14 +707,14 @@ ITEM_ART = {
         ".KnK.",
         "..K..",
     ],
-    "coleira_trofeus": [    # leather collar with little teeth hanging
+    "trophy_collar": [    # leather collar with little teeth hanging
         "KKKKKKK",
         "KbnbnbK",
         ".KKKKK.",
         "..KyK..",
         "...K...",
     ],
-    "semente_faminta": [    # open-mouthed seed with a sprout
+    "hungry_seed": [    # open-mouthed seed with a sprout
         "...v...",
         "..vV...",
         ".KKKKK.",
@@ -723,7 +723,7 @@ ITEM_ART = {
         "KbbbbbK",
         ".KKKKK.",
     ],
-    "chifre_aneis": [       # curved horn with golden rings
+    "ringed_horn": [       # curved horn with golden rings
         "....KK",
         "...KnK",
         "..KyK.",
@@ -732,14 +732,14 @@ ITEM_ART = {
         "KnK...",
         "KKK...",
     ],
-    "fivela_cacador": [     # belt buckle
+    "hunter_buckle": [     # belt buckle
         "KKKKKKK",
         "KgGGGgK",
         "KG.K.GK",
         "KgGGGgK",
         "KKKKKKK",
     ],
-    "moedor_ossos": [       # grinder with a bone in its mouth
+    "bone_grinder": [       # grinder with a bone in its mouth
         "..KK...",
         ".KnnK..",
         "KnnnnKK",
@@ -748,21 +748,21 @@ ITEM_ART = {
         "KgggggK",
         ".KKKKK.",
     ],
-    "dado_osso": [          # spotted bone die
+    "bone_die": [          # spotted bone die
         "KKKKK",
         "KnnxK",
         "KnxnK",
         "KxnnK",
         "KKKKK",
     ],
-    "moeda_coroas": [       # worn golden coin
+    "crown_coin": [       # worn golden coin
         ".KKK.",
         "KyeyK",
         "KYyYK",
         "KyeyK",
         ".KKK.",
     ],
-    "ferradura": [          # rusty horseshoe
+    "horseshoe": [          # rusty horseshoe
         "KK...KK",
         "KBK.KBK",
         "KbK.KbK",
@@ -770,7 +770,7 @@ ITEM_ART = {
         ".KbbbK.",
         "..KKK..",
     ],
-    "mapa_rabiscado": [     # old map with a red trail
+    "scribbled_map": [     # old map with a red trail
         "KKKKKK",
         "KnnrnK",
         "KnrnnK",
@@ -778,7 +778,7 @@ ITEM_ART = {
         "KbnnnK",
         "KKKKKK",
     ],
-    "talisma_fios": [       # talisman tied with three colored threads
+    "thread_talisman": [       # talisman tied with three colored threads
         ".K.K.K.",
         ".r.c.v.",
         ".r.c.v.",
@@ -787,7 +787,7 @@ ITEM_ART = {
         ".KPPPK.",
         "..KKK..",
     ],
-    "estrela_cadente": [    # star shard with a trail
+    "shooting_star": [    # star shard with a trail
         "..K....",
         ".KeK...",
         "KeyeK..",
@@ -795,14 +795,14 @@ ITEM_ART = {
         "..K.oo.",
         "......o",
     ],
-    "bigode_gato": [        # white whiskers
+    "cat_whiskers": [        # white whiskers
         "w...w",
         ".w.w.",
         "..K..",
         ".w.w.",
         "w...w",
     ],
-    "bolsa_sapo": [         # tied little green pouch
+    "frog_pouch": [         # tied little green pouch
         "..K..",
         ".KyK.",
         "KvVvK",
@@ -810,14 +810,14 @@ ITEM_ART = {
         "KvVvK",
         ".KKK.",
     ],
-    "cupom": [              # crumpled scrap of paper
+    "coupon": [              # crumpled scrap of paper
         "KKKKK.",
         "KnrnnK",
         "KnnnrK",
         "KnrnnK",
         ".KKKKK",
     ],
-    "balanca": [            # crooked pan scale
+    "scale": [            # crooked pan scale
         "...K...",
         ".KKKKK.",
         "K..K..K",
@@ -825,14 +825,14 @@ ITEM_ART = {
         "...K...",
         "..KKK..",
     ],
-    "dente_ouro": [         # shiny golden tooth
+    "gold_tooth": [         # shiny golden tooth
         ".KKK.",
         "KyyyK",
         "KyeyK",
         "KyKyK",
         ".K.K.",
     ],
-    "cofrinho": [           # clay pot with a coin slot
+    "piggy_bank": [           # clay pot with a coin slot
         "..KyK..",
         ".KKKKK.",
         "KOoOoOK",
@@ -840,7 +840,7 @@ ITEM_ART = {
         "KOoOoOK",
         ".KKKKK.",
     ],
-    "sanguessuga": [        # chubby leech
+    "leech": [        # chubby leech
         ".KKK...",
         "KrRrK..",
         "KRrRrK.",
@@ -851,7 +851,7 @@ ITEM_ART = {
 
 # --------------------------------------------------------------- monsters
 FOE_ART = {
-    "morcego": [
+    "bat": [
         "K........K",
         "KpK.KK.KpK",
         "KppKppKppK",
@@ -859,7 +859,7 @@ FOE_ART = {
         "..KppppK..",
         "...KKKK...",
     ],
-    "rato": [
+    "rat": [
         "..KK.......",
         ".KGKKKKKK..",
         "KrgggggggK.",
@@ -867,7 +867,7 @@ FOE_ART = {
         ".KKgKKKgK.K",
         "...K...K...",
     ],
-    "aranha": [
+    "spider": [
         "K..KKKK..K",
         ".KKxxxxKK.",
         "K.KxrrxK.K",
@@ -875,7 +875,7 @@ FOE_ART = {
         "K..KxxK..K",
         "..K....K..",
     ],
-    "esqueleto": [
+    "skeleton": [
         ".KKKKKK.",
         "KnnnnnnK",
         "KnxnnxnK",
@@ -885,7 +885,7 @@ FOE_ART = {
         ".KnKnKnK",
         "..KKKKK.",
     ],
-    "olho": [
+    "eye": [
         "..KKKK..",
         ".KwwwwK.",
         "KwwrrwwK",
@@ -895,7 +895,7 @@ FOE_ART = {
         ".KwwwwK.",
         "..KKKK..",
     ],
-    "mimico": [
+    "mimic": [
         ".KKKKKK.",
         "KbBBBBbK",
         "KnKnKnKK",
@@ -916,7 +916,7 @@ CROWN = [
 
 # ------------------------------------------------------------------- menu
 MENU_ART = {
-    "caixa": [
+    "box": [
         "gggggg",
         "gKKKKg",
         "gKKKKg",
@@ -924,7 +924,7 @@ MENU_ART = {
         "gKKKKg",
         "gggggg",
     ],
-    "caixa_ok": [
+    "box_ok": [
         "yyyyyy",
         "yKKKey",
         "yeKeKy",
@@ -932,7 +932,7 @@ MENU_ART = {
         "yKKeKy",
         "yyyyyy",
     ],
-    "cadeado": [
+    "padlock": [
         ".ggg.",
         "g...g",
         "g...g",
@@ -945,7 +945,7 @@ MENU_ART = {
 
 # ----------------------------------------------------------------- rooms
 ROOM_ART = {
-    "bau": [
+    "chest": [
         ".KKKKKK.",
         "KbBBBBbK",
         "KbBBBBbK",
@@ -954,7 +954,7 @@ ROOM_ART = {
         "KbBBBBbK",
         "KKKKKKKK",
     ],
-    "armadilha": [
+    "trap": [
         "..K...K..",
         ".KGK.KGK.",
         "KGggKGggK",
@@ -969,7 +969,7 @@ ROOM_ART = {
         ".KppppK.",
         "KKKKKKKK",
     ],
-    "fonte": [
+    "fountain": [
         "...KK...",
         "..KccK..",
         "...KK...",
@@ -978,7 +978,7 @@ ROOM_ART = {
         ".KggggK.",
         "KKKKKKKK",
     ],
-    "loja": [
+    "shop": [
         "..KKK..",
         "...K...",
         ".KKKKK.",
@@ -988,7 +988,7 @@ ROOM_ART = {
         "KBBBBBK",
         ".KKKKK.",
     ],
-    "escada": [
+    "stairs": [
         "KKKKKKKK",
         "KxxxxxGK",
         "KxxxxGGK",
@@ -998,7 +998,7 @@ ROOM_ART = {
         "KGGGGGGK",
         "KKKKKKKK",
     ],
-    "lapide": [
+    "tombstone": [
         "..KKKK..",
         ".KGGGGK.",
         "KGGGGGgK",
@@ -1009,7 +1009,7 @@ ROOM_ART = {
         "KGGGGggK",
         "KKKKKKKK",
     ],
-    "pocao": [
+    "potion": [
         ".KKK.",
         "..K..",
         ".KrK.",
@@ -1035,21 +1035,21 @@ STAT_ART = {
     "energy": ["..KK..", ".KPPK.", "KPwPpK", "KPPppK", ".KPpK.", "..KK.."],
     "trap": ["..K...K..", ".KGK.KGK.", "KGggKGggK", "KKKKKKKKK"],
     "area": ["..PPP..", ".P...P.", "P..w..P", "P.www.P", "P..w..P", ".P...P.", "..PPP.."],
-    "queimar": ["...r...", "..ro...", ".roor..", ".rooer.", "roeeer.", "roeyeor", ".rrrrr."],
-    "eletrizar": ["....ey", "...ey.", "..eyy.", ".eeeey", "...ey.", "..ey..", ".e...."],
-    "envenenar": ["..V..", "..V..", ".VvV.", "VvvvV", "VvwvV", "VvvvV", ".VVV."],
-    "congelar": ["i..i..i", ".i.i.i.", "..iwi..", "iiwwwii", "..iwi..", ".i.i.i.", "i..i..i"],
-    "bloqueio": ["KKKKKKKK", "KGgKGGgK", "KKKKKKKK", "KGGgKGgK", "KKKKKKKK", "KGgKGGgK", "KKKKKKKK"],
-    "espinhos": ["..v.v..", ".vVVVv.", "vVvvvVv", ".VvwvV.", "vVvvvVv", ".vVVVv.", "..v.v.."],
-    "cura_sala": ["..vvv..", "..vwv..", "vvvwvvv", "vwwwwwv", "vvvwvvv", "..vwv..", "..vvv.."],
-    "cura_andar": ["...o...", "..oeo..", "..oeo..", ".oeyeo.", ".bKbKb.", "bBbBbBb"],
-    "custo_ataque": ["..K..", ".KrK.", "KrrrK", "KrwrK", "KrrrK", ".KKK."],
-    "furia": [".R...R.", "RrR.RrR", ".Rr.rR.", ".......", ".Rr.rR.", "RrR.RrR", ".R...R."],
-    "duplo": ["w...w..", ".n...n.", "..n...n", "...w...", "w...w..", ".n...n.", "..n...n"],
-    "ajudante": ["..KKK..", ".KPPPK.", "KPwPwPK", "KPPPPPK", ".KPPPK.", "K.K.K.K"],
-    "crescer": ["..v.v..", ".vVvVv.", "..vVv..", "...V...", "...V...", ".bbbbb.", "..bbb.."],
-    "sorte": [".vv.vv.", "vVvvvVv", ".vvVvv.", "vVvvvVv", ".vv.vv.", "...V...", "...V..."],
-    "desconto": ["rr...r", "rr..r.", "...r..", "..r...", ".r..rr", "r...rr"],
+    "burn": ["...r...", "..ro...", ".roor..", ".rooer.", "roeeer.", "roeyeor", ".rrrrr."],
+    "shock": ["....ey", "...ey.", "..eyy.", ".eeeey", "...ey.", "..ey..", ".e...."],
+    "poison": ["..V..", "..V..", ".VvV.", "VvvvV", "VvwvV", "VvvvV", ".VVV."],
+    "freeze": ["i..i..i", ".i.i.i.", "..iwi..", "iiwwwii", "..iwi..", ".i.i.i.", "i..i..i"],
+    "block": ["KKKKKKKK", "KGgKGGgK", "KKKKKKKK", "KGGgKGgK", "KKKKKKKK", "KGgKGGgK", "KKKKKKKK"],
+    "thorns": ["..v.v..", ".vVVVv.", "vVvvvVv", ".VvwvV.", "vVvvvVv", ".vVVVv.", "..v.v.."],
+    "heal_room": ["..vvv..", "..vwv..", "vvvwvvv", "vwwwwwv", "vvvwvvv", "..vwv..", "..vvv.."],
+    "heal_floor": ["...o...", "..oeo..", "..oeo..", ".oeyeo.", ".bKbKb.", "bBbBbBb"],
+    "attack_cost": ["..K..", ".KrK.", "KrrrK", "KrwrK", "KrrrK", ".KKK."],
+    "fury": [".R...R.", "RrR.RrR", ".Rr.rR.", ".......", ".Rr.rR.", "RrR.RrR", ".R...R."],
+    "double": ["w...w..", ".n...n.", "..n...n", "...w...", "w...w..", ".n...n.", "..n...n"],
+    "helper": ["..KKK..", ".KPPPK.", "KPwPwPK", "KPPPPPK", ".KPPPK.", "K.K.K.K"],
+    "grow": ["..v.v..", ".vVvVv.", "..vVv..", "...V...", "...V...", ".bbbbb.", "..bbb.."],
+    "luck": [".vv.vv.", "vVvvvVv", ".vvVvv.", "vVvvvVv", ".vv.vv.", "...V...", "...V..."],
+    "discount": ["rr...r", "rr..r.", "...r..", "..r...", ".r..rr", "r...rr"],
 }
 
 
@@ -1060,41 +1060,41 @@ def _stairs(n, c):
 
 # --------------------------------------------------- achievements (one per dungeon.ACHIEVEMENTS key)
 ACH_ART = {
-    "andar5": _stairs(2, "G"),
-    "chefe1": ["y...x...y", "yy.yxy.yy", "yyyyyxyyy", "yryyxyyry", "yyyyyxyyy", "KKKKxKKKK"],
-    "mimico": [".KKKKKKK.", "KbBBBBBbK", "KwKwKwKwK", "KrrrrrrrK", "KrRRRRRrK", "KwKwKwKwK", "KbByyyBbK",
+    "floor5": _stairs(2, "G"),
+    "boss1": ["y...x...y", "yy.yxy.yy", "yyyyyxyyy", "yryyxyyry", "yyyyyxyyy", "KKKKxKKKK"],
+    "mimic": [".KKKKKKK.", "KbBBBBBbK", "KwKwKwKwK", "KrrrrrrrK", "KrRRRRRrK", "KwKwKwKwK", "KbByyyBbK",
                "KKKKKKKKK"],
-    "rico": ["..yyyy.", ".yeeyyy", ".YYYYYY", "yyyyyy.", "yeeyyyy", "YYYYYY.", ".yyyyyy", ".yeeyyy", ".YYYYYY"],
-    "colecionador": ["rr.cc.yy", "rr.cc.yy", "........", "PP.vv.oo", "PP.vv.oo", "........", "ii.ww.nn",
+    "rich": ["..yyyy.", ".yeeyyy", ".YYYYYY", "yyyyyy.", "yeeyyyy", "YYYYYY.", ".yyyyyy", ".yeeyyy", ".YYYYYY"],
+    "collector": ["rr.cc.yy", "rr.cc.yy", "........", "PP.vv.oo", "PP.vv.oo", "........", "ii.ww.nn",
                      "ii.ww.nn"],
-    "andar10": _stairs(3, "B"),
-    "andar20": _stairs(5, "y"),
-    "veneno1": ["...V...", "..VvV..", ".VvvvV.", "VvKvKvV", "VvvvvvV", "VvKKKvV", "VvvvvvV", ".VVVVV."],
-    "elementos3": [".OO..YY.", "OooOYeeY", "OooOYeeY", ".OO..YY.", ".VV..cc.", "VvvVciic", "VvvVciic", ".VV..cc."],
-    "ouro300": ["...KK....", "..KbbK...", "...KK....", ".KBBBBK..", "KBByBBBK.", "KByyyBBK.", "KBByBBBK.",
+    "floor10": _stairs(3, "B"),
+    "floor20": _stairs(5, "y"),
+    "poison1": ["...V...", "..VvV..", ".VvvvV.", "VvKvKvV", "VvvvvvV", "VvKKKvV", "VvvvvvV", ".VVVVV."],
+    "elements3": [".OO..YY.", "OooOYeeY", "OooOYeeY", ".OO..YY.", ".VV..cc.", "VvvVciic", "VvvVciic", ".VV..cc."],
+    "gold300": ["...KK....", "..KbbK...", "...KK....", ".KBBBBK..", "KBByBBBK.", "KByyyBBK.", "KBByBBBK.",
                 ".KKKKKK.."],
-    "horda4": [".nnn...nnn.", "nxnxn.nxnxn", "nnnnn.nnnnn", ".n.n...n.n.", "...........", ".nnn...nnn.",
+    "horde4": [".nnn...nnn.", "nxnxn.nxnxn", "nnnnn.nnnnn", ".n.n...n.n.", "...........", ".nnn...nnn.",
                "nxnxn.nxnxn", "nnnnn.nnnnn", ".n.n...n.n."],
-    "queima1": ["....r....", "...rr....", "...ror...", "..rooor..", "..roeor.r", ".rooeeorr", ".roeeeeor",
+    "burn1": ["....r....", "...rr....", "...ror...", "..rooor..", "..roeor.r", ".rooeeorr", ".roeeeeor",
                 "roeeyyeor", "roeyyyeor", ".roeeeor.", "..rrrrr.."],
-    "andar8cheio": [".rr.rr...", "rrrrrrr..", "rwrrrrr..", ".rrrrr...", "..rrr..GG", "...r...GG", ".....GGGG",
+    "floor8full": [".rr.rr...", "rrrrrrr..", "rwrrrrr..", ".rrrrr...", "..rrr..GG", "...r...GG", ".....GGGG",
                     ".....GGGG", "...GGGGGG", "...GGGGGG"],
-    "andar15": _stairs(4, "P"),
-    "esquiva10": [".g..G..w.", "gggGGGwww", ".g..G..w.", "g.gG.Gw.w"],
-    "bloqueio10": [".KKKKKKK.", "KGGGyGGGK", "KGGyyyGGK", "KGyyyyyGK", "KGGyyyGGK", ".KGGyGGK.", "..KGGGK..",
+    "floor15": _stairs(4, "P"),
+    "dodge10": [".g..G..w.", "gggGGGwww", ".g..G..w.", "g.gG.Gw.w"],
+    "block10": [".KKKKKKK.", "KGGGyGGGK", "KGGyyyGGK", "KGyyyyyGK", "KGGyyyGGK", ".KGGyGGK.", "..KGGGK..",
                    "...KKK..."],
-    "chefes3": ["...y.y.y...", "...yyyyy...", "...yyryy...", "y.y.y.y.y.y", "yyyyy.yyyyy", "yyryy.yyryy"],
-    "consumir10": ["..KKK..", "...K...", "..KcK..", ".KcccK.", "KcwcccK", "KcccccK", ".KKKKK."],
-    "morrer10": ["..KKKKK..", ".KGGGGGK.", "KGGGgGGGK", "KGGgggGGK", "KGGGgGGGK", "KGGGgGGGK", "KGGGGGGGK",
+    "bosses3": ["...y.y.y...", "...yyyyy...", "...yyryy...", "y.y.y.y.y.y", "yyyyy.yyyyy", "yyryy.yyryy"],
+    "consume10": ["..KKK..", "...K...", "..KcK..", ".KcccK.", "KcwcccK", "KcccccK", ".KKKKK."],
+    "die10": ["..KKKKK..", ".KGGGGGK.", "KGGGgGGGK", "KGGgggGGK", "KGGGgGGGK", "KGGGgGGGK", "KGGGGGGGK",
                  "vvvvvvvvv"],
-    "ajudantes3": ["..K.K.K..", ".KwKwKwK.", ".KwKwKwK.", ".KwwwwwwK", "KwwwwwwwK", "KwwwwwwK.", ".KwwwwwK.",
+    "helpers3": ["..K.K.K..", ".KwKwKwK.", ".KwKwKwK.", ".KwwwwwwK", "KwwwwwwwK", "KwwwwwwK.", ".KwwwwwK.",
                    "..KKKKK.."],
-    "sem_consumir10": ["VvVVvVVvV", "gGrGKGrGg", "gGGrcrGGg", "gGKcrcKGg", "gGKrcrKGg", "gGrKKKrGg", "ggggggggg"],
-    "lendarios3": [".y...y...y.", "yey.yey.yey", ".y...y...y.", "YYY.YYY.YYY"],
-    "veneno3": [".v...v...v.", "vvv.vvv.vvv", "vvv.vvv.vvv", ".V...V...V."],
-    "andar13": ["g.g...g.g", "gKgggggKg", "gKKKKKKKg", "gKyKKKyKg", "gKKKrKKKg", "gKwKKwwwg", "gwwKKKKwg",
+    "no_consume10": ["VvVVvVVvV", "gGrGKGrGg", "gGGrcrGGg", "gGKcrcKGg", "gGKrcrKGg", "gGrKKKrGg", "ggggggggg"],
+    "legendaries3": [".y...y...y.", "yey.yey.yey", ".y...y...y.", "YYY.YYY.YYY"],
+    "poison3": [".v...v...v.", "vvv.vvv.vvv", "vvv.vvv.vvv", ".V...V...V."],
+    "floor13": ["g.g...g.g", "gKgggggKg", "gKKKKKKKg", "gKyKKKyKg", "gKKKrKKKg", "gKwKKwwwg", "gwwKKKKwg",
                 "gKwKKKwwg", "gKwKKKKwg", "gwwwKwwwg", "ggggggggg"],
-    "chefes3run": ["y.y.y", "yyyyy", "y.y.y", "yyryy", "y.y.y", "yyryy"],
+    "bosses3run": ["y.y.y", "yyyyy", "y.y.y", "yyryy", "y.y.y", "yyryy"],
 }
 
 
@@ -1111,7 +1111,7 @@ def all_art():
 def validate():
     for name, g in all_art().items():
         widths = {len(r) for r in g}
-        assert len(widths) == 1, f"{name}: linhas com larguras diferentes {widths}"
+        assert len(widths) == 1, f"{name}: rows with different widths {widths}"
         for r in g:
             for ch in r:
-                assert ch == "." or ch in PAL, f"{name}: cor desconhecida {ch!r}"
+                assert ch == "." or ch in PAL, f"{name}: unknown color {ch!r}"

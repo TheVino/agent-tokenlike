@@ -91,7 +91,7 @@ assert F.read_png(tmp / "d.png")[2] == bytes([1, 2, 3, 0, 4, 5, 6, 255, 4, 5, 6,
 try:
     F.read_png(tmp / "e.png"); assert False
 except ValueError as e:
-    assert "formato de PNG não suportado" in str(e)
+    assert "unsupported PNG format" in str(e)
 
 # ---- heroes.assemble + make_sheet 32 px
 import types
@@ -161,7 +161,7 @@ assert n == 1 and max(c[3] - c[1] for l in lines for c in l) <= 32
 # Ghost 32 px: the 3 sheets exist, 9 states with >= 4 frames and trimmed height > 16
 REPO_ROOT = Path(__file__).resolve().parent.parent
 for i in (1, 2, 3):
-    lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "fantasma" / f"folha{i}.png")
+    lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "ghost" / f"sheet{i}.png")
     assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
     assert max(c[3] - c[1] for l in lines for c in l) > 16, i
 
@@ -179,7 +179,7 @@ def extra_inside(mod, slack=0):
                             assert slack <= x < 32 - slack and slack <= y < 32 - slack, (s["title"], e, j, x, y)
 
 
-import heroes.fantasma as _fa
+import heroes.ghost as _fa
 extra_inside(_fa, slack=1)   # hat with real slack even at the top of the jump
 for i in range(3):
     ult = assemble.states(_fa, i)["failed"][-1]
@@ -187,14 +187,14 @@ for i in range(3):
 
 # Plague Doctor (batch 1): validate, sheets, loader, add-on in every frame, visible failed
 def test_heroi_medico():
-    import heroes.medico as med
+    import heroes.doctor as med
     assemble.validate(med)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "medico" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "doctor" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["medico"]
-    assert c.trait == {"envenenar": 0.10} and c.unlock == "veneno1", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["doctor"]
+    assert c.trait == {"poison": 0.10} and c.unlock == "poison1", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     base = assemble.states(med, 0)
     for i in (1, 2):
@@ -211,14 +211,14 @@ test_heroi_medico()
 
 
 def test_heroi_bruxa():
-    import heroes.bruxa as bx
+    import heroes.witch as bx
     assemble.validate(bx)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "bruxa" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "witch" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["bruxa"]
-    assert c.trait == {"queimar": 0.08, "sorte": 0.2} and c.unlock == "elementos3", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["witch"]
+    assert c.trait == {"burn": 0.08, "luck": 0.2} and c.unlock == "elements3", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     base = assemble.states(bx, 0)
     for i in (1, 2):
@@ -235,14 +235,14 @@ test_heroi_bruxa()
 
 
 def test_heroi_coveiro():
-    import heroes.coveiro as cv
+    import heroes.gravedigger as cv
     assemble.validate(cv)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "coveiro" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "gravedigger" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["coveiro"]
-    assert c.trait == {"gold": 0.4} and c.unlock == "ouro300", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["gravedigger"]
+    assert c.trait == {"gold": 0.4} and c.unlock == "gold300", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     base = assemble.states(cv, 0)
     for i in (1, 2):
@@ -261,14 +261,14 @@ def test_heroi_coveiro():
 test_heroi_coveiro()
 
 def test_heroi_ceifeirinho():
-    import heroes.ceifeirinho as cf
+    import heroes.reaper as cf
     assemble.validate(cf)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "ceifeirinho" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "reaper" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["ceifeirinho"]
-    assert c.trait == {"crit": 0.08} and c.unlock == "horda4", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["reaper"]
+    assert c.trait == {"crit": 0.08} and c.unlock == "horde4", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     assert c.stats["hp"] == 16, c.stats
     base = assemble.states(cf, 0)
@@ -285,19 +285,19 @@ test_heroi_ceifeirinho()
 
 
 def test_heroi_vela():
-    import heroes.vela as vl
+    import heroes.candle as vl
     import dungeon
     assemble.validate(vl)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "vela" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "candle" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["vela"]
-    assert c.trait == {"queimar": 0.12, "maxhp": -4} and c.unlock == "queima1", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["candle"]
+    assert c.trait == {"burn": 0.12, "maxhp": -4} and c.unlock == "burn1", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("vela", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
+    run = dungeon.new_run("candle", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
     assert dungeon.stats(run)["maxhp"] == 16
-    run["traco"] = {"maxhp": -100}
+    run["trait"] = {"maxhp": -100}
     assert dungeon.stats(run)["maxhp"] >= 1
     base = assemble.states(vl, 0)
     for i in (1, 2):
@@ -313,18 +313,18 @@ test_heroi_vela()
 
 
 def test_heroi_cogumelo():
-    import heroes.cogumelo as cg
+    import heroes.mushroom as cg
     import dungeon
     assemble.validate(cg)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "cogumelo" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "mushroom" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["cogumelo"]
-    assert c.trait == {"cura_sala": 1} and c.unlock == "andar8cheio", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["mushroom"]
+    assert c.trait == {"heal_room": 1} and c.unlock == "floor8full", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("cogumelo", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
-    assert dungeon.stats(run)["cura_sala"] == 1
+    run = dungeon.new_run("mushroom", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
+    assert dungeon.stats(run)["heal_room"] == 1
     base = assemble.states(cg, 0)
     for i in (1, 2):
         for e, qs in assemble.states(cg, i).items():
@@ -340,19 +340,19 @@ test_heroi_cogumelo()
 
 
 def test_heroi_inquisidor():
-    import heroes.inquisidor as iq
+    import heroes.inquisitor as iq
     import dungeon
     assemble.validate(iq)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "inquisidor" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "inquisitor" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["inquisidor"]
-    assert c.trait == {"def": 1, "espinhos": 0.1} and c.unlock == "andar15", (c.trait, c.unlock)
+    c = {c.key: c for c in tokenlike.load_png_characters()}["inquisitor"]
+    assert c.trait == {"def": 1, "thorns": 0.1} and c.unlock == "floor15", (c.trait, c.unlock)
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("inquisidor", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
+    run = dungeon.new_run("inquisitor", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["def"] == 1 and st["espinhos"] == 0.1, st
+    assert st["def"] == 1 and st["thorns"] == 0.1, st
     base = assemble.states(iq, 0)
     for i in (1, 2):
         for e, qs in assemble.states(iq, i).items():
@@ -372,18 +372,18 @@ test_heroi_inquisidor()
 
 
 def test_heroi_boneca():
-    import heroes.boneca as bn
+    import heroes.doll as bn
     import dungeon
     assemble.validate(bn)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "boneca" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "doll" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["boneca"]
-    assert c.trait == {"dodge": 0.1} and c.unlock == "esquiva10", (c.trait, c.unlock)
-    assert "esquiva10" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["doll"]
+    assert c.trait == {"dodge": 0.1} and c.unlock == "dodge10", (c.trait, c.unlock)
+    assert "dodge10" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("boneca", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
+    run = dungeon.new_run("doll", {"hp": 20, "atk": 3, "def": 0}, 1, c.trait)
     assert dungeon.stats(run)["dodge"] >= 0.1, dungeon.stats(run)
     base = assemble.states(bn, 0)
     for i in (1, 2):
@@ -402,21 +402,21 @@ test_heroi_boneca()
 
 
 def test_heroi_cavaleiro():
-    import heroes.cavaleiro as cv
+    import heroes.knight as cv
     import dungeon
     assemble.validate(cv)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "cavaleiro" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "knight" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["cavaleiro"]
-    assert c.trait == {"bloqueio": 1} and c.unlock == "bloqueio10", (c.trait, c.unlock)
-    assert "bloqueio10" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["knight"]
+    assert c.trait == {"block": 1} and c.unlock == "block10", (c.trait, c.unlock)
+    assert "block10" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     assert c.stats["spd"] == 8, c.stats
-    run = dungeon.new_run("cavaleiro", c.stats, 1, c.trait)
+    run = dungeon.new_run("knight", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["spd"] == 8 and st["bloqueio"] == 1, st
+    assert st["spd"] == 8 and st["block"] == 1, st
     base = assemble.states(cv, 0)
     for i in (1, 2):
         for e, qs in assemble.states(cv, i).items():
@@ -433,21 +433,21 @@ def test_heroi_cavaleiro():
 test_heroi_cavaleiro()
 
 def test_heroi_corvo():
-    import heroes.corvo as co
+    import heroes.crow as co
     import dungeon
     assemble.validate(co)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "corvo" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "crow" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["corvo"]
-    assert c.trait == {"duplo": 0.08} and c.unlock == "chefes3", (c.trait, c.unlock)
-    assert "chefes3" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["crow"]
+    assert c.trait == {"double": 0.08} and c.unlock == "bosses3", (c.trait, c.unlock)
+    assert "bosses3" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     assert c.stats["spd"] == 12, c.stats
-    run = dungeon.new_run("corvo", c.stats, 1, c.trait)
+    run = dungeon.new_run("crow", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["spd"] == 12 and st["duplo"] == 0.08, st
+    assert st["spd"] == 12 and st["double"] == 0.08, st
     base = assemble.states(co, 0)
     for i in (1, 2):
         for e, qs in assemble.states(co, i).items():
@@ -470,20 +470,20 @@ def test_heroi_corvo():
 test_heroi_corvo()
 
 def test_heroi_alquimista():
-    import heroes.alquimista as aq
+    import heroes.alchemist as aq
     import dungeon
     assemble.validate(aq)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "alquimista" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "alchemist" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["alquimista"]
-    assert c.trait == {"desconto": 0.2, "cura_andar": 3} and c.unlock == "consumir10", (c.trait, c.unlock)
-    assert "consumir10" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["alchemist"]
+    assert c.trait == {"discount": 0.2, "heal_floor": 3} and c.unlock == "consume10", (c.trait, c.unlock)
+    assert "consume10" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("alquimista", c.stats, 1, c.trait)
+    run = dungeon.new_run("alchemist", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["desconto"] == 0.2 and st["cura_andar"] == 3, st
+    assert st["discount"] == 0.2 and st["heal_floor"] == 3, st
     base = assemble.states(aq, 0)
     for i in (1, 2):
         for e, qs in assemble.states(aq, i).items():
@@ -506,20 +506,20 @@ def test_heroi_alquimista():
 test_heroi_alquimista()
 
 def test_heroi_freira():
-    import heroes.freira as fr
+    import heroes.nun as fr
     import dungeon
     assemble.validate(fr)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "freira" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "nun" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["freira"]
-    assert c.trait == {"lifesteal": 1, "congelar": 0.06} and c.unlock == "morrer10", (c.trait, c.unlock)
-    assert "morrer10" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["nun"]
+    assert c.trait == {"lifesteal": 1, "freeze": 0.06} and c.unlock == "die10", (c.trait, c.unlock)
+    assert "die10" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("freira", c.stats, 1, c.trait)
+    run = dungeon.new_run("nun", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["lifesteal"] == 1 and st["congelar"] == 0.06, st
+    assert st["lifesteal"] == 1 and st["freeze"] == 0.06, st
     base = assemble.states(fr, 0)
     for i in (1, 2):
         for e, qs in assemble.states(fr, i).items():
@@ -536,19 +536,19 @@ def test_heroi_freira():
 test_heroi_freira()
 
 def test_heroi_espantalho():
-    import heroes.espantalho as es
+    import heroes.scarecrow as es
     import dungeon
     assemble.validate(es)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "espantalho" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "scarecrow" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["espantalho"]
-    assert c.trait == {"ajudante": 1} and c.unlock == "ajudantes3", (c.trait, c.unlock)
-    assert "ajudantes3" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["scarecrow"]
+    assert c.trait == {"helper": 1} and c.unlock == "helpers3", (c.trait, c.unlock)
+    assert "helpers3" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("espantalho", c.stats, 1, c.trait)
-    assert dungeon.stats(run)["ajudante"] == 1
+    run = dungeon.new_run("scarecrow", c.stats, 1, c.trait)
+    assert dungeon.stats(run)["helper"] == 1
     base = assemble.states(es, 0)
     for i in (1, 2):
         for e, qs in assemble.states(es, i).items():
@@ -567,12 +567,12 @@ def test_heroi_golem():
     import dungeon
     assemble.validate(go)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "golem" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "golem" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
     c = {c.key: c for c in tokenlike.load_png_characters()}["golem"]
-    assert c.trait == {"def": 1, "maxhp": 3} and c.unlock == "sem_consumir10", (c.trait, c.unlock)
-    assert "sem_consumir10" in dungeon.ACHIEVEMENTS
+    assert c.trait == {"def": 1, "maxhp": 3} and c.unlock == "no_consume10", (c.trait, c.unlock)
+    assert "no_consume10" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
     run = dungeon.new_run("golem", c.stats, 1, c.trait)
     st = dungeon.stats(run)
@@ -591,20 +591,20 @@ def test_heroi_golem():
 test_heroi_golem()
 
 def test_heroi_mariposa():
-    import heroes.mariposa as ma
+    import heroes.moth as ma
     import dungeon
     assemble.validate(ma)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "mariposa" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "moth" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["mariposa"]
-    assert c.trait == {"dodge": 0.05, "eletrizar": 0.06} and c.unlock == "lendarios3", (c.trait, c.unlock)
-    assert "lendarios3" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["moth"]
+    assert c.trait == {"dodge": 0.05, "shock": 0.06} and c.unlock == "legendaries3", (c.trait, c.unlock)
+    assert "legendaries3" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("mariposa", c.stats, 1, c.trait)
+    run = dungeon.new_run("moth", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["eletrizar"] == 0.06 and st["dodge"] >= 0.05, st
+    assert st["shock"] == 0.06 and st["dodge"] >= 0.05, st
     base = assemble.states(ma, 0)
     for i in (1, 2):
         for e, qs in assemble.states(ma, i).items():
@@ -619,20 +619,20 @@ def test_heroi_mariposa():
 test_heroi_mariposa()
 
 def test_heroi_sapo():
-    import heroes.sapo as sa
+    import heroes.frog as sa
     import dungeon
     assemble.validate(sa)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "sapo" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "frog" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["sapo"]
-    assert c.trait == {"envenenar": 0.06, "cura_sala": 1} and c.unlock == "veneno3", (c.trait, c.unlock)
-    assert "veneno3" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["frog"]
+    assert c.trait == {"poison": 0.06, "heal_room": 1} and c.unlock == "poison3", (c.trait, c.unlock)
+    assert "poison3" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("sapo", c.stats, 1, c.trait)
+    run = dungeon.new_run("frog", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["envenenar"] == 0.06 and st["cura_sala"] >= 1, st
+    assert st["poison"] == 0.06 and st["heal_room"] >= 1, st
     base = assemble.states(sa, 0)
     for i in (1, 2):
         for e, qs in assemble.states(sa, i).items():
@@ -648,20 +648,20 @@ test_heroi_sapo()
 
 
 def test_heroi_gato():
-    import heroes.gato as ga
+    import heroes.cat as ga
     import dungeon
     assemble.validate(ga)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "gato" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "cat" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["gato"]
-    assert c.trait == {"sorte": 0.3, "crit": 0.05} and c.unlock == "andar13", (c.trait, c.unlock)
-    assert "andar13" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["cat"]
+    assert c.trait == {"luck": 0.3, "crit": 0.05} and c.unlock == "floor13", (c.trait, c.unlock)
+    assert "floor13" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("gato", c.stats, 1, c.trait)
+    run = dungeon.new_run("cat", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["sorte"] == 0.3 and st["crit"] >= 0.05, st
+    assert st["luck"] == 0.3 and st["crit"] >= 0.05, st
     base = assemble.states(ga, 0)
     for i in (1, 2):
         for e, qs in assemble.states(ga, i).items():
@@ -676,20 +676,20 @@ def test_heroi_gato():
 test_heroi_gato()
 
 def test_heroi_polvo():
-    import heroes.polvo as po
+    import heroes.octopus as po
     import dungeon
     assemble.validate(po)
     for i in (1, 2, 3):
-        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "polvo" / f"folha{i}.png")
+        lines, n, maps = tokenlike.read_sheet(REPO_ROOT / "characters" / "octopus" / f"sheet{i}.png")
         assert len(lines) == 9 and all(len(l) >= 4 for l in lines), (i, [len(l) for l in lines])
         assert max(c[3] - c[1] for l in lines for c in l) > 16, i
-    c = {c.key: c for c in tokenlike.load_png_characters()}["polvo"]
-    assert c.trait == {"duplo": 0.06, "congelar": 0.04} and c.unlock == "chefes3run", (c.trait, c.unlock)
-    assert "chefes3run" in dungeon.ACHIEVEMENTS
+    c = {c.key: c for c in tokenlike.load_png_characters()}["octopus"]
+    assert c.trait == {"double": 0.06, "freeze": 0.04} and c.unlock == "bosses3run", (c.trait, c.unlock)
+    assert "bosses3run" in dungeon.ACHIEVEMENTS
     assert [s["floor"] for s in c.stages] == [1, 4, 10]
-    run = dungeon.new_run("polvo", c.stats, 1, c.trait)
+    run = dungeon.new_run("octopus", c.stats, 1, c.trait)
     st = dungeon.stats(run)
-    assert st["duplo"] == 0.06 and st["congelar"] == 0.04, st
+    assert st["double"] == 0.06 and st["freeze"] == 0.04, st
     base = assemble.states(po, 0)
     for i in (1, 2):
         for e, qs in assemble.states(po, i).items():
@@ -703,4 +703,4 @@ def test_heroi_polvo():
 
 test_heroi_polvo()
 
-print("test_folha ok")
+print("ok: sheet")

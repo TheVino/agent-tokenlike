@@ -10,7 +10,7 @@ except ImportError:
 target = Path(sys.argv[1]) if len(sys.argv) > 1 else sys.exit(__doc__)
 webps = [target] if target.is_file() else sorted(target.glob("*.webp"))
 if not webps:
-    sys.exit(f"Nenhum .webp em {target}")
+    sys.exit(f"No .webp in {target}")
 for w in webps:
     png = w.with_suffix(".png")
     Image.open(w).convert("RGBA").save(png)

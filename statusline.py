@@ -60,7 +60,7 @@ def format_line(lim: dict | None) -> str:
     if not lim:
         return ""
     parts = []
-    for k, name in (("five_hour", "sessão"), ("seven_day", "semana")):
+    for k, name in (("five_hour", "session"), ("seven_day", "week")):
         if k in lim:
             parts.append(f"{name} {round(lim[k]['used_percentage'])}%")
     return " · ".join(parts)
@@ -74,9 +74,9 @@ def main(stdin=sys.stdin, stdout=sys.stdout, data_dir: Path = DATA_DIR) -> None:
     if lim:
         try:
             data_dir.mkdir(parents=True, exist_ok=True)
-            tmp = data_dir / "limites.json.tmp"
+            tmp = data_dir / "limits.json.tmp"
             tmp.write_text(json.dumps(lim), encoding="utf-8")
-            os.replace(tmp, data_dir / "limites.json")
+            os.replace(tmp, data_dir / "limits.json")
         except OSError:
             pass                      # the statusline must never break Claude Code
     stdout.write(format_line(lim) + "\n")

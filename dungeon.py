@@ -36,303 +36,303 @@ CHEST_ITEM_CHANCE = 1.0      # chance that a chest holds an item (otherwise, gol
 SHOP_PRICE = (8, 2)          # shop item price = base + per_floor * floor
 
 ACHIEVEMENTS = {
-    "andar5": "Chegar ao andar 5",
-    "chefe1": "Derrotar um chefe",
-    "mimico": "Derrotar um mímico",
-    "rico": "Juntar 100 de ouro numa run",
-    "colecionador": "Pegar 10 itens numa run",
-    "andar10": "Chegar ao andar 10",
-    "andar20": "Chegar ao andar 20",
-    "veneno1": "Matar um inimigo com veneno",
-    "elementos3": "Pegar 3 itens elementais numa run",
-    "ouro300": "Juntar 300 de ouro numa run",
-    "horda4": "Vencer uma horda de 4 inimigos",
-    "queima1": "Matar um inimigo com queimadura",
-    "andar8cheio": "Chegar ao andar 8 com o HP cheio",
-    "andar15": "Chegar ao andar 15",
-    "esquiva10": "Esquivar 10 golpes numa run",
-    "bloqueio10": "Bloquear 10 golpes numa run",
-    "chefes3": "Vencer 3 chefes no total",
-    "consumir10": "Consumir 10 itens numa run",
-    "morrer10": "Morrer 10 vezes",
-    "ajudantes3": "Pegar 3 itens de ajudante numa run",
-    "sem_consumir10": "Chegar ao andar 10 sem consumir nenhum item",
-    "lendarios3": "Pegar 3 itens lendários numa run",
-    "veneno3": "Matar 3 inimigos com veneno numa run",
-    "andar13": "Morrer no andar 13",
-    "chefes3run": "Vencer 3 chefes numa mesma run",
+    "floor5": "Reach floor 5",
+    "boss1": "Defeat a boss",
+    "mimic": "Defeat a mimic",
+    "rich": "Gather 100 gold in a run",
+    "collector": "Take 10 items in a run",
+    "floor10": "Reach floor 10",
+    "floor20": "Reach floor 20",
+    "poison1": "Kill an enemy with poison",
+    "elements3": "Take 3 elemental items in a run",
+    "gold300": "Gather 300 gold in a run",
+    "horde4": "Beat a horde of 4 enemies",
+    "burn1": "Kill an enemy with a burn",
+    "floor8full": "Reach floor 8 at full HP",
+    "floor15": "Reach floor 15",
+    "dodge10": "Dodge 10 hits in a run",
+    "block10": "Block 10 hits in a run",
+    "bosses3": "Beat 3 bosses in total",
+    "consume10": "Consume 10 items in a run",
+    "die10": "Die 10 times",
+    "helpers3": "Take 3 helper items in a run",
+    "no_consume10": "Reach floor 10 consuming nothing",
+    "legendaries3": "Take 3 legendary items in a run",
+    "poison3": "Kill 3 enemies with poison in a run",
+    "floor13": "Die on floor 13",
+    "bosses3run": "Beat 3 bosses in a single run",
 }
 
-RARITIES = ("comum", "raro", "epico", "lendario")
-RAR_MULT = {"comum": 1, "raro": 1.2, "epico": 1.4, "lendario": 1.6}
-RAR_NAMES = {"comum": "Comum", "raro": "Raro", "epico": "Épico", "lendario": "Lendário"}
-RAR_COLOR = {"comum": None, "raro": "#6fd6ff", "epico": "#b48cff", "lendario": "#ffd23f"}
+RARITIES = ("common", "rare", "epic", "legendary")
+RAR_MULT = {"common": 1, "rare": 1.2, "epic": 1.4, "legendary": 1.6}
+RAR_NAMES = {"common": "Common", "rare": "Rare", "epic": "Epic", "legendary": "Legendary"}
+RAR_COLOR = {"common": None, "rare": "#6fd6ff", "epic": "#b48cff", "legendary": "#ffd23f"}
 CHOICE_WINDOW_S = 30         # choice window in interactive mode (the GUI keeps the time)
 MAX_ENERGY_BONUS = 1.0       # summed "energy" capped at +100%
 TRAP_LIMITS = (0.25, 3.0)    # floor and cap of the summed trap multiplier
 MAX_DODGE = 0.5              # cap of the summed dodge
 
-_C = ["comum", "raro", "epico"]
-_R = ["raro", "epico", "lendario"]
+_C = ["common", "rare", "epic"]
+_R = ["rare", "epic", "legendary"]
 
 # fx: atk, def, maxhp, dodge, gold (+% gold), trap (trap damage
 #     multiplier), energy (+% energy => cheaper rooms), lifesteal (heal per win)
 # consume: what happens if the hero consumes the item instead of taking it (heal or shield)
 ITEMS = {
-    "adaga":        {"name": "Adaga Enferrujada",  "rarities": _C, "fx": {"atk": 2}, "consume": {"heal": 6},
-                     "look": {"type": "obj", "anchor": "dir", "art": "adaga"}},
-    "espada_osso":  {"name": "Espada de Osso",     "rarities": _C, "fx": {"atk": 4}, "consume": {"heal": 8},
-                     "look": {"type": "obj", "anchor": "dir", "art": "espada_osso"}},
-    "cajado":       {"name": "Cajado Espectral",   "rarities": _R, "fx": {"atk": 3, "lifesteal": 2},
-                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "dir", "art": "cajado"},
-                     "req": "andar5"},
-    "foice":        {"name": "Foice Sombria",      "rarities": ["epico", "lendario"], "fx": {"atk": 8, "maxhp": -4},
-                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "dir", "art": "foice"},
-                     "req": "chefe1"},
-    "tampa":        {"name": "Tampa de Panela",    "rarities": _C, "fx": {"def": 1}, "consume": {"shield": 5},
-                     "look": {"type": "obj", "anchor": "esq", "art": "tampa"}},
-    "escudo_ferro": {"name": "Escudo de Ferro",    "rarities": _C, "fx": {"def": 2}, "consume": {"shield": 7},
-                     "look": {"type": "obj", "anchor": "esq", "art": "escudo_ferro"}},
-    "lanterna":     {"name": "Lanterna Pálida",    "rarities": _C, "fx": {"def": 1, "trap": 0.5},
-                     "consume": {"shield": 7}, "look": {"type": "obj", "anchor": "esq", "art": "lanterna"}},
-    "grimorio":     {"name": "Grimório Proibido",  "rarities": _R, "fx": {"atk": 2, "def": 2},
-                     "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "esq", "art": "grimorio"},
-                     "req": "andar10"},
-    "chapeu":       {"name": "Chapéu de Bruxa",    "rarities": _C, "fx": {"gold": 0.5, "maxhp": 3}, "consume": {"heal": 6},
-                     "look": {"type": "obj", "anchor": "topo", "art": "chapeu"}},
-    "gorro":        {"name": "Gorro de Ladrão",    "rarities": _C, "fx": {"dodge": 0.15}, "consume": {"heal": 8},
-                     "look": {"type": "obj", "anchor": "topo", "art": "gorro"}},
-    "chifres":      {"name": "Chifres de Demônio", "rarities": _R, "fx": {"atk": 3, "maxhp": -3},
-                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "topo", "art": "chifres"},
-                     "req": "chefe1"},
-    "aureola":      {"name": "Auréola Rachada",    "rarities": _R, "fx": {"maxhp": 10},
-                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "topo", "art": "aureola"},
-                     "req": "andar10"},
-    "vela":         {"name": "Vela Amaldiçoada",   "rarities": _R, "fx": {"energy": 0.5, "trap": 2.0},
-                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "topo", "art": "vela"},
-                     "req": "mimico"},
-    "carapaca":     {"name": "Carapaça Espinhosa", "rarities": _C, "fx": {"def": 1, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "espinhos", "color": "#8a94a8"}},
-    "baba":         {"name": "Baba Pegajosa",      "rarities": _C, "fx": {"lifesteal": 1, "maxhp": 4},
-                     "consume": {"heal": 8}, "look": {"type": "gotas", "color": "#4fbf5a"}},
-    "aura":         {"name": "Aura Sombria",       "rarities": _R, "fx": {"dodge": 0.1, "atk": 1},
-                     "consume": {"shield": 8}, "look": {"type": "contorno", "color": "#b48cff"},
-                     "req": "andar5"},
-    "veneno":       {"name": "Frasco Carmesim",    "rarities": _C, "fx": {"atk": 3, "maxhp": -2},
-                     "consume": {"heal": 10}, "look": {"type": "tingir", "color": "#e2384d", "amount": 0.4}},
-    "terceiro_olho": {"name": "Terceiro Olho",     "rarities": _R, "fx": {"dodge": 0.1, "trap": 0.5},
+    "dagger":        {"name": "Rusty Dagger",  "rarities": _C, "fx": {"atk": 2}, "consume": {"heal": 6},
+                     "look": {"type": "obj", "anchor": "right", "art": "dagger"}},
+    "bone_sword":  {"name": "Bone Sword",     "rarities": _C, "fx": {"atk": 4}, "consume": {"heal": 8},
+                     "look": {"type": "obj", "anchor": "right", "art": "bone_sword"}},
+    "staff":       {"name": "Spectral Staff",   "rarities": _R, "fx": {"atk": 3, "lifesteal": 2},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "right", "art": "staff"},
+                     "req": "floor5"},
+    "scythe":        {"name": "Shadow Scythe",      "rarities": ["epic", "legendary"], "fx": {"atk": 8, "maxhp": -4},
+                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "right", "art": "scythe"},
+                     "req": "boss1"},
+    "pot_lid":        {"name": "Pot Lid",    "rarities": _C, "fx": {"def": 1}, "consume": {"shield": 5},
+                     "look": {"type": "obj", "anchor": "left", "art": "pot_lid"}},
+    "iron_shield": {"name": "Iron Shield",    "rarities": _C, "fx": {"def": 2}, "consume": {"shield": 7},
+                     "look": {"type": "obj", "anchor": "left", "art": "iron_shield"}},
+    "lantern":     {"name": "Pale Lantern",    "rarities": _C, "fx": {"def": 1, "trap": 0.5},
+                     "consume": {"shield": 7}, "look": {"type": "obj", "anchor": "left", "art": "lantern"}},
+    "grimoire":     {"name": "Forbidden Grimoire",  "rarities": _R, "fx": {"atk": 2, "def": 2},
+                     "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "left", "art": "grimoire"},
+                     "req": "floor10"},
+    "hat":       {"name": "Witch Hat",    "rarities": _C, "fx": {"gold": 0.5, "maxhp": 3}, "consume": {"heal": 6},
+                     "look": {"type": "obj", "anchor": "top", "art": "hat"}},
+    "beanie":        {"name": "Thief's Cap",    "rarities": _C, "fx": {"dodge": 0.15}, "consume": {"heal": 8},
+                     "look": {"type": "obj", "anchor": "top", "art": "beanie"}},
+    "horns":      {"name": "Demon Horns", "rarities": _R, "fx": {"atk": 3, "maxhp": -3},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "top", "art": "horns"},
+                     "req": "boss1"},
+    "halo":      {"name": "Cracked Halo",    "rarities": _R, "fx": {"maxhp": 10},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "top", "art": "halo"},
+                     "req": "floor10"},
+    "candle":         {"name": "Cursed Candle",   "rarities": _R, "fx": {"energy": 0.5, "trap": 2.0},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "top", "art": "candle"},
+                     "req": "mimic"},
+    "carapace":     {"name": "Spiky Carapace", "rarities": _C, "fx": {"def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "thorns", "color": "#8a94a8"}},
+    "slobber":         {"name": "Sticky Drool",      "rarities": _C, "fx": {"lifesteal": 1, "maxhp": 4},
+                     "consume": {"heal": 8}, "look": {"type": "drops", "color": "#4fbf5a"}},
+    "aura":         {"name": "Dark Aura",       "rarities": _R, "fx": {"dodge": 0.1, "atk": 1},
+                     "consume": {"shield": 8}, "look": {"type": "outline", "color": "#b48cff"},
+                     "req": "floor5"},
+    "poison":       {"name": "Crimson Flask",    "rarities": _C, "fx": {"atk": 3, "maxhp": -2},
+                     "consume": {"heal": 10}, "look": {"type": "tint", "color": "#e2384d", "amount": 0.4}},
+    "third_eye": {"name": "Third Eye",     "rarities": _R, "fx": {"dodge": 0.1, "trap": 0.5},
                      "consume": {"shield": 7},
-                     "look": {"type": "adesivo", "art": "terceiro_olho", "at": [0.5, 0.3]},
-                     "req": "chefe1"},
-    "orbe":         {"name": "Orbe Vaga-lume",     "rarities": _C, "fx": {"gold": 0.3, "def": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "flutua", "art": "orbe"}},
-    "coroa_cinzas": {"name": "Coroa de Cinzas",    "rarities": ["lendario"], "fx": {"atk": 2, "maxhp": 5},
-                     "consume": {"heal": 15}, "look": {"type": "obj", "anchor": "topo", "art": "coroa_cinzas"},
-                     "req": "andar10"},
+                     "look": {"type": "sticker", "art": "third_eye", "at": [0.5, 0.3]},
+                     "req": "boss1"},
+    "orb":         {"name": "Firefly Orb",     "rarities": _C, "fx": {"gold": 0.3, "def": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "float", "art": "orb"}},
+    "ash_crown": {"name": "Crown of Ashes",    "rarities": ["legendary"], "fx": {"atk": 2, "maxhp": 5},
+                     "consume": {"heal": 15}, "look": {"type": "obj", "anchor": "top", "art": "ash_crown"},
+                     "req": "floor10"},
     # batch A: elementals (fire, lightning, poison, ice); fx = chance per hit to apply the status
-    "brasa":        {"name": "Brasa Viva",         "rarities": _C, "fx": {"queimar": 0.12, "atk": 1},
-                     "consume": {"heal": 6}, "look": {"type": "chamas"}},
-    "pelagem_chamuscada": {"name": "Pelagem Chamuscada", "rarities": _R, "fx": {"queimar": 0.1, "atk": 2},
-                     "consume": {"heal": 8}, "look": {"type": "chamas", "color": "#ff6b3d"}, "req": "andar5"},
-    "tocha":        {"name": "Tocha de Sebo",      "rarities": _C, "fx": {"queimar": 0.1, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "tocha"}},
-    "fogo_fatuo":   {"name": "Fogo-fátuo Rubro",   "rarities": ["raro", "epico"], "fx": {"queimar": 0.15, "atk": 1},
-                     "consume": {"shield": 7}, "look": {"type": "obj", "anchor": "flutua", "art": "fogo_fatuo"}},
-    "coracao_magma": {"name": "Coração de Magma",  "rarities": ["lendario"], "fx": {"queimar": 0.2, "atk": 3},
-                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "frente", "art": "coracao_magma"},
-                     "req": "chefe1"},
-    "pelo_estatico": {"name": "Pelo Estático",     "rarities": _C, "fx": {"eletrizar": 0.08, "atk": 1},
-                     "consume": {"shield": 5}, "look": {"type": "faiscas"}},
-    "limao_eletrico": {"name": "Limão Elétrico",   "rarities": _C, "fx": {"eletrizar": 0.1, "atk": 1},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "limao_eletrico"}},
-    "para_raios":   {"name": "Para-raios Torto",   "rarities": _C, "fx": {"eletrizar": 0.08, "def": 1, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "topo", "art": "para_raios"}},
-    "nuvem_raivosa": {"name": "Nuvenzinha Raivosa", "rarities": ["raro", "epico"], "fx": {"eletrizar": 0.12, "atk": 1},
-                     "consume": {"shield": 7}, "look": {"type": "faiscas", "color": "#9fd8ff"}, "req": "andar5"},
-    "antena":       {"name": "Antena de Tempestade", "rarities": _R, "fx": {"eletrizar": 0.1, "atk": 1},
-                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "topo", "art": "antena"},
-                     "req": "andar10"},
-    "musgo":        {"name": "Musgo Tóxico",       "rarities": _C, "fx": {"envenenar": 0.12, "maxhp": 3, "atk": 1},
-                     "consume": {"heal": 6}, "look": {"type": "gotas_veneno"}},
-    "dente_sapo":   {"name": "Dente de Sapo-lodo", "rarities": _C, "fx": {"envenenar": 0.12, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dente_sapo"}},
-    "cogumelo":     {"name": "Cogumelo Suspeito",  "rarities": _C, "fx": {"envenenar": 0.1, "lifesteal": 1, "atk": 1},
-                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "topo", "art": "cogumelo"}},
-    "lodo":         {"name": "Lodo Fervente",      "rarities": ["raro", "epico"], "fx": {"envenenar": 0.15, "atk": 1},
-                     "consume": {"heal": 9}, "look": {"type": "gotas_veneno", "color": "#7be36b"}, "req": "andar5"},
-    "incensario":   {"name": "Incensário da Peste", "rarities": ["lendario"], "fx": {"envenenar": 0.15, "area": True},
-                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "incensario"},
-                     "req": "chefe1"},
-    "bafo_gelido":  {"name": "Bafo Gélido",        "rarities": _C, "fx": {"congelar": 0.06, "def": 1, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "geada"}},
-    "estilhaco":    {"name": "Estilhaço de Gelo",  "rarities": _C, "fx": {"congelar": 0.06, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "estilhaco"}},
-    "cachecol":     {"name": "Cachecol de Neve",   "rarities": _C, "fx": {"congelar": 0.06, "def": 1, "maxhp": 3, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "cachecol"}},
-    "casca_geada":  {"name": "Casca de Geada",     "rarities": _R, "fx": {"congelar": 0.08, "def": 1, "atk": 1},
-                     "consume": {"shield": 9}, "look": {"type": "geada", "color": "#c8f4ff"}, "req": "andar10"},
-    "floco_eterno": {"name": "Floco Eterno",       "rarities": ["epico", "lendario"], "fx": {"congelar": 0.12, "maxhp": 4, "atk": 1},
-                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "floco_eterno"},
-                     "req": "chefe1"},
+    "ember":        {"name": "Live Ember",         "rarities": _C, "fx": {"burn": 0.12, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "flames"}},
+    "singed_fur": {"name": "Singed Fur", "rarities": _R, "fx": {"burn": 0.1, "atk": 2},
+                     "consume": {"heal": 8}, "look": {"type": "flames", "color": "#ff6b3d"}, "req": "floor5"},
+    "torch":        {"name": "Tallow Torch",      "rarities": _C, "fx": {"burn": 0.1, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "torch"}},
+    "wisp":   {"name": "Red Wisp",   "rarities": ["rare", "epic"], "fx": {"burn": 0.15, "atk": 1},
+                     "consume": {"shield": 7}, "look": {"type": "obj", "anchor": "float", "art": "wisp"}},
+    "magma_heart": {"name": "Magma Heart",  "rarities": ["legendary"], "fx": {"burn": 0.2, "atk": 3},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "front", "art": "magma_heart"},
+                     "req": "boss1"},
+    "static_fur": {"name": "Static Fur",     "rarities": _C, "fx": {"shock": 0.08, "atk": 1},
+                     "consume": {"shield": 5}, "look": {"type": "sparks"}},
+    "electric_lemon": {"name": "Electric Lemon",   "rarities": _C, "fx": {"shock": 0.1, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "left", "art": "electric_lemon"}},
+    "lightning_rod":   {"name": "Crooked Lightning Rod",   "rarities": _C, "fx": {"shock": 0.08, "def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "top", "art": "lightning_rod"}},
+    "angry_cloud": {"name": "Angry Little Cloud", "rarities": ["rare", "epic"], "fx": {"shock": 0.12, "atk": 1},
+                     "consume": {"shield": 7}, "look": {"type": "sparks", "color": "#9fd8ff"}, "req": "floor5"},
+    "antenna":       {"name": "Storm Antenna", "rarities": _R, "fx": {"shock": 0.1, "atk": 1},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "top", "art": "antenna"},
+                     "req": "floor10"},
+    "moss":        {"name": "Toxic Moss",       "rarities": _C, "fx": {"poison": 0.12, "maxhp": 3, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "poison_drops"}},
+    "frog_tooth":   {"name": "Mudfrog Tooth", "rarities": _C, "fx": {"poison": 0.12, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "frog_tooth"}},
+    "mushroom":     {"name": "Suspicious Mushroom",  "rarities": _C, "fx": {"poison": 0.1, "lifesteal": 1, "atk": 1},
+                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "top", "art": "mushroom"}},
+    "sludge":         {"name": "Boiling Sludge",      "rarities": ["rare", "epic"], "fx": {"poison": 0.15, "atk": 1},
+                     "consume": {"heal": 9}, "look": {"type": "poison_drops", "color": "#7be36b"}, "req": "floor5"},
+    "censer":   {"name": "Plague Censer", "rarities": ["legendary"], "fx": {"poison": 0.15, "area": True},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "float", "art": "censer"},
+                     "req": "boss1"},
+    "icy_breath":  {"name": "Frosty Breath",        "rarities": _C, "fx": {"freeze": 0.06, "def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "frost"}},
+    "ice_shard":    {"name": "Ice Shard",  "rarities": _C, "fx": {"freeze": 0.06, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "ice_shard"}},
+    "scarf":     {"name": "Snow Scarf",   "rarities": _C, "fx": {"freeze": 0.06, "def": 1, "maxhp": 3, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "front", "art": "scarf"}},
+    "frost_bark":  {"name": "Frost Rind",     "rarities": _R, "fx": {"freeze": 0.08, "def": 1, "atk": 1},
+                     "consume": {"shield": 9}, "look": {"type": "frost", "color": "#c8f4ff"}, "req": "floor10"},
+    "eternal_flake": {"name": "Eternal Snowflake",       "rarities": ["epic", "legendary"], "fx": {"freeze": 0.12, "maxhp": 4, "atk": 1},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "float", "art": "eternal_flake"},
+                     "req": "boss1"},
     # batch B: defense (block, thorns), regeneration (heal per room/floor) and blood (attack cost, fury)
-    "broquel":      {"name": "Broquel de Casca",   "rarities": _C, "fx": {"bloqueio": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "broquel"}},
-    "casco_tartaruga": {"name": "Casco de Jabuti Velho", "rarities": _R, "fx": {"bloqueio": 1, "spd": -2},
-                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "esq", "art": "casco_tartaruga"},
-                     "req": "andar5"},
-    "manopla_rebite": {"name": "Manopla Rebitada", "rarities": _C, "fx": {"bloqueio": 1, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "dir", "art": "manopla_rebite"}},
-    "sino_guarda":  {"name": "Sininho de Alerta",  "rarities": _C, "fx": {"bloqueio": 1, "maxhp": -3},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "sino_guarda"}},
-    "muralha_viva": {"name": "Muralha de Pedra Viva", "rarities": ["lendario"], "fx": {"bloqueio": 1, "maxhp": 2},
-                     "consume": {"shield": 14}, "look": {"type": "obj", "anchor": "esq", "art": "muralha_viva"},
-                     "req": "chefe1"},
-    "ourico":       {"name": "Casca de Castanha",  "rarities": _C, "fx": {"espinhos": 0.15, "def": 1},
-                     "consume": {"shield": 6}, "look": {"type": "espinhos", "color": "#b0763f"}},
-    "cacto_mal":    {"name": "Cacto Mal-humorado", "rarities": _C, "fx": {"espinhos": 0.2, "maxhp": 3},
-                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "topo", "art": "cacto_mal"}},
-    "armadura_farpas": {"name": "Gibão de Farpas", "rarities": _R, "fx": {"espinhos": 0.15, "def": 1, "atk": 1},
-                     "consume": {"shield": 8}, "look": {"type": "espinhos", "color": "#c99a00"},
-                     "req": "andar5"},
-    "colar_presas": {"name": "Colar de Presas",    "rarities": _C, "fx": {"espinhos": 0.1, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "frente", "art": "colar_presas"}},
-    "espelho_rachado": {"name": "Espelho Rachado", "rarities": ["lendario"], "fx": {"espinhos": 0.2, "dodge": 0.05, "atk": 1},
-                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "espelho_rachado"},
-                     "req": "chefe1"},
-    "chazinho":     {"name": "Bule Morno",         "rarities": _C, "fx": {"cura_sala": 1, "maxhp": 3},
-                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "esq", "art": "chazinho"}},
-    "raiz_teimosa": {"name": "Raiz Teimosa",       "rarities": _C, "fx": {"cura_andar": 8, "maxhp": 3},
-                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "topo", "art": "raiz_teimosa"}},
-    "lamparina_lar": {"name": "Lareirinha de Bolso", "rarities": _C, "fx": {"cura_andar": 5, "def": 1},
-                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "frente", "art": "lamparina_lar"}},
-    "fonte_bolso":  {"name": "Gota de Fonte Presa", "rarities": ["raro", "epico"], "fx": {"cura_sala": 2, "maxhp": 5},
-                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "fonte_bolso"},
-                     "req": "andar5"},
-    "seiva_antiga": {"name": "Seiva Ancestral",    "rarities": ["epico", "lendario"], "fx": {"cura_sala": 1, "cura_andar": 8, "maxhp": 4},
-                     "consume": {"heal": 14}, "look": {"type": "tingir", "color": "#e0a030", "amount": 0.3},
-                     "req": "andar10"},
-    "adaga_sangria": {"name": "Lâmina Sedenta",    "rarities": _C, "fx": {"custo_ataque": 1, "atk": 3},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "adaga_sangria"}},
-    "coracao_costurado": {"name": "Coração Remendado", "rarities": _C, "fx": {"furia": 1, "maxhp": 2},
-                     "consume": {"heal": 9}, "look": {"type": "adesivo", "art": "coracao_costurado", "at": [0.5, 0.6]}},
-    "mascara_furia": {"name": "Máscara Rangente",  "rarities": _R, "fx": {"furia": 1, "custo_ataque": 1, "atk": 2},
-                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "frente", "art": "mascara_furia"},
-                     "req": "chefe1"},
-    "calice_rubro": {"name": "Cálice Rubro",       "rarities": ["raro", "epico"], "fx": {"custo_ataque": 1, "atk": 2, "lifesteal": 3},
-                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "flutua", "art": "calice_rubro"},
-                     "req": "andar5"},
-    "pacto_carmesim": {"name": "Selo da Gota Rubra", "rarities": ["epico", "lendario"], "fx": {"custo_ataque": 2, "furia": 1, "atk": 2},
-                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "pacto_carmesim"},
-                     "req": "chefe1"},
+    "buckler":      {"name": "Bark Buckler",   "rarities": _C, "fx": {"block": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "left", "art": "buckler"}},
+    "turtle_shell": {"name": "Old Tortoise Shell", "rarities": _R, "fx": {"block": 1, "spd": -2},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "left", "art": "turtle_shell"},
+                     "req": "floor5"},
+    "riveted_gauntlet": {"name": "Riveted Gauntlet", "rarities": _C, "fx": {"block": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "right", "art": "riveted_gauntlet"}},
+    "guard_bell":  {"name": "Warning Bell",  "rarities": _C, "fx": {"block": 1, "maxhp": -3},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "front", "art": "guard_bell"}},
+    "living_wall": {"name": "Living Stone Wall", "rarities": ["legendary"], "fx": {"block": 1, "maxhp": 2},
+                     "consume": {"shield": 14}, "look": {"type": "obj", "anchor": "left", "art": "living_wall"},
+                     "req": "boss1"},
+    "burr":       {"name": "Chestnut Husk",  "rarities": _C, "fx": {"thorns": 0.15, "def": 1},
+                     "consume": {"shield": 6}, "look": {"type": "thorns", "color": "#b0763f"}},
+    "grumpy_cactus":    {"name": "Grumpy Cactus", "rarities": _C, "fx": {"thorns": 0.2, "maxhp": 3},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "top", "art": "grumpy_cactus"}},
+    "barbed_armor": {"name": "Barbed Doublet", "rarities": _R, "fx": {"thorns": 0.15, "def": 1, "atk": 1},
+                     "consume": {"shield": 8}, "look": {"type": "thorns", "color": "#c99a00"},
+                     "req": "floor5"},
+    "fang_necklace": {"name": "Fang Necklace",    "rarities": _C, "fx": {"thorns": 0.1, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "front", "art": "fang_necklace"}},
+    "cracked_mirror": {"name": "Cracked Mirror", "rarities": ["legendary"], "fx": {"thorns": 0.2, "dodge": 0.05, "atk": 1},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "float", "art": "cracked_mirror"},
+                     "req": "boss1"},
+    "little_tea":     {"name": "Lukewarm Teapot",         "rarities": _C, "fx": {"heal_room": 1, "maxhp": 3},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "left", "art": "little_tea"}},
+    "stubborn_root": {"name": "Stubborn Root",       "rarities": _C, "fx": {"heal_floor": 8, "maxhp": 3},
+                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "top", "art": "stubborn_root"}},
+    "hearth_lamp": {"name": "Pocket Hearth", "rarities": _C, "fx": {"heal_floor": 5, "def": 1},
+                     "consume": {"heal": 8}, "look": {"type": "obj", "anchor": "front", "art": "hearth_lamp"}},
+    "pocket_spring":  {"name": "Bottled Spring Drop", "rarities": ["rare", "epic"], "fx": {"heal_room": 2, "maxhp": 5},
+                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "float", "art": "pocket_spring"},
+                     "req": "floor5"},
+    "ancient_sap": {"name": "Ancestral Sap",    "rarities": ["epic", "legendary"], "fx": {"heal_room": 1, "heal_floor": 8, "maxhp": 4},
+                     "consume": {"heal": 14}, "look": {"type": "tint", "color": "#e0a030", "amount": 0.3},
+                     "req": "floor10"},
+    "bleeding_dagger": {"name": "Thirsty Blade",    "rarities": _C, "fx": {"attack_cost": 1, "atk": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "bleeding_dagger"}},
+    "stitched_heart": {"name": "Patched Heart", "rarities": _C, "fx": {"fury": 1, "maxhp": 2},
+                     "consume": {"heal": 9}, "look": {"type": "sticker", "art": "stitched_heart", "at": [0.5, 0.6]}},
+    "fury_mask": {"name": "Gnashing Mask",  "rarities": _R, "fx": {"fury": 1, "attack_cost": 1, "atk": 2},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "front", "art": "fury_mask"},
+                     "req": "boss1"},
+    "ruby_chalice": {"name": "Ruby Chalice",       "rarities": ["rare", "epic"], "fx": {"attack_cost": 1, "atk": 2, "lifesteal": 3},
+                     "consume": {"heal": 10}, "look": {"type": "obj", "anchor": "float", "art": "ruby_chalice"},
+                     "req": "floor5"},
+    "crimson_pact": {"name": "Seal of the Red Drop", "rarities": ["epic", "legendary"], "fx": {"attack_cost": 2, "fury": 1, "atk": 2},
+                     "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "float", "art": "crimson_pact"},
+                     "req": "boss1"},
     # batch C: blows (double), area, helpers (always a floating obj) and crit
-    "luvinha_ligeira": {"name": "Luvinha Ligeira", "rarities": _C, "fx": {"duplo": 0.15, "crit": 0.05},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "luvinha_ligeira"}},
-    "ferrao_gemeo": {"name": "Ferrão Gêmeo",       "rarities": _C, "fx": {"duplo": 0.1, "envenenar": 0.1, "atk": 1},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "ferrao_gemeo"}},
-    "rabicho":      {"name": "Rabicho Estalante",  "rarities": _C, "fx": {"duplo": 0.1, "dodge": 0.08},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "rabicho"}},
-    "pulseira_eco": {"name": "Pulseira do Eco",    "rarities": ["raro", "epico"], "fx": {"duplo": 0.12, "crit": 0.05, "maxhp": 3},
-                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "frente", "art": "pulseira_eco"},
-                     "req": "andar5"},
-    "garras_gemeas": {"name": "Garras Gêmeas da Lua", "rarities": ["lendario"], "fx": {"duplo": 0.15, "crit": 0.1, "atk": 3},
-                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "dir", "art": "garras_gemeas"},
-                     "req": "chefe1"},
-    "piao_laminas": {"name": "Pião de Lâminas",    "rarities": _C, "fx": {"area": True, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "frente", "art": "piao_laminas"}},
-    "corrente_torta": {"name": "Corrente de Elos Tortos", "rarities": _C, "fx": {"area": True, "def": 1, "maxhp": 3},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "corrente_torta"}},
-    "uivo_garrafa": {"name": "Uivo Engarrafado",   "rarities": _C, "fx": {"area": True, "maxhp": 5},
-                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "topo", "art": "uivo_garrafa"}},
-    "leque_penas":  {"name": "Leque de Penas Negras", "rarities": _R, "fx": {"area": True, "dodge": 0.08},
-                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "esq", "art": "leque_penas"},
-                     "req": "andar5"},
-    "redemoinho":   {"name": "Redemoinho de Bolso", "rarities": ["raro", "epico"], "fx": {"area": True, "dodge": 0.05, "def": 1},
-                     "consume": {"heal": 9}, "look": {"type": "tingir", "color": "#9fd8ff", "amount": 0.25},
-                     "req": "andar5"},
-    "besourinho":   {"name": "Besourinho de Guarda", "rarities": _C, "fx": {"ajudante": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "flutua", "art": "besourinho"}},
-    "morceguinho":  {"name": "Morceguinho de Pano", "rarities": _C, "fx": {"ajudante": 1, "maxhp": 5},
-                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "flutua", "art": "morceguinho"}},
-    "caveirinha":   {"name": "Caveirinha Saltitante", "rarities": _C, "fx": {"ajudante": 3, "maxhp": -3},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "flutua", "art": "caveirinha"}},
-    "fantoche":     {"name": "Fantoche de Meia",   "rarities": ["raro", "epico"], "fx": {"ajudante": 2, "def": 1},
-                     "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "flutua", "art": "fantoche"},
-                     "req": "andar5"},
-    "corvo_cinza":  {"name": "Corvo de Cinza",     "rarities": ["lendario"], "fx": {"ajudante": 3, "maxhp": 4},
-                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "flutua", "art": "corvo_cinza"},
-                     "req": "chefe1"},
-    "monoculo":     {"name": "Monóculo Trincado",  "rarities": _C, "fx": {"crit": 0.1, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "adesivo", "art": "monoculo", "at": [0.3, 0.4]}},
-    "pedra_amolar": {"name": "Pedra de Amolar",    "rarities": _C, "fx": {"critdmg": 0.25, "atk": 1, "maxhp": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "pedra_amolar"}},
-    "trevo_murcho": {"name": "Trevo Murcho",       "rarities": _C, "fx": {"crit": 0.15, "atk": 1, "maxhp": 3},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "topo", "art": "trevo_murcho"}},
-    "presa_lobo":   {"name": "Presa de Lobo-sombra", "rarities": _R, "fx": {"crit": 0.1, "critdmg": 0.15, "atk": 1},
-                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "dir", "art": "presa_lobo"},
-                     "req": "andar5"},
-    "olho_gato":    {"name": "Olho de Gato Ônix",  "rarities": ["epico", "lendario"], "fx": {"crit": 0.12, "dodge": 0.08},
-                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "topo", "art": "olho_gato"},
-                     "req": "chefe1"},
+    "swift_glove": {"name": "Nimble Glove", "rarities": _C, "fx": {"double": 0.15, "crit": 0.05},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "swift_glove"}},
+    "twin_stinger": {"name": "Twin Stinger",       "rarities": _C, "fx": {"double": 0.1, "poison": 0.1, "atk": 1},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "twin_stinger"}},
+    "pigtail":      {"name": "Snapping Tail",  "rarities": _C, "fx": {"double": 0.1, "dodge": 0.08},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "left", "art": "pigtail"}},
+    "echo_bracelet": {"name": "Echo Bracelet",    "rarities": ["rare", "epic"], "fx": {"double": 0.12, "crit": 0.05, "maxhp": 3},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "front", "art": "echo_bracelet"},
+                     "req": "floor5"},
+    "twin_claws": {"name": "Twin Moon Claws", "rarities": ["legendary"], "fx": {"double": 0.15, "crit": 0.1, "atk": 3},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "right", "art": "twin_claws"},
+                     "req": "boss1"},
+    "blade_top": {"name": "Blade Top",    "rarities": _C, "fx": {"area": True, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "front", "art": "blade_top"}},
+    "bent_chain": {"name": "Crooked Link Chain", "rarities": _C, "fx": {"area": True, "def": 1, "maxhp": 3},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "left", "art": "bent_chain"}},
+    "bottled_howl": {"name": "Bottled Howl",   "rarities": _C, "fx": {"area": True, "maxhp": 5},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "top", "art": "bottled_howl"}},
+    "feather_fan":  {"name": "Black Feather Fan", "rarities": _R, "fx": {"area": True, "dodge": 0.08},
+                     "consume": {"shield": 8}, "look": {"type": "obj", "anchor": "left", "art": "feather_fan"},
+                     "req": "floor5"},
+    "whirlwind":   {"name": "Pocket Whirlwind", "rarities": ["rare", "epic"], "fx": {"area": True, "dodge": 0.05, "def": 1},
+                     "consume": {"heal": 9}, "look": {"type": "tint", "color": "#9fd8ff", "amount": 0.25},
+                     "req": "floor5"},
+    "beetle":   {"name": "Guard Beetle", "rarities": _C, "fx": {"helper": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "float", "art": "beetle"}},
+    "little_bat":  {"name": "Cloth Bat", "rarities": _C, "fx": {"helper": 1, "maxhp": 5},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "float", "art": "little_bat"}},
+    "little_skull":   {"name": "Hopping Skull", "rarities": _C, "fx": {"helper": 3, "maxhp": -3},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "float", "art": "little_skull"}},
+    "puppet":     {"name": "Sock Puppet",   "rarities": ["rare", "epic"], "fx": {"helper": 2, "def": 1},
+                     "consume": {"shield": 9}, "look": {"type": "obj", "anchor": "float", "art": "puppet"},
+                     "req": "floor5"},
+    "grey_crow":  {"name": "Ash Crow",     "rarities": ["legendary"], "fx": {"helper": 3, "maxhp": 4},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "float", "art": "grey_crow"},
+                     "req": "boss1"},
+    "monocle":     {"name": "Cracked Monocle",  "rarities": _C, "fx": {"crit": 0.1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "sticker", "art": "monocle", "at": [0.3, 0.4]}},
+    "whetstone": {"name": "Whetstone",    "rarities": _C, "fx": {"critdmg": 0.25, "atk": 1, "maxhp": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "left", "art": "whetstone"}},
+    "wilted_clover": {"name": "Wilted Clover",       "rarities": _C, "fx": {"crit": 0.15, "atk": 1, "maxhp": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "top", "art": "wilted_clover"}},
+    "wolf_fang":   {"name": "Shadow Wolf Fang", "rarities": _R, "fx": {"crit": 0.1, "critdmg": 0.15, "atk": 1},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "right", "art": "wolf_fang"},
+                     "req": "floor5"},
+    "cat_eye":    {"name": "Onyx Cat's Eye",  "rarities": ["epic", "legendary"], "fx": {"crit": 0.12, "dodge": 0.08},
+                     "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "top", "art": "cat_eye"},
+                     "req": "boss1"},
     # batch D: growth (grow = kills per +1 ATK), luck (rarity), gold and shop discount
-    "dente_leite":  {"name": "Dente de Leite Afiado", "rarities": _C, "fx": {"crescer": 8, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dente_leite"}},
-    "casulo":       {"name": "Casulo Inquieto",    "rarities": _C, "fx": {"crescer": 10, "maxhp": 6, "def": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "casulo"}},
-    "coleira_trofeus": {"name": "Coleira de Troféus", "rarities": _C, "fx": {"crescer": 9, "def": 1, "atk": 1},
-                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "frente", "art": "coleira_trofeus"}},
-    "semente_faminta": {"name": "Semente Faminta", "rarities": ["raro", "epico"], "fx": {"crescer": 8, "maxhp": 4, "atk": 1},
-                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "topo", "art": "semente_faminta"},
-                     "req": "andar5"},
-    "chifre_aneis": {"name": "Chifre de Anéis",    "rarities": ["lendario"], "fx": {"crescer": 5, "atk": 3},
-                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "topo", "art": "chifre_aneis"},
-                     "req": "chefe1"},
-    "fivela_cacador": {"name": "Fivela do Caçador", "rarities": ["raro", "epico"], "fx": {"crescer": 8, "crit": 0.05, "atk": 1},
-                     "consume": {"shield": 9}, "look": {"type": "contorno", "color": "#c99a00"}, "req": "andar10"},
-    "moedor_ossos": {"name": "Moedor de Ossos",    "rarities": _R, "fx": {"crescer": 6, "atk": 2, "maxhp": -2},
-                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "dir", "art": "moedor_ossos"},
-                     "req": "chefe1"},
-    "dado_osso":    {"name": "Dado de Osso",       "rarities": _C, "fx": {"sorte": 0.3, "crit": 0.05, "atk": 2},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dado_osso"}},
-    "moeda_coroas": {"name": "Moeda de Duas Coroas", "rarities": _C, "fx": {"sorte": 0.25, "gold": 0.15, "atk": 1, "maxhp": 3},
-                     "consume": {"shield": 5}, "look": {"type": "obj", "anchor": "esq", "art": "moeda_coroas"}},
-    "ferradura":    {"name": "Ferradura Enferrujada", "rarities": _C, "fx": {"sorte": 0.25, "def": 2},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "frente", "art": "ferradura"}},
-    "mapa_rabiscado": {"name": "Mapa Rabiscado",   "rarities": _C, "fx": {"sorte": 0.2, "energy": 0.2, "maxhp": 5},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "mapa_rabiscado"}},
-    "talisma_fios": {"name": "Talismã de Três Fios", "rarities": _C, "fx": {"sorte": 0.2, "cura_andar": 4, "maxhp": 3},
-                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "topo", "art": "talisma_fios"}},
-    "estrela_cadente": {"name": "Caco de Estrela Cadente", "rarities": ["raro", "epico"], "fx": {"sorte": 0.35, "maxhp": 5},
-                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "flutua", "art": "estrela_cadente"},
-                     "req": "andar5"},
-    "bigode_gato":  {"name": "Bigode de Gato Preto", "rarities": ["lendario"], "fx": {"sorte": 0.5, "dodge": 0.1},
-                     "consume": {"shield": 12}, "look": {"type": "adesivo", "art": "bigode_gato", "at": [0.5, 0.65]},
-                     "req": "chefe1"},
-    "bolsa_sapo":   {"name": "Bolsa de Couro de Sapo", "rarities": _C, "fx": {"gold": 0.3, "desconto": 0.1, "def": 1, "maxhp": 3},
-                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "esq", "art": "bolsa_sapo"}},
-    "cupom":        {"name": "Bilhete de Barganha", "rarities": _C, "fx": {"desconto": 0.2, "maxhp": 5},
-                     "consume": {"shield": 5}, "look": {"type": "adesivo", "art": "cupom", "at": [0.7, 0.5]}},
-    "balanca":      {"name": "Balança Torta",      "rarities": _C, "fx": {"desconto": 0.15, "def": 1, "atk": 1},
-                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "dir", "art": "balanca"}},
-    "dente_ouro":   {"name": "Dente de Ouro",      "rarities": _R, "fx": {"gold": 0.4, "atk": 2},
-                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "frente", "art": "dente_ouro"},
-                     "req": "andar5"},
-    "cofrinho":     {"name": "Moringa de Moedas",  "rarities": ["lendario"], "fx": {"gold": 0.5, "desconto": 0.2, "maxhp": 8},
-                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "flutua", "art": "cofrinho"},
-                     "req": "rico"},
-    "sanguessuga":  {"name": "Sanguessuga Mansa",  "rarities": _C, "fx": {"lifesteal": 2, "maxhp": 4, "atk": 1},
-                     "consume": {"heal": 7}, "look": {"type": "adesivo", "art": "sanguessuga", "at": [0.25, 0.7]}},
+    "milk_tooth":  {"name": "Sharp Baby Tooth", "rarities": _C, "fx": {"grow": 8, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "milk_tooth"}},
+    "cocoon":       {"name": "Restless Cocoon",    "rarities": _C, "fx": {"grow": 10, "maxhp": 6, "def": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "left", "art": "cocoon"}},
+    "trophy_collar": {"name": "Trophy Collar", "rarities": _C, "fx": {"grow": 9, "def": 1, "atk": 1},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "front", "art": "trophy_collar"}},
+    "hungry_seed": {"name": "Hungry Seed", "rarities": ["rare", "epic"], "fx": {"grow": 8, "maxhp": 4, "atk": 1},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "top", "art": "hungry_seed"},
+                     "req": "floor5"},
+    "ringed_horn": {"name": "Ringed Horn",    "rarities": ["legendary"], "fx": {"grow": 5, "atk": 3},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "top", "art": "ringed_horn"},
+                     "req": "boss1"},
+    "hunter_buckle": {"name": "Hunter's Buckle", "rarities": ["rare", "epic"], "fx": {"grow": 8, "crit": 0.05, "atk": 1},
+                     "consume": {"shield": 9}, "look": {"type": "outline", "color": "#c99a00"}, "req": "floor10"},
+    "bone_grinder": {"name": "Bone Grinder",    "rarities": _R, "fx": {"grow": 6, "atk": 2, "maxhp": -2},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "right", "art": "bone_grinder"},
+                     "req": "boss1"},
+    "bone_die":    {"name": "Bone Die",       "rarities": _C, "fx": {"luck": 0.3, "crit": 0.05, "atk": 2},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "right", "art": "bone_die"}},
+    "crown_coin": {"name": "Two-Crowned Coin", "rarities": _C, "fx": {"luck": 0.25, "gold": 0.15, "atk": 1, "maxhp": 3},
+                     "consume": {"shield": 5}, "look": {"type": "obj", "anchor": "left", "art": "crown_coin"}},
+    "horseshoe":    {"name": "Rusty Horseshoe", "rarities": _C, "fx": {"luck": 0.25, "def": 2},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "front", "art": "horseshoe"}},
+    "scribbled_map": {"name": "Scribbled Map",   "rarities": _C, "fx": {"luck": 0.2, "energy": 0.2, "maxhp": 5},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "left", "art": "scribbled_map"}},
+    "thread_talisman": {"name": "Three-Thread Talisman", "rarities": _C, "fx": {"luck": 0.2, "heal_floor": 4, "maxhp": 3},
+                     "consume": {"heal": 7}, "look": {"type": "obj", "anchor": "top", "art": "thread_talisman"}},
+    "shooting_star": {"name": "Shooting Star Shard", "rarities": ["rare", "epic"], "fx": {"luck": 0.35, "maxhp": 5},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "float", "art": "shooting_star"},
+                     "req": "floor5"},
+    "cat_whiskers":  {"name": "Black Cat Whisker", "rarities": ["legendary"], "fx": {"luck": 0.5, "dodge": 0.1},
+                     "consume": {"shield": 12}, "look": {"type": "sticker", "art": "cat_whiskers", "at": [0.5, 0.65]},
+                     "req": "boss1"},
+    "frog_pouch":   {"name": "Frogskin Pouch", "rarities": _C, "fx": {"gold": 0.3, "discount": 0.1, "def": 1, "maxhp": 3},
+                     "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "left", "art": "frog_pouch"}},
+    "coupon":        {"name": "Bargain Ticket", "rarities": _C, "fx": {"discount": 0.2, "maxhp": 5},
+                     "consume": {"shield": 5}, "look": {"type": "sticker", "art": "coupon", "at": [0.7, 0.5]}},
+    "scale":      {"name": "Crooked Scales",      "rarities": _C, "fx": {"discount": 0.15, "def": 1, "atk": 1},
+                     "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "right", "art": "scale"}},
+    "gold_tooth":   {"name": "Gold Tooth",      "rarities": _R, "fx": {"gold": 0.4, "atk": 2},
+                     "consume": {"heal": 9}, "look": {"type": "obj", "anchor": "front", "art": "gold_tooth"},
+                     "req": "floor5"},
+    "piggy_bank":     {"name": "Coin Jug",  "rarities": ["legendary"], "fx": {"gold": 0.5, "discount": 0.2, "maxhp": 8},
+                     "consume": {"heal": 14}, "look": {"type": "obj", "anchor": "float", "art": "piggy_bank"},
+                     "req": "rich"},
+    "leech":  {"name": "Tame Leech",  "rarities": _C, "fx": {"lifesteal": 2, "maxhp": 4, "atk": 1},
+                     "consume": {"heal": 7}, "look": {"type": "sticker", "art": "leech", "at": [0.25, 0.7]}},
 }
 
 # sprite, name, health mult., attack mult., min floor, speed mult.
 MONSTERS = [
-    ("morcego", "Morcego", 0.8, 0.9, 1, 1.4),
-    ("rato", "Rato", 1.0, 0.8, 1, 1.1),
-    ("aranha", "Aranha", 0.9, 1.2, 2, 1.0),
-    ("esqueleto", "Esqueleto", 1.3, 1.0, 3, 0.6),
-    ("olho", "Olho Flutuante", 1.0, 1.4, 5, 0.9),
+    ("bat", "Bat", 0.8, 0.9, 1, 1.4),
+    ("rat", "Rat", 1.0, 0.8, 1, 1.1),
+    ("spider", "Spider", 0.9, 1.2, 2, 1.0),
+    ("skeleton", "Skeleton", 1.3, 1.0, 3, 0.6),
+    ("eye", "Floating Eye", 1.0, 1.4, 5, 0.9),
 ]
-BOSS_NAMES = {"morcego": "Morcego Vampiro", "rato": "Rei Rato", "aranha": "Aranha Mãe",
-              "esqueleto": "Lorde Esqueleto", "olho": "Olho Abissal"}
+BOSS_NAMES = {"bat": "Vampire Bat", "rat": "Rat King", "spider": "Mother Spider",
+              "skeleton": "Skeleton Lord", "eye": "Abyssal Eye"}
 
 # combat: speed, crit and elements
 MON_SPD = (6, 0.1)            # (base, per floor)
@@ -344,11 +344,11 @@ MAX_ELEM_CHANCE = 0.3
 MAX_BLOCK, MAX_THORNS = 2, 0.5   # block 3 made bosses harmless (batch B)
 MAX_LUCK, MAX_DISCOUNT = 1.0, 0.6   # caps for luck (rarity) and shop discount
 MAX_DOUBLE = 0.25             # cap of the summed double-hit chance (0.5 stretched the tail too much)
-ELEMENTS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
-BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
+ELEMENTS = {"fire": "burn", "lightning": "shock", "poison": "poison", "ice": "freeze"}
+BOSS_ELEMENT = {"bat": "lightning", "rat": "poison", "spider": "poison", "skeleton": "ice", "eye": "fire"}
 BOSS_STATUS_CHANCE = 0.15
 DOUBLE_CRIT = 0.5              # crit bonus for whoever has twice the target's speed (and critdmg x2)
-STATUS_NAME = {"queimar": "queimadura", "eletrizar": "eletricidade", "envenenar": "veneno", "congelar": "congelamento"}
+STATUS_NAME = {"burn": "burn", "shock": "shock", "poison": "poison", "freeze": "freeze"}
 BURN = (2, 0.3)             # damage per turn: base + per floor
 BURN_TURNS = 3
 SHOCK_CHANCE, SHOCK_TURNS = 0.3, 2
@@ -377,7 +377,7 @@ def make_foe(m: tuple, f: int, boss: bool = False, mult: float = 1.0) -> dict:
 
 def make_mimic(f: int) -> dict:
     hp = max(1, round((MON_HP[0] + MON_HP[1] * f) * 1.4))
-    return {"sprite": "mimico", "name": "Mímico", "boss": False, "element": None,
+    return {"sprite": "mimic", "name": "Mimic", "boss": False, "element": None,
             "hp": hp, "hp_max": hp, "atk": max(1, round((MON_ATK[0] + MON_ATK[1] * f) * 1.1)),
             "spd": MON_SPD[0] + MON_SPD[1] * f, "crit": MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
 
@@ -404,57 +404,57 @@ def fx_text(fx: dict) -> str:
         if fx.get(k):
             parts.append(f"{fx[k]:+d} {label}")
     if fx.get("dodge"):
-        parts.append(t("{v}% esquiva", v=int(fx['dodge'] * 100)))
+        parts.append(t("{v}% dodge", v=int(fx['dodge'] * 100)))
     if fx.get("gold"):
-        parts.append(t("+{v}% ouro", v=int(fx['gold'] * 100)))
+        parts.append(t("+{v}% gold", v=int(fx['gold'] * 100)))
     if fx.get("energy"):
-        parts.append(t("+{v}% energia", v=int(fx['energy'] * 100)))
+        parts.append(t("+{v}% energy", v=int(fx['energy'] * 100)))
     if fx.get("lifesteal"):
-        parts.append(t("+{v} HP por vitória", v=fx['lifesteal']))
+        parts.append(t("+{v} HP per win", v=fx['lifesteal']))
     if fx.get("trap"):
-        parts.append(t("armadilhas x{v}", v=f"{fx['trap']:g}"))
+        parts.append(t("traps x{v}", v=f"{fx['trap']:g}"))
     if fx.get("spd"):
-        parts.append(t("{v} velocidade", v=f"{fx['spd']:+g}"))
+        parts.append(t("{v} speed", v=f"{fx['spd']:+g}"))
     if fx.get("crit"):
-        parts.append(t("{v}% crítico", v=f"{fx['crit'] * 100:+.0f}"))
+        parts.append(t("{v}% crit", v=f"{fx['crit'] * 100:+.0f}"))
     if fx.get("critdmg"):
-        parts.append(t("{v}x dano crítico", v=f"{fx['critdmg']:+g}"))
+        parts.append(t("{v}x crit damage", v=f"{fx['critdmg']:+g}"))
     if fx.get("area"):
-        parts.append(t("ataque em área"))
+        parts.append(t("area attack"))
     for el, name in STATUS_NAME.items():
         if fx.get(el):
             parts.append(f"{round(fx[el] * 100)}% {t(name)}")
-    if fx.get("bloqueio"):
-        parts.append(t("bloqueia {v} golpe" if fx["bloqueio"] == 1 else "bloqueia {v} golpes", v=fx['bloqueio']))
-    if fx.get("espinhos"):
-        parts.append(t("devolve {v}% do dano", v=round(fx['espinhos'] * 100)))
-    if fx.get("cura_sala"):
-        parts.append(t("+{v} HP por sala", v=fx['cura_sala']))
-    if fx.get("cura_andar"):
-        parts.append(t("+{v} HP por andar", v=fx['cura_andar']))
-    if fx.get("custo_ataque"):
-        parts.append(t("-{v} HP por ataque", v=fx['custo_ataque']))
-    if fx.get("furia"):
-        parts.append(t("fúria +{v} ATK/10% HP perdido", v=f"{fx['furia']:g}"))
-    if fx.get("duplo"):
-        parts.append(t("{v}% golpe duplo", v=round(fx['duplo'] * 100)))
-    if fx.get("ajudante"):
-        parts.append(t("ajudante {v} de dano", v=f"{fx['ajudante']:g}"))
-    if fx.get("crescer"):
-        parts.append(t("+1 ATK a cada {v} kills", v=fx['crescer']))
-    if fx.get("sorte"):
-        parts.append(t("+{v}% sorte", v=round(fx['sorte'] * 100)))
-    if fx.get("desconto"):
-        parts.append(t("-{v}% preço na loja", v=round(fx['desconto'] * 100)))
+    if fx.get("block"):
+        parts.append(t("blocks {v} hit" if fx["block"] == 1 else "blocks {v} hits", v=fx['block']))
+    if fx.get("thorns"):
+        parts.append(t("returns {v}% of damage", v=round(fx['thorns'] * 100)))
+    if fx.get("heal_room"):
+        parts.append(t("+{v} HP per room", v=fx['heal_room']))
+    if fx.get("heal_floor"):
+        parts.append(t("+{v} HP per floor", v=fx['heal_floor']))
+    if fx.get("attack_cost"):
+        parts.append(t("-{v} HP per attack", v=fx['attack_cost']))
+    if fx.get("fury"):
+        parts.append(t("fury +{v} ATK/10% HP lost", v=f"{fx['fury']:g}"))
+    if fx.get("double"):
+        parts.append(t("{v}% double hit", v=round(fx['double'] * 100)))
+    if fx.get("helper"):
+        parts.append(t("helper {v} damage", v=f"{fx['helper']:g}"))
+    if fx.get("grow"):
+        parts.append(t("+1 ATK every {v} kills", v=fx['grow']))
+    if fx.get("luck"):
+        parts.append(t("+{v}% luck", v=round(fx['luck'] * 100)))
+    if fx.get("discount"):
+        parts.append(t("-{v}% shop price", v=round(fx['discount'] * 100)))
     return ", ".join(parts)
 
 
 def new_meta() -> dict:
     return {"achievements": [], "graveyard": [], "runs": 0,
-            "best": {"floor": 0, "room": 0}, "next_char": "slime", "chefes": 0}
+            "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0}
 
 
-COUNTERS_ZERO = {"esquivas": 0, "bloqueios": 0, "mortes_veneno": 0, "mortes_queima": 0, "horda4": 0}
+COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0}
 
 
 def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = None) -> dict:
@@ -467,8 +467,8 @@ def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = N
                  "spd": float(base_stats.get("spd", PET_SPD)),
                  # crit/critdmg only if the hero defines them; without them, stats() uses the current PET_CRIT/PET_CRITDMG
                  **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
-        "traco": dict(trait or {}),
-        "cont": dict(COUNTERS_ZERO),
+        "trait": dict(trait or {}),
+        "counters": dict(COUNTERS_ZERO),
         "items": [], "consumed": [], "shield": 0, "pending": None,
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
@@ -480,9 +480,9 @@ def _scale(fx: dict, rar: str) -> dict:
     m = RAR_MULT[rar]
     out = {}
     for k, v in fx.items():
-        if k in ("trap", "area", "custo_ataque") or v <= 0:
+        if k in ("trap", "area", "attack_cost") or v <= 0:
             out[k] = v
-        elif k == "crescer":                          # fewer kills per point = better: scales down, floor of 3
+        elif k == "grow":                          # fewer kills per point = better: scales down, floor of 3
             out[k] = max(3, math.ceil(v / m))
         elif isinstance(v, int):
             out[k] = math.floor(v * m + 0.5)      # round .5 up
@@ -503,7 +503,7 @@ def migrate_run(run: dict) -> dict:
     """Old save (3 slots) -> list of common items; items and pending offers with keys that no longer exist are dropped."""
     items = run.get("items")
     if isinstance(items, dict):
-        run["items"] = [{"key": items[s], "rar": "comum"} for s in ("mao", "escudo", "cabeca")
+        run["items"] = [{"key": items[s], "rar": "common"} for s in ("mao", "shield", "cabeca")
                         if items.get(s) in ITEMS]
     else:
         run["items"] = [i for i in (items or []) if isinstance(i, dict) and i.get("key") in ITEMS]
@@ -512,8 +512,8 @@ def migrate_run(run: dict) -> dict:
         i.setdefault("kills0", 0)
     run.setdefault("consumed", [])
     run.setdefault("shield", 0)
-    run.setdefault("traco", {})
-    cont = run.setdefault("cont", {})
+    run.setdefault("trait", {})
+    cont = run.setdefault("counters", {})
     for k, v in COUNTERS_ZERO.items():
         cont.setdefault(k, v)
     b = run.setdefault("base", {})
@@ -533,14 +533,14 @@ def stats(run: dict) -> dict:
     st = {"maxhp": b["maxhp"], "atk": b["atk"], "def": b["def"], "dodge": b["dodge"],
           "gold": 0.0, "trap": 1.0, "energy": 0.0, "lifesteal": 0,
           "spd": b.get("spd", PET_SPD), "crit": b.get("crit", PET_CRIT), "critdmg": b.get("critdmg", PET_CRITDMG),
-          "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
-          "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0,
-          "duplo": 0.0, "ajudante": 0, "sorte": 0.0, "desconto": 0.0}
+          "area": False, "burn": 0.0, "shock": 0.0, "poison": 0.0, "freeze": 0.0,
+          "block": 0, "thorns": 0.0, "heal_room": 0, "heal_floor": 0, "attack_cost": 0, "fury": 0,
+          "double": 0.0, "helper": 0, "luck": 0.0, "discount": 0.0}
     # the hero trait adds up like an item, but without rarity scaling
-    for kills0, fx in [(0, run.get("traco", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
+    for kills0, fx in [(0, run.get("trait", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
                                                       for it in run["items"]]:
         for k, v in fx.items():
-            if k == "crescer":                        # +1 ATK every v kills made after taking the item
+            if k == "grow":                        # +1 ATK every v kills made after taking the item
                 st["atk"] += max(0, run["kills"] - kills0) // v
             elif k == "trap":
                 st["trap"] *= v
@@ -557,11 +557,11 @@ def stats(run: dict) -> dict:
     for el in ELEMENTS.values():
         st[el] = min(MAX_ELEM_CHANCE, st[el])
     st["trap"] = min(TRAP_LIMITS[1], max(TRAP_LIMITS[0], st["trap"]))
-    st["bloqueio"] = min(MAX_BLOCK, int(st["bloqueio"]))
-    st["espinhos"] = min(MAX_THORNS, st["espinhos"])
-    st["duplo"] = min(MAX_DOUBLE, st["duplo"])
-    st["sorte"] = min(MAX_LUCK, st["sorte"])
-    st["desconto"] = min(MAX_DISCOUNT, st["desconto"])
+    st["block"] = min(MAX_BLOCK, int(st["block"]))
+    st["thorns"] = min(MAX_THORNS, st["thorns"])
+    st["double"] = min(MAX_DOUBLE, st["double"])
+    st["luck"] = min(MAX_LUCK, st["luck"])
+    st["discount"] = min(MAX_DISCOUNT, st["discount"])
     run["hp"] = min(run["hp"], st["maxhp"])
     return st
 
@@ -605,7 +605,7 @@ def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) ->
         return None
     lo = 1 if best else 0
     w = _rarity_weights(run["floor"])
-    luck = 1 + stats(run)["sorte"]
+    luck = 1 + stats(run)["luck"]
     w = [w[0]] + [x * luck for x in w[1:]]            # luck pulls rare, epic and legendary
     idx = max(lo, rng.choices(range(len(RARITIES)), w)[0])
     # goes down one rarity at a time, then up; below the floor only as a last resort
@@ -620,20 +620,20 @@ def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) ->
 
 def shop_price(run: dict, f: int) -> int:
     """Shop price of the item on floor f, with the items' discount (minimum 1)."""
-    return max(1, round((SHOP_PRICE[0] + SHOP_PRICE[1] * f) * (1 - stats(run)["desconto"])))
+    return max(1, round((SHOP_PRICE[0] + SHOP_PRICE[1] * f) * (1 - stats(run)["discount"])))
 
 
 def auto_choice(run: dict, offer: dict) -> str:
     """Automatic rule: consumes if it is a heal and HP is below 40%; otherwise takes it."""
     if "heal" in ITEMS[offer["key"]]["consume"] and run["hp"] < 0.4 * stats(run)["maxhp"]:
-        return "consumir"
-    return "pegar"
+        return "consume"
+    return "take"
 
 
 def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
     """Applies the choice. Achievements are left to the caller (enter_room / *_pending)."""
     item = {"key": offer["key"], "rar": offer["rar"]}      # without the floor: this is what the event (GUI) receives
-    if choice == "pegar":
+    if choice == "take":
         run["items"].append({**item, "floor": run["floor"], "kills0": run["kills"]})
         hp_bonus = item_fx(item["key"], item["rar"]).get("maxhp", 0)
         if hp_bonus > 0:
@@ -679,30 +679,30 @@ def apply_damage(run: dict, d: int) -> int:
 
 def _apply_status(s: dict, name: str) -> None:
     """Puts the status on s. Burn renews; poison gains a stack (at the cap, renews the oldest)."""
-    if name == "veneno":
-        v = s.setdefault("veneno", [])
+    if name == "poison":
+        v = s.setdefault("poison", [])
         if len(v) < POISON_MAX_STACKS:
             v.append(0)
         else:
             v[v.index(max(v))] = 0
     else:
-        s[name] = {"queimadura": BURN_TURNS, "eletricidade": SHOCK_TURNS, "congelamento": FREEZE_TURNS}[name]
+        s[name] = {"burn": BURN_TURNS, "shock": SHOCK_TURNS, "freeze": FREEZE_TURNS}[name]
 
 
 def _status_damage(s: dict, f: int) -> list[tuple[str, int]]:
     """Start-of-round tick: [(name, damage)] and already decrements the duration."""
     out = []
-    if s.get("queimadura"):
-        s["queimadura"] -= 1
-        out.append(("queimadura", round(BURN[0] + BURN[1] * f)))
-    if s.get("veneno"):
-        v = [t + 1 for t in s["veneno"]]                # each stack deals 1, 2, 3, 4 damage
-        out.append(("veneno", sum(v)))
-        s["veneno"] = [t for t in v if t < POISON_TURNS]
+    if s.get("burn"):
+        s["burn"] -= 1
+        out.append(("burn", round(BURN[0] + BURN[1] * f)))
+    if s.get("poison"):
+        v = [t + 1 for t in s["poison"]]                # each stack deals 1, 2, 3, 4 damage
+        out.append(("poison", sum(v)))
+        s["poison"] = [t for t in v if t < POISON_TURNS]
     return out
 
 
-def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
+def combat(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     """Round-based fight. Returns (won, steps, killer, tie); mutates run["hp"] and the enemies' hp/status.
 
     Without `area` the pet hits the living enemy with the lowest HP; with `area`, one step per living target.
@@ -713,24 +713,24 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
     steps = []
     pst: dict = {}                                       # pet status (only during the fight)
 
-    charges = st["bloqueio"]                              # enemy hits the pet cancels in this fight
+    charges = st["block"]                              # enemy hits the pet cancels in this fight
 
     def step(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False,
               locked=False, thorns=False, double=False):
         steps.append({"who": who, "target": target, "dmg": dmg, "crit": crit, "status": status, "skip": skip,
-                       "dot": dot, "dodge": dodge, "bloqueado": locked, "espinhos": thorns, "duplo": double})
+                       "dot": dot, "dodge": dodge, "locked": locked, "thorns": thorns, "double": double})
 
     def alive():
         return [i for i, x in enumerate(foes) if x["hp"] > 0]
 
     def skips_turn(s):
         lost = False
-        if s.get("congelamento"):
-            s["congelamento"] -= 1
+        if s.get("freeze"):
+            s["freeze"] -= 1
             if rng.random() < FREEZE_CHANCE:
-                lost, s["congelamento"] = True, 0
-        if s.get("eletricidade"):
-            s["eletricidade"] -= 1
+                lost, s["freeze"] = True, 0
+        if s.get("shock"):
+            s["shock"] -= 1
             lost = rng.random() < SHOCK_CHANCE or lost
         return lost
 
@@ -756,16 +756,16 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
             return True, steps, "", False
         # 2. order by speed; tie: pet first, then list order (stable sort)
         # the helper comes right after the pet (same spd, stable sort)
-        ajud = [("ajudante", st["spd"])] if st["ajudante"] > 0 else []
+        ajud = [("helper", st["spd"])] if st["helper"] > 0 else []
         order = sorted([("pet", st["spd"])] + ajud + [(i, foes[i]["spd"]) for i in alive()], key=lambda x: -x[1])
         for who, _spd in order:
-            if who not in ("pet", "ajudante") and foes[who]["hp"] <= 0:
+            if who not in ("pet", "helper") and foes[who]["hp"] <= 0:
                 continue
-            if who == "ajudante":                          # no status, crit or skipped turn
+            if who == "helper":                          # no status, crit or skipped turn
                 i = min(alive(), key=lambda i: foes[i]["hp"])
-                d = max(1, round(st["ajudante"]))      # never 0 damage
+                d = max(1, round(st["helper"]))      # never 0 damage
                 foes[i]["hp"] -= d
-                step("ajudante", i, d)
+                step("helper", i, d)
                 if not alive():
                     return True, steps, "", False
                 continue
@@ -776,14 +776,14 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 vs = alive()
                 targets = vs if st["area"] else [min(vs, key=lambda i: foes[i]["hp"])]
                 # fury: +fury ATK for every 10% of missing HP (integer math, no float error)
-                atk = st["atk"] + st["furia"] * ((st["maxhp"] - run["hp"]) * 10 // st["maxhp"])
-                if st["custo_ataque"]:                     # blood: attacking costs HP, but never below 1
-                    run["hp"] = max(1, run["hp"] - st["custo_ataque"])
+                atk = st["atk"] + st["fury"] * ((st["maxhp"] - run["hp"]) * 10 // st["maxhp"])
+                if st["attack_cost"]:                     # blood: attacking costs HP, but never below 1
+                    run["hp"] = max(1, run["hp"] - st["attack_cost"])
                 for i in targets:
                     x = foes[i]
                     # 2nd hit (double): rolled per target, only if the target survived; no double-speed bonus
                     for dup in (False, True):
-                        if dup and (x["hp"] <= 0 or not st["duplo"] or rng.random() >= st["duplo"]):
+                        if dup and (x["hp"] <= 0 or not st["double"] or rng.random() >= st["double"]):
                             break
                         e_crit, mult = critical(st["crit"], st["critdmg"], 0 if dup else st["spd"], x["spd"])
                         d = round(max(1, atk + rng.randint(-1, 1)) * mult)
@@ -817,7 +817,7 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 if run["hp"] <= 0:
                     run["hp"] = 0
                     return False, steps, x["name"], False
-                returns = round(raw * st["espinhos"])      # thorns: fraction of the damage before the shield
+                returns = round(raw * st["thorns"])      # thorns: fraction of the damage before the shield
                 if returns:
                     x["hp"] -= returns
                     step("pet", who, returns, thorns=True)
@@ -828,25 +828,25 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
 
 def _count(run: dict, steps: list[dict], foes: list[dict], horde4: bool) -> None:
     """Achievement counters from the fight steps. Death by status: the enemy crosses hp 0 on a dot step."""
-    c = run.setdefault("cont", dict(COUNTERS_ZERO))
+    c = run.setdefault("counters", dict(COUNTERS_ZERO))
     hp = [x["hp_max"] for x in foes]
     for p in steps:
         if p["dodge"]:
-            c["esquivas"] += 1
-        if p["bloqueado"]:
-            c["bloqueios"] += 1
+            c["dodges"] += 1
+        if p["locked"]:
+            c["blocks"] += 1
         i = p["target"]
-        if isinstance(i, int) and (p["who"] in ("pet", "ajudante") or p["dot"]):
+        if isinstance(i, int) and (p["who"] in ("pet", "helper") or p["dot"]):
             before, hp[i] = hp[i], hp[i] - p["dmg"]
             if p["dot"] and before > 0 >= hp[i]:
-                c["mortes_veneno" if p["status"] == "veneno" else "mortes_queima"] += 1
+                c["poison_kills" if p["status"] == "poison" else "burn_kills"] += 1
     if horde4:
-        c["horda4"] += 1
+        c["horde4"] += 1
 
 
 def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> None:
     """kind: monster|horde|boss|mimic|trap|gave_up; death by Burn/Poison becomes "status"."""
-    if killer in ("Queimadura", "Veneno"):
+    if killer in ("Burn", "Poison"):
         kind = "status"
     run["dead"] = True
     ev["died"] = True
@@ -870,35 +870,35 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
             new.append(key)
             have.add(key)
 
-    grant("andar5", run["floor"] >= 5)
-    grant("andar10", run["floor"] >= 10)
-    grant("andar20", run["floor"] >= 20)
-    grant("chefe1", run["bosses"] >= 1)
-    grant("mimico", ev.get("kind") == "mimic" and ev.get("won"))
-    grant("rico", run["gold"] >= 100)
-    grant("colecionador", len(run["items"]) >= 10)
-    cont = run.get("cont", {})
-    grant("veneno1", cont.get("mortes_veneno", 0) >= 1)
-    grant("ouro300", run["gold"] >= 300)
-    grant("horda4", cont.get("horda4", 0) >= 1)
-    grant("queima1", cont.get("mortes_queima", 0) >= 1)
-    grant("esquiva10", cont.get("esquivas", 0) >= 10)
-    grant("andar15", run["floor"] >= 15)
-    grant("bloqueio10", cont.get("bloqueios", 0) >= 10)
-    grant("chefes3", meta.get("chefes", 0) >= 3)
-    grant("consumir10", len(run.get("consumed", [])) >= 10)
-    grant("morrer10", meta["runs"] >= 10)
-    grant("sem_consumir10", run["floor"] >= 10 and not run.get("consumed"))
-    grant("lendarios3", sum(1 for it in run["items"] if it["rar"] == "lendario") >= 3)
-    grant("ajudantes3", sum(1 for it in run["items"] if "ajudante" in ITEMS[it["key"]]["fx"]) >= 3)
-    grant("veneno3", cont.get("mortes_veneno", 0) >= 3)
-    grant("chefes3run", run["bosses"] >= 3)
-    grant("andar13", run.get("dead") and run["floor"] == 13)
-    if run["floor"] >= 8 and "andar8cheio" not in have:
-        grant("andar8cheio", run["hp"] >= stats(run)["maxhp"])
-    if "elementos3" not in have:
+    grant("floor5", run["floor"] >= 5)
+    grant("floor10", run["floor"] >= 10)
+    grant("floor20", run["floor"] >= 20)
+    grant("boss1", run["bosses"] >= 1)
+    grant("mimic", ev.get("kind") == "mimic" and ev.get("won"))
+    grant("rich", run["gold"] >= 100)
+    grant("collector", len(run["items"]) >= 10)
+    cont = run.get("counters", {})
+    grant("poison1", cont.get("poison_kills", 0) >= 1)
+    grant("gold300", run["gold"] >= 300)
+    grant("horde4", cont.get("horde4", 0) >= 1)
+    grant("burn1", cont.get("burn_kills", 0) >= 1)
+    grant("dodge10", cont.get("dodges", 0) >= 10)
+    grant("floor15", run["floor"] >= 15)
+    grant("block10", cont.get("blocks", 0) >= 10)
+    grant("bosses3", meta.get("bosses", 0) >= 3)
+    grant("consume10", len(run.get("consumed", [])) >= 10)
+    grant("die10", meta["runs"] >= 10)
+    grant("no_consume10", run["floor"] >= 10 and not run.get("consumed"))
+    grant("legendaries3", sum(1 for it in run["items"] if it["rar"] == "legendary") >= 3)
+    grant("helpers3", sum(1 for it in run["items"] if "helper" in ITEMS[it["key"]]["fx"]) >= 3)
+    grant("poison3", cont.get("poison_kills", 0) >= 3)
+    grant("bosses3run", run["bosses"] >= 3)
+    grant("floor13", run.get("dead") and run["floor"] == 13)
+    if run["floor"] >= 8 and "floor8full" not in have:
+        grant("floor8full", run["hp"] >= stats(run)["maxhp"])
+    if "elements3" not in have:
         elem = set(ELEMENTS.values())
-        grant("elementos3", sum(1 for it in run["items"] if elem & set(ITEMS[it["key"]]["fx"])) >= 3)
+        grant("elements3", sum(1 for it in run["items"] if elem & set(ITEMS[it["key"]]["fx"])) >= 3)
     if new:
         meta["achievements"].extend(new)
         ev["unlocks"] = new
@@ -911,7 +911,7 @@ def _heal_by_item(run, ev, maxhp, hp, heal):
     """HP = hp + heal (up to maxhp); what the item heal actually added goes into ev["item_heal"] (floater in the GUI)."""
     run["hp"] = min(maxhp, hp + heal)
     if run["hp"] > hp:
-        ev["cura_item"] = run["hp"] - hp
+        ev["item_heal"] = run["hp"] - hp
 
 
 def enter_room(run: dict, meta: dict, rng: random.Random,
@@ -931,7 +931,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     if run["room"] >= ROOMS_PER_FLOOR:
         run["floor"] += 1
         run["room"] = 0
-        ev.update(kind="stairs", name=f"Andar {run['floor']}", sprite="escada")
+        ev.update(kind="stairs", name=f"Floor {run['floor']}", sprite="stairs")
         if FLOOR_BONUS_HP:
             run["base"]["maxhp"] += FLOOR_BONUS_HP
             run["hp"] += FLOOR_BONUS_HP
@@ -944,12 +944,12 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["evolved"] = True
         _check_achievements(run, meta, ev)
         st = stats(run)
-        _heal_by_item(run, ev, st["maxhp"], run["hp"], st["cura_andar"])
+        _heal_by_item(run, ev, st["maxhp"], run["hp"], st["heal_floor"])
         return ev
 
     run["room"] += 1
     # regenerates every room (+ heal_room)
-    _heal_by_item(run, ev, st["maxhp"], min(st["maxhp"], run["hp"] + REGEN_PER_ROOM), st["cura_sala"])
+    _heal_by_item(run, ev, st["maxhp"], min(st["maxhp"], run["hp"] + REGEN_PER_ROOM), st["heal_room"])
 
     if run["room"] == ROOMS_PER_FLOOR and f % BOSS_EVERY == 0:
         kind = "boss"
@@ -985,17 +985,17 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             foes = [make_foe(rng.choice(pool), f, mult=HORDE_MULT[n]) for _ in range(n)]
         else:
             foes = [make_foe(rng.choice(pool), f, boss=(kind == "boss"))]
-        ev["name"] = f"Horda ({len(foes)})" if kind == "horde" else foes[0]["name"]
+        ev["name"] = f"Horde ({len(foes)})" if kind == "horde" else foes[0]["name"]
         ev["foes"] = [{k: x[k] for k in ("sprite", "name", "boss", "element", "hp_max")} for x in foes]
         hp_before = run["hp"]
-        won, ev["hits"], killer, tie = combate(run, st, foes, rng, f)
+        won, ev["hits"], killer, tie = combat(run, st, foes, rng, f)
         ev["dmg"] = hp_before - run["hp"]
         _count(run, ev["hits"], foes, kind == "horde" and len(foes) == 4 and won and not tie)
         if not won:
             die(run, meta, ev, killer, kind)
             return ev
         if tie:                            # cleared the room, but without gold, kills, boss bonus or item
-            ev["empate"] = True
+            ev["tie"] = True
             _check_achievements(run, meta, ev)
             return ev
         ev["won"] = True
@@ -1008,7 +1008,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             run["hp"] = min(st["maxhp"], run["hp"] + st["lifesteal"])
         if kind == "boss":
             run["bosses"] += 1
-            meta["chefes"] = meta.get("chefes", 0) + 1
+            meta["bosses"] = meta.get("bosses", 0) + 1
             run["base"]["maxhp"] += 5
             gold += 15 + f
             stats(run)
@@ -1021,7 +1021,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         ev["gold"] = ev.get("gold", 0) + gold
 
     elif kind == "chest":
-        ev.update(name="Baú", sprite="bau")
+        ev.update(name="Chest", sprite="chest")
         if rng.random() < CHEST_ITEM_CHANCE:
             give()
         else:                                  # only happens if CHEST_ITEM_CHANCE < 1
@@ -1030,7 +1030,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["gold"] = gold
 
     elif kind == "trap":
-        ev.update(name="Armadilha", sprite="armadilha")
+        ev.update(name="Trap", sprite="trap")
         if rng.random() < st["dodge"]:
             ev["dodged"] = True
         else:
@@ -1038,65 +1038,65 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             ev["dmg"] = dmg
             if run["hp"] <= 0:
                 run["hp"] = 0
-                die(run, meta, ev, "Armadilha", "trap")
+                die(run, meta, ev, "Trap", "trap")
                 return ev
 
     elif kind == "fountain":
-        ev.update(name="Fonte", sprite="fonte")
+        ev.update(name="Fountain", sprite="fountain")
         heal = max(1, round(st["maxhp"] * 0.35))
         heal = min(heal, st["maxhp"] - run["hp"])
         run["hp"] += heal
         ev["heal"] = heal
 
     elif kind == "shop":
-        ev.update(name="Lojinha", sprite="loja")
+        ev.update(name="Little Shop", sprite="shop")
         potion, item_price = 6 + f, shop_price(run, f)
         if run["hp"] < st["maxhp"] * 0.5 and run["gold"] >= potion:
             run["gold"] -= potion
             heal = min(st["maxhp"] - run["hp"], round(st["maxhp"] * 0.5))
             run["hp"] += heal
             ev["heal"] = heal
-            ev["lines"].append(f"Comprou poção (-{potion} ouro)")
+            ev["lines"].append(f"Bought a potion (-{potion} gold)")
         elif run["gold"] >= item_price:
             offer = roll_offer(run, meta, rng, best=True)
             if offer:
                 run["gold"] -= item_price
-                ev["lines"].append(f"Pagou {item_price} ouro")
+                ev["lines"].append(f"Paid {item_price} gold")
                 deliver(offer)
             else:
-                ev["lines"].append("A loja não tem nada novo...")
+                ev["lines"].append("The shop has nothing new...")
         else:
-            ev["lines"].append("Sem ouro pra comprar...")
+            ev["lines"].append("No gold to buy...")
 
     elif kind == "altar":
-        ev.update(name="Altar Sombrio", sprite="altar")
+        ev.update(name="Dark Altar", sprite="altar")
         pact = rng.choice(["sangue", "pedra", "bencao", "ouro"])
         b = run["base"]
         if pact == "sangue":
             loss = max(2, round(b["maxhp"] * 0.2))
             b["maxhp"] -= loss
             b["atk"] += 2
-            ev["lines"].append(f"Pacto de sangue: -{loss} HP máx, +2 ATK")
+            ev["lines"].append(f"Blood pact: -{loss} max HP, +2 ATK")
         elif pact == "pedra":
             if b["atk"] > 2:
                 b["atk"] -= 1
                 b["def"] += 1
-                ev["lines"].append("Pele de pedra: -1 ATK, +1 DEF")
+                ev["lines"].append("Stone skin: -1 ATK, +1 DEF")
             else:
-                ev["lines"].append("O altar te ignora...")
+                ev["lines"].append("The altar ignores you...")
         elif pact == "bencao":
             b["maxhp"] += 4
             run["hp"] += 4
-            ev["lines"].append("Bênção sombria: +4 HP máx")
+            ev["lines"].append("Dark blessing: +4 max HP")
         else:
             if run["gold"] >= 10:
                 run["gold"] -= 10
                 run["hp"] = stats(run)["maxhp"]
-                ev["lines"].append("Trocou 10 ouro por cura total")
+                ev["lines"].append("Traded 10 gold for a full heal")
             else:
                 run["gold"] += 5
                 ev["gold"] = 5
-                ev["lines"].append("Achou 5 moedas no altar")
+                ev["lines"].append("Found 5 coins on the altar")
         stats(run)
 
     _check_achievements(run, meta, ev)

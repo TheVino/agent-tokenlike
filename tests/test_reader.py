@@ -46,7 +46,7 @@ xp, raw = r3.poll(); assert raw == 1998+1130+10+2, raw
 
 assert tp.fmt(1500)=="1.5K" and tp.fmt(1000)=="1K" and tp.fmt(2_340_000)=="2.3M" and tp.fmt(12)=="12"
 chars = tp.all_characters(); print({k:[s["title"] for s in c.stages] for k,c in chars.items()})
-assert chars["slime"].stage_floors == [1, 4, 10] and chars["fantasma"].unlock == "chefe1"
+assert chars["slime"].stage_floors == [1, 4, 10] and chars["ghost"].unlock == "boss1"
 import art; art.validate()
 print("reader tests ok")
 
@@ -84,7 +84,7 @@ tp.LOG_FILE = dex/"log.txt"; tp.DATA_DIR = dex
 tp.petdex_dirs = lambda: [dex, dex/"nao-existe"]
 assert tp.load_petdex_characters() == []
 _l = tp.LOG_FILE.read_text(encoding="utf-8")
-assert "converta para PNG" in _l and "converter_webp.py" in _l and "erro" not in _l
+assert "convert it to PNG" in _l and "convert_webp.py" in _l and "error" not in _l
 # OpenPets: displayName + .webp spritesheetPath with a same-name .png beside it
 sys.path.insert(0, str(Path(__file__).parent)); from _png import sheet_png as _png0
 def _png(path): _png0(path, 8 * 9, 9 * 8)

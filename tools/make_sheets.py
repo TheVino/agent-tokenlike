@@ -1,4 +1,4 @@
-"""Generates the Ghost sheets (characters/fantasma/folha1..3.png) and the preview of every state of the
+"""Generates the Ghost sheets (characters/ghost/sheet1..3.png) and the preview of every state of the
 built-in heroes (tools/out/preview_heroes.png). Standard library only.
 
 Sheet: 8 x 9 grid (rows in sheet.STATES order), 40 px cells (32 px heroes) with the frame at the bottom.
@@ -61,7 +61,7 @@ def preview(path, heroes, esc=4):
     write_png(path, w * esc, h * esc, lines)
 
 
-HEROES = ["slime", "fantasma", "medico", "bruxa", "coveiro", "ceifeirinho", "vela", "cogumelo", "inquisidor", "boneca", "cavaleiro", "corvo", "alquimista", "freira", "espantalho", "golem", "mariposa", "sapo", "gato", "polvo"]
+HEROES = ["slime", "ghost", "doctor", "witch", "gravedigger", "reaper", "candle", "mushroom", "inquisitor", "doll", "knight", "crow", "alchemist", "nun", "scarecrow", "golem", "moth", "frog", "cat", "octopus"]
 
 
 def main():
@@ -71,19 +71,19 @@ def main():
         try:
             mod = importlib.import_module("heroes." + k)
         except ModuleNotFoundError:
-            print("sem módulo herois." + k + ", pulando")
+            print("no module heroes." + k + ", skipping")
             continue
         assemble.validate(mod)
         for i in range(3):
             est = assemble.states(mod, i)
             bands.append((est, mod.PAL))
             if k != "slime" and not preview_only:
-                path = REPO_ROOT / "characters" / k / f"folha{i + 1}.png"
+                path = REPO_ROOT / "characters" / k / f"sheet{i + 1}.png"
                 make_sheet(path, est, mod.PAL)
-                print("gerado", path)
+                print("written", path)
     out = REPO_ROOT / "tools" / "out" / "preview_heroes.png"
     preview(out, bands)
-    print("prévia", out, "| colunas:", ", ".join(sheet.STATES))
+    print("preview", out, "| columns:", ", ".join(sheet.STATES))
 
 
 if __name__ == "__main__":

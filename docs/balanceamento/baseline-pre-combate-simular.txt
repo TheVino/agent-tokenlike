@@ -1,6 +1,0 @@
-achs=0 mediana andar=5.0 p10=3.0 p90=15.0 max=25 salas med=29.0 itens med=4.0
-  passou do 1º chefe: 0.3845  andar10+: 0.3755
-  matadores: [('Morcego Vampiro', 271), ('Aranha Mãe', 260), ('Rei Rato', 252), ('Olho Abissal', 249), ('Lorde Esqueleto', 243), ('Aranha', 221)]
-achs=7 mediana andar=5.0 p10=3.0 p90=15.0 max=25 salas med=29.0 itens med=4.0
-  passou do 1º chefe: 0.41  andar10+: 0.396
-  matadores: [('Rei Rato', 278), ('Olho Abissal', 272), ('Lorde Esqueleto', 252), ('Morcego Vampiro', 251), ('Aranha Mãe', 235), ('Aranha', 206)]

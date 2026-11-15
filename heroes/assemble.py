@@ -26,18 +26,18 @@ def states(hero, stage):
 
 def validate(hero):
     est = hero.STAGES
-    assert len(est) == 3, f"ESTAGIOS: {len(est)} itens (esperado 3)"
-    assert est[0]["extra"] is None, "ESTAGIOS[0]: extra deve ser None"
-    assert all("title" in s and "floor" in s for s in est), "ESTAGIOS: falta title/floor"
+    assert len(est) == 3, f"STAGES: {len(est)} items (expected 3)"
+    assert est[0]["extra"] is None, "STAGES[0]: extra must be None"
+    assert all("title" in s and "floor" in s for s in est), "STAGES: missing title/floor"
     for e in DRAWN:
         assert e in hero.FRAMES, f"estado faltando: {e}"
         qs = hero.FRAMES[e]
-        assert 4 <= len(qs) <= 6, f"{e}: {len(qs)} quadros (esperado 4 a 6)"
+        assert 4 <= len(qs) <= 6, f"{e}: {len(qs)} frames (expected 4 to 6)"
         anc = hero.ANCHOR.get(e, [])
-        assert len(anc) == len(qs), f"{e}: âncoras != quadros"
-        assert all(len(a) == 2 and all(type(v) is int for v in a) for a in anc), f"{e}: âncora não é (int, int)"
+        assert len(anc) == len(qs), f"{e}: anchors != frames"
+        assert all(len(a) == 2 and all(type(v) is int for v in a) for a in anc), f"{e}: anchor is not (int, int)"
         for i, q in enumerate(qs):
-            assert len(q) == N and all(len(l) == N for l in q), f"{e} quadro {i}: não é {N}x{N}"
+            assert len(q) == N and all(len(l) == N for l in q), f"{e} frame {i}: not {N}x{N}"
             assert any(c != "." for l in q for c in l), f"{e} quadro {i}: vazio"
             used = {c for l in q for c in l} - {"."}
-            assert used <= set(hero.PAL), f"{e} quadro {i}: cor fora da PAL {used - set(hero.PAL)}"
+            assert used <= set(hero.PAL), f"{e} frame {i}: color not in PAL {used - set(hero.PAL)}"

@@ -33,8 +33,8 @@ rng = random.Random(7)
 
 # sample data
 m = app.meta
-m["achievements"] = ["andar5", "chefe1", "mimico", "rico", "veneno1", "queima1", "esquiva10", "andar10"]
-m["runs"], m["best"], m["chefes"] = 23, {"floor": 14, "room": 2}, 4
+m["achievements"] = ["floor5", "boss1", "mimic", "rich", "poison1", "burn1", "dodge10", "floor10"]
+m["runs"], m["best"], m["bosses"] = 23, {"floor": 14, "room": 2}, 4
 m["next_char"] = "slime"
 app.new_run(announce=False)
 keys = list(M.ITEMS)
@@ -44,7 +44,7 @@ now = time.time()
 for d in range(8):
     tp.add_usage(app.state, now - d * 86400, 2.5e6 * (8 - d))
 app.state.update(tokens_total=60e6, xp_total=48e6, daily={tp.date.today().isoformat(): 4e6})
-app.limits = {"sessao": (38, now + 2 * 3600), "semana": (61, now + 3 * 86400), "updated": now}
+app.limits = {"session": (38, now + 2 * 3600), "week": (61, now + 3 * 86400), "updated": now}
 app.lang_var.set(LANG); app.change_lang()
 app.load_images(); app.refresh_look(); app.update_panel()
 app.root.geometry(f"+{PET[0]}+{PET[1]}")
@@ -76,9 +76,9 @@ def snapshot():
     for box in ((0, 0, W, 8), (0, H - 8, W, H), (0, 0, 8, H), (W - 8, 0, W, H)):
         colors = img.crop(box).getcolors(1 << 16) or []
         if [c for _, c in colors] != [color]:
-            print("borda", box, sorted(colors, reverse=True)[:5])
+            print("border", box, sorted(colors, reverse=True)[:5])
             app.root.destroy()
-            sys.exit("a tela mudou durante a captura (outra janela por cima?); nada foi salvo. Rode de novo sem mexer no PC.")
+            sys.exit("the screen changed during the capture (another window on top?); nothing was saved. Run it again without touching the PC.")
     return img
 
 
@@ -103,8 +103,8 @@ print("docs/demo.gif", len(gif), "quadros", (DOCS / "demo.gif").stat().st_size /
 
 # screenshot: pet + Profile open beside it
 app.demo = False                    # no "(demo mode)" tag in the footer
-app.state.setdefault("janelas", {})["profile_win"] = [X0 + 10, Y0 + 20]
-app.show_perfil()
+app.state.setdefault("windows", {})["profile_win"] = [X0 + 10, Y0 + 20]
+app.show_profile()
 w = app.profile_win
 w.unbind("<FocusOut>")
 on_top(); w.attributes("-topmost", True); w.lift(); wait(1.5)

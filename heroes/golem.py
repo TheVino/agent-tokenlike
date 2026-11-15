@@ -107,16 +107,16 @@ def frame(cx=14, base=30, leg=3, seated=False, eye="n", feet=(0, 0), arms=(), po
     outline_cells(g, px)
     # face: glowing eyes in a dark groove and the crack mouth
     ey = h0 + 3
-    eyes = {"n": (["EE", "Ek"], ["EE", "Ek"]), "fechado": (["..", "kk"], ["..", "kk"]),
-             "feliz": ([".E", "E."], [".E", "E."]), "x": (["k.k", ".k.", "k.k"], ["k.k", ".k.", "k.k"]),
-             "bravo": (["E.", "EE"], [".E", "EE"]), "cima": (["Ek", "kk"], ["Ek", "kk"]),
-             "triste": (["EE", "k."], ["EE", ".k"])}[eye]
+    eyes = {"n": (["EE", "Ek"], ["EE", "Ek"]), "closed": (["..", "kk"], ["..", "kk"]),
+             "happy": ([".E", "E."], [".E", "E."]), "x": (["k.k", ".k.", "k.k"], ["k.k", ".k.", "k.k"]),
+             "angry": (["E.", "EE"], [".E", "EE"]), "up": (["Ek", "kk"], ["Ek", "kk"]),
+             "sad": (["EE", "k."], ["EE", ".k"])}[eye]
     back, front = eyes
     stamp(g, back, hx - 2 - (len(back[0]) > 2), ey - (len(back) > 2))
     stamp(g, front, hx + 2, ey - (len(front) > 2))
     for x in range(hx, hx + 3):
         g[h0 + 5][x] = "k"
-    if eye == "triste":
+    if eye == "sad":
         stamp(g, TEAR, hx - 2, ey + 2)
     if crack:                                     # cracks
         for x, y in ((cx - 1, t + 1), (cx, t + 2), (cx, t + 3), (cx + 1, t + 4), (cx + 1, t + 5), (cx + 2, t + 6)):
@@ -144,7 +144,7 @@ _SPECS = {
     "idle": [dict(arms=_FALLEN),
              dict(arms=(((8, 20), (5, 25)), ((20, 20), (23, 25)))),
              dict(arms=_FALLEN, por=((LEAF, 26, 12),)),
-             dict(eye="fechado", arms=_FALLEN, por=((LEAF, 27, 17),)),
+             dict(eye="closed", arms=_FALLEN, por=((LEAF, 27, 17),)),
              dict(arms=(((8, 20), (5, 25)), ((20, 20), (23, 25))))],
     # walks heavily: legs alternating, arms swinging
     "run_r": [dict(feet=(-2, 2), arms=(((8, 20), (4, 25)), ((20, 20), (25, 23)))),
@@ -152,18 +152,18 @@ _SPECS = {
               dict(feet=(2, -2), arms=(((8, 20), (6, 26)), ((20, 20), (22, 25)))),
               dict(base=29, arms=(((8, 20), (5, 26)), ((20, 20), (23, 26))))],
     # waves high with the front fist
-    "waving": [dict(eye="feliz", arms=(_FALLEN[0], ((20, 20), (26, 12)))),
-               dict(eye="feliz", arms=(_FALLEN[0], ((20, 20), (23, 9)))),
-               dict(eye="feliz", arms=(_FALLEN[0], ((20, 20), (27, 13))), por=((LEAF, 28, 4),)),
-               dict(eye="feliz", arms=(_FALLEN[0], ((20, 20), (23, 9))))],
+    "waving": [dict(eye="happy", arms=(_FALLEN[0], ((20, 20), (26, 12)))),
+               dict(eye="happy", arms=(_FALLEN[0], ((20, 20), (23, 9)))),
+               dict(eye="happy", arms=(_FALLEN[0], ((20, 20), (27, 13))), por=((LEAF, 28, 4),)),
+               dict(eye="happy", arms=(_FALLEN[0], ((20, 20), (23, 9))))],
     # crouches, jumps with fists up, comes down, lands
-    "jumping": [dict(leg=0, eye="fechado", arms=(((8, 23), (5, 28)), ((20, 23), (23, 28)))),
-                dict(base=28, eye="cima", arms=(((8, 18), (4, 15)), ((20, 18), (25, 12)))),
-                dict(base=26, eye="feliz", arms=(((8, 16), (4, 12)), ((20, 16), (26, 9)))),
+    "jumping": [dict(leg=0, eye="closed", arms=(((8, 23), (5, 28)), ((20, 23), (23, 28)))),
+                dict(base=28, eye="up", arms=(((8, 18), (4, 15)), ((20, 18), (25, 12)))),
+                dict(base=26, eye="happy", arms=(((8, 16), (4, 12)), ((20, 16), (26, 9)))),
                 dict(base=28, arms=(((8, 18), (4, 19)), ((20, 18), (25, 18)))),
-                dict(leg=0, eye="feliz", arms=(((8, 23), (5, 28)), ((20, 23), (23, 28))))],
+                dict(leg=0, eye="happy", arms=(((8, 23), (5, 28)), ((20, 23), (23, 28))))],
     # cracks into pebbles: cracks spread, the front arm falls, crumbles into a pile of stones
-    "failed": [dict(eye="triste", crack=1, arms=_FALLEN, por=((PEBBLE_S, 26, 22),)),
+    "failed": [dict(eye="sad", crack=1, arms=_FALLEN, por=((PEBBLE_S, 26, 22),)),
                dict(eye="x", crack=2, arms=(_FALLEN[0],),
                     por=((FIST, 24, 25), (PEBBLE, 26, 15), (PEBBLE_S, 3, 17), (PEBBLE_S, 22, 10))),
                dict(eye="x", crack=2, seated=True, arms=(((8, 24), (5, 28)),),
@@ -173,22 +173,22 @@ _SPECS = {
                dict(eye="x", crack=2, seated=True, flor=False, arms=(((8, 24), (5, 28)),),
                     por=((MOUND, 5, 25), (FIST, 25, 25), (PEBBLE, 27, 26)))],
     # naps standing, fists on the ground, "z" rising
-    "waiting": [dict(eye="fechado", arms=_FALLEN),
-                dict(eye="fechado", arms=_FALLEN, por=((Z_S, 23, 6),)),
-                dict(eye="fechado", arms=_FALLEN, por=((Z_S, 22, 7), (Z_L, 25, 0))),
-                dict(eye="fechado", arms=_FALLEN, por=((Z_L, 25, 0),))],
+    "waiting": [dict(eye="closed", arms=_FALLEN),
+                dict(eye="closed", arms=_FALLEN, por=((Z_S, 23, 6),)),
+                dict(eye="closed", arms=_FALLEN, por=((Z_S, 22, 7), (Z_L, 25, 0))),
+                dict(eye="closed", arms=_FALLEN, por=((Z_L, 25, 0),))],
     # stone punch: pulls the fist back, punches forward, the stone bursts into chips
-    "running": [dict(cx=11, eye="bravo", arms=(((5, 20), (3, 25)), ((17, 20), (20, 9)))),
-                dict(cx=11, eye="bravo", arms=(((5, 20), (3, 25)), ((17, 20), (24, 20))),
+    "running": [dict(cx=11, eye="angry", arms=(((5, 20), (3, 25)), ((17, 20), (20, 9)))),
+                dict(cx=11, eye="angry", arms=(((5, 20), (3, 25)), ((17, 20), (24, 20))),
                      por=((STREAK, 19, 14), (STREAK, 18, 24))),
-                dict(cx=11, eye="bravo", arms=(((5, 20), (3, 25)), ((17, 20), (22, 20))),
+                dict(cx=11, eye="angry", arms=(((5, 20), (3, 25)), ((17, 20), (22, 20))),
                      por=((SPLINTERS, 20, 12), (FIST, 19, 17))),
-                dict(cx=11, eye="feliz", arms=(((5, 20), (3, 25)), ((17, 20), (22, 22))),
+                dict(cx=11, eye="happy", arms=(((5, 20), (3, 25)), ((17, 20), (22, 22))),
                      por=((PEBBLE, 27, 12), (PEBBLE_S, 29, 24), (PEBBLE_S, 24, 9)))],
     # fist on the chin, "?" appears
-    "review": [dict(eye="cima", arms=(_FALLEN[0], ((20, 20), (21, 18)))),
-               dict(eye="cima", arms=(_FALLEN[0], ((20, 20), (21, 18))), por=((QMARK_S, 25, 3),)),
-               dict(eye="cima", arms=(_FALLEN[0], ((20, 20), (21, 18))), por=((QMARK, 25, 1),)),
+    "review": [dict(eye="up", arms=(_FALLEN[0], ((20, 20), (21, 18)))),
+               dict(eye="up", arms=(_FALLEN[0], ((20, 20), (21, 18))), por=((QMARK_S, 25, 3),)),
+               dict(eye="up", arms=(_FALLEN[0], ((20, 20), (21, 18))), por=((QMARK, 25, 1),)),
                dict(eye="n", arms=(_FALLEN[0], ((20, 20), (21, 18))), por=((QMARK, 25, 1),))],
 }
 
@@ -240,7 +240,7 @@ def _extra(pieces, w=18, h=14):
 FLOWER = _extra(((_FLOWER, 8, 1),))
 ELDER = _extra(((_NEST, 1, 4), (_MUSHROOMS, 0, 7), (_FLOWER, 8, 1)))
 STAGES = [
-    {"title": "Pedrinha", "floor": 1, "extra": None},
-    {"title": "Golem de Musgo", "floor": 4, "extra": FLOWER},
-    {"title": "Golem Ancião", "floor": 10, "extra": ELDER},
+    {"title": "Pebble", "floor": 1, "extra": None},
+    {"title": "Moss Golem", "floor": 4, "extra": FLOWER},
+    {"title": "Elder Golem", "floor": 10, "extra": ELDER},
 ]

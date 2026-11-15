@@ -136,15 +136,15 @@ def _place(pm, art, box, anchor, order, glow, k=1):
     ax0, ay0, ax1, ay1 = bbox(art)
     aw, ah = ax1 - ax0, ay1 - ay0
     cx, cy = (x0 + x1) // 2 - aw // 2, (y0 + y1) // 2 - ah // 2
-    if anchor == "topo":
+    if anchor == "top":
         tx, ty = cx, y0 + 2 - ah - order * (ah - 2)
-    elif anchor == "esq":
+    elif anchor == "left":
         tx, ty = x0 - aw - order * (aw - 2), y1 - ah
-    elif anchor == "dir":
+    elif anchor == "right":
         tx, ty = x1 + order * (aw - 2), y1 - ah
     elif anchor == "base":
         tx, ty = cx, y1 + order * (ah - 2)
-    elif anchor == "flutua":
+    elif anchor == "float":
         n = order // 4 + 1   # after the 4 positions, repeat farther out
         tx, ty = [(x0 - aw * n, y0 - ah * n), (x1 + aw * (n - 1), y0 - ah * n),
                   (x0 - aw * n, cy), (x1 + aw * (n - 1), cy)][order % 4]
@@ -213,7 +213,7 @@ def frost(pm, level=1, phase=0, color="#9fe8ff", white="#ffffff"):
     return out
 
 
-ELEMENTALS = {"chamas": flames, "faiscas": sparks, "gotas_veneno": poison_drops, "geada": frost}
+ELEMENTALS = {"flames": flames, "sparks": sparks, "poison_drops": poison_drops, "frost": frost}
 
 
 def has_anim(looks):
@@ -234,16 +234,16 @@ def compose(base, looks, arts, phase=0, k=1):
         t = l["type"]
         if t in ELEMENTALS:
             continue   # animated looks come after the objects box, so it does not change with the phase
-        if t in ("espinhos", "gotas"):
+        if t in ("thorns", "drops"):
             # applied only once, at level = number of looks of that type, with the color of the FIRST look of the type
             if t not in done:
                 done.add(t)
-                out = (thorns if t == "espinhos" else drops)(out, l["color"], kinds.count(t))
-        elif t == "contorno":
+                out = (thorns if t == "thorns" else drops)(out, l["color"], kinds.count(t))
+        elif t == "outline":
             out = contour(out, l["color"])
-        elif t == "tingir":
+        elif t == "tint":
             out = tint(out, l["color"], l["amount"])
-        elif t == "adesivo":
+        elif t == "sticker":
             out = sticker(out, scale(arts[l["art"]], k), l["at"], glow, k)
     box = bbox(out)   # objects use the box of the already mutated body (without the animated looks: the same in every phase)
     for l, _ in looks:

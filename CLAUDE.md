@@ -1,260 +1,286 @@
-# Agent Tokenlike: Masmorra de Tokens
+# Agent Tokenlike: Token Dungeon
 
-Pet de pixel art que fica sobre a tela do Windows (overlay transparente, sempre por cima) e
-desce uma masmorra roguelike usando como energia os tokens gastos no Claude Code.
-Antes se chamava TokenPet. Projeto pessoal e não oficial (sem vínculo com a Anthropic); interface e textos em **português (pt-BR)**.
+Pixel-art pet that sits on the Windows screen (transparent overlay, always on top) and descends a roguelike
+dungeon using the tokens spent in Claude Code as energy. Formerly TokenPet. Personal, unofficial project
+(no ties to Anthropic).
 
-## Arquivos
+**Language rule:** code, comments, identifiers, file names, commits and docs are always in **English**. Only the
+conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR (default) and English.
 
-- `tokenlike.py`: app (tkinter). Contém a leitura de tokens (`TokenReader`), o estado/salvamento,
-  os personagens (Slime embutido + loader de PNG) e a GUI (`PetApp`). O `tkinter` é importado só em
-  `run_gui()`, para o resto do módulo ser testável sem tela.
-  O botão direito abre um menu próprio em pixel art (`on_menu`: `Toplevel` sem borda de `pixel_box`, moldura dourada
-  com cantos recortados, ícones de `arte.py`, chips de Tamanho/Modo, caixinhas em `arte.MENU_ART`), não o `tk.Menu`;
-  "Heróis…" abre a grade `show_heroes`, com a seção "Heróis" (os nossos: `heroi_proprio`, módulo em `herois/`) e a
-  "Comunidade" (importados: pasta em `characters/` sem módulo, Petdex/Codex) (bloqueado = silhueta + cadeado + conquista; `hero_cards[key]` é None).
-  "Aparecer só com uso" (`state["so_com_uso"]`, `ajustar_visivel` no poll): `withdraw` depois de `ESCONDER_S` (5 min) sem tokens
-  (conta de `max(last_fed, aberto_em)`; nunca no meio de sala ou com escolha aberta), `deiconify` no 1º token; escondido o jogo segue.
-  "Abrir com o Windows" (`atalho_inicio`): `.cmd` com pythonw na pasta Inicializar, só pelo menu.
-  Ícone na bandeja (`bandeja.py`, ctypes, só Windows; `iniciar_bandeja` em `run_gui`, não nos testes): thread com janela
-  oculta e `Shell_NotifyIconW`, ícone = Slime em `~/.tokenlike/icone.ico`; clique esquerdo = `mostrar`, botão direito = menu
-  Mostrar o pet / Sair. Os cliques vêm por `fila` (`ouvir_bandeja`, after de 150 ms), porque o Tk não é thread-safe.
-  Toda janela de `janela()` é arrastável pela barra de título (`arrastavel`, cursor `fleur`); a posição fica em
-  `state["janelas"][attr]` e `ao_lado` reusa ela se ainda estiver na tela virtual (`tela()`: todos os monitores, x negativo vale; senão, ao lado do pet).
-  Status, Conquistas e Cemitério também são janelas pixel (`janela(attr, título)` + `ao_lado`; atributos em `JANELAS`):
-  `show_stats` (miniatura, barra de HP, uma linha por campo de `STAT_LINHAS`/`stat_linhas` com ícone de `arte.STAT_ART`
-  e teto, itens com brilho da raridade e nome no hover, consumidos esmaecidos), `show_achievements` (cards de `CONQ_*`,
-  ícone de `arte.CONQ_ART`, silhueta se não tem, mini-ícones do que libera) e `show_graveyard` (lápides num `Canvas`
-  com rolagem). "Itens" abre `show_items`: cards num `Canvas` (`item_card`), cada raridade possível com `fx_text` e o
-  `consume` na cor de `RAR_COLOR`, família por `item_familia`/`FAMILIAS`, filtro Todos/Liberados/Bloqueados; bloqueado
-  (`item_liberado`, mesma regra do sorteio; demo libera tudo) = silhueta + cadeado + conquista, sem valores.
-  "Perfil" (1ª linha do menu) abre `show_perfil`: herói/run/HP, nível de domador (`nivel`: floor(sqrt(energia na vida `xp_total` / 1M)),
-  `NIVEL_XP`), medalhas de `arte.CONQ_ART` em células fixas (`icon(..., lado=)`, nome no hover), 6 cartões (hoje e na vida em energia, sequência `dias_seguidos`, runs,
-  recorde, heróis N/20 + chefes), barras dos últimos 7 dias (`uso_por_dia`, XP de `usage_hist`, hoje dourado), limites via
-  `limit_view` e rodapé com `ultimo_uso`/`fmt_ha` e atalhos. Funções puras testadas em `test_limites.py`; textos todos em `show_perfil`.
-  **Cantos arredondados:** tudo usa `retangulo_arredondado(cv, x0, y0, x1, y1, r, fill, outline, larg, tag, extra)` (degraus de
-  pixel de `degraus(r)`, só retângulos retos: nada de antialias contra a cor-chave). `pixel_box` desenha a moldura num Canvas
-  de fundo (`JANELA_R`); cartões são `cartao()` (Canvas, miolo `CARD_BG`, filhos a `CARTAO_PAD` da borda, `fundo(cor)` no hover);
-  botões/filtros são `chip()`; barras são `barra()` (`.set(frac)`). Texto que pode não caber: `encurtar` ("…") + `dica` (balão no hover).
-  Regra: **toda caixa nova usa esses helpers e passa em `tests/test_textos.py`** (`tests/_textos.py: checar(janela)`).
-  Toda janela que rola usa `rolagem()` (barra pixel: arrastar, clicar na trilha, roda, setas). Ícones via `icon()` (cache `self.icons`); `map_img` monta um PNG e
-  carrega numa chamada só (um `put` por pixel deixava a janela lenta).
-- `idioma.py`: idioma da interface (pt-BR padrão ou inglês, `state["lang"]`, chips PT/EN no menu). `t(texto_pt, **fmt)`:
-  o texto em pt é a chave do dicionário `EN`; sem `fmt`, um texto já montado (linhas de evento, lápides antigas) é
-  traduzido por modelo (`"Pagou {n} ouro"`). No `tokenlike.py` é `_t`. Os dados do jogo continuam em pt (lápides,
-  registros, `BALANCE_VERSION`); a tradução é só na hora de mostrar. Trocar o idioma redesenha o HUD e reabre as
-  janelas abertas (`change_lang`, `REABRE`). **Todo texto visível novo passa por `t()`/`_t()` e ganha entrada em `EN`**
-  (`tests/test_idioma.py` falha se faltar; nomes em inglês também são originais, ex.: Cavaleiro Oco = Empty Knight).
-- `masmorra.py`: regras do jogo, puras e sem GUI: energia, salas, combate, itens, conquistas, morte.
-  `enter_room()` resolve uma sala e devolve um dicionário de evento, que a GUI só anima (`PetApp.play_room`).
-- `arte.py`: toda a pixel art em grades de texto (`'.'` = transparente, letras = cores de `PAL`).
-  Itens, monstros, salas, coroa de chefe, `STAT_ART` (um por campo de `stats()`, mais `crescer`) e `CONQ_ART`
-  (um por conquista). `BOSS_PAL` recolore os monstros para os chefes.
-- `visual.py`: efeitos puros sobre mapas de pixels `{(x, y): "#rrggbb"}` (sem tkinter): `espinhos`, `gotas`,
-  `contorno`, `tingir`, `adesivo`, `objeto` e `compose()`, que monta o pet com os `look` dos itens empilhados
-  (brilho na cor da raridade). `LOOK_BOX` limita a área: em cada âncora ficam só os objetos mais recentes que cabem
-  inteiros nela (os mais antigos daquele ponto deixam de ser desenhados); a GUI só recompõe quando a lista de itens muda (`refresh_look`).
-- `herois/`: heróis embutidos 32 px, um módulo por herói (`slime.py`, `fantasma.py`, `medico.py`, `bruxa.py`, `coveiro.py`, `ceifeirinho.py`, `vela.py`, `cogumelo.py`, `inquisidor.py`, `boneca.py`, `cavaleiro.py`, `corvo.py`, `alquimista.py`, `freira.py`, `espantalho.py`, `golem.py`, `mariposa.py`, `sapo.py`, `gato.py`, `polvo.py`) com: `PAL` (letra -> cor), `QUADROS`
-  (8 estados desenhados: idle, run_r, waving, jumping, failed, waiting, running, review; 4 a 6 quadros 32x32 cada),
-  `ESTAGIOS` (exatamente 3: `title`, `floor`, `extra`; o 1º com `extra=None`; o Slime evolui nos andares 1/4/10: Gotinha,
-  Slime, Rei Slime) e `ANCORA` (por estado e quadro, `(x, y)` inteiros onde o `extra` do estágio é colado).
-  `herois/comum.py`: peças repartidas (`z`, `?`, lágrima, `carimbar`, `linha`, `contornar`, `traco`).
-  Desbloqueio por conquista: Fantasma `chefe1`, Médico `veneno1`, Bruxa `elementos3`, Coveiro `ouro300`, Ceifeirinho `horda4`,
-  Vela Viva `queima1`, Cogumelo `andar8cheio`, Inquisidor `andar15` (HP base 16), Boneca `esquiva10`,
-  Cavaleiro Oco `bloqueio10` (ATK base 2, spd 8), Corvo `chefes3` (meta, `meta["chefes"]`, spd 12), Alquimista `consumir10`,
-  Freira `morrer10` (meta, `meta["runs"]`), Espantalho `ajudantes3` (ajudante 1), Golem `sem_consumir10` (DEF +1, HP +3, spd 8),
-  Mariposa `lendarios3`, Sapo `veneno3`, Gato `andar13` (morte ou desistência no 13), Polvo `chefes3run`. São 20 heróis nossos. `die()` chama `_check_achievements`. No `--demo` todos os heróis vêm liberados.
-  Regra de balanceamento dos heróis: cada um passa do 1º chefe em 30-50% (1.500 runs só dele).
-  `herois/montar.py`: `estados()` monta os 9 estados (`run_l` = `run_r` espelhado, não se desenha) e `validar()` confere
-  tudo (4-6 quadros, âncoras, 32x32, 3 estágios). `tools/gerar_folhas.py` gera `characters/fantasma/folha1..3.png`
-  (grade 8x9, células de 40 px, 4-6 quadros por estado, células vazias onde faltam quadros) e a prévia
-  `tools/saida/preview_herois.png`. Os PNGs antigos do Fantasma ficam no repo.
-- **Traço do herói** (`"traço"` no `character.json`, objeto com campos de `fx`): vai para `run["traco"]` em `new_run` e soma
-  em `stats()` como um item, mas **sem escalar por raridade**. Chave inválida ou valor não numérico invalida o herói.
-  `run["cont"]` guarda contadores da run (`esquivas`, `bloqueios`, `mortes_veneno`, `mortes_queima`, `horda4`; horda de 4
-  empatada não conta), para conquistas e traços futuros.
-- `characters/<pasta>/character.json` + PNGs: heróis extras (ex.: `fantasma`). O formato está no `LEIA-ME.md`.
-- `folha.py`: corte de spritesheet (9 linhas, `ESTADOS`: idle, run_r, run_l, waving, jumping, failed, waiting,
-  running, review). Herói = `characters/<pasta>/spritesheet.png` (+ `character.json` opcional) ou pet do Petdex
-  (`~/.petdex/pets/<slug>/`, `~/.codex/pets/<slug>/`, só PNG, `comunidade=True`, menu "Comunidade"; só lidos, nunca copiados).
-  Na GUI, `estado_atual` escolhe: escolha pendente `review` > luta `running` > morte `failed` (antes da lápide) >
-  descanso/sono `waiting` > `idle`; `waving` ~1 s após o carinho, `jumping` na evolução e ao vencer chefe.
-  O PNG é decodificado por `folha.ler_png` (zlib + struct, 8 bits; opaco = alfa > 128), não pelo Tk. A descoberta
-  (`all_characters`) só lê o cabeçalho; o corte (`completar_estagio`/`ler_folha`, cache por caminho+mtime, guarda só os
-  mapas reduzidos) roda numa thread quando o herói fica ativo, e o `after` troca o visual ("preparando herói…").
-  `refresh_look` compõe na hora só o idle e o estado na tela; os outros de `estados_fx` saem na 1ª leitura
-  (cache `fx_cache` por estado + itens + status). Todos os estados usam o mesmo k e o pivô na base da caixa aparada.
-  O Slime embutido também tem `estados` (grade) e continua piscando no idle; heróis PNG soltos seguem sem estados.
-  Uma pasta `characters/slime` não substitui mais o Slime embutido (chaves repetidas ficam com o primeiro).
-- `tests/`: `test_limites.py` (statusline grava só os limites; leitura, dado velho, cores, fuso; funções do perfil), `test_migracao.py` (cópia de `~/.tokenpet` para `~/.tokenlike`), `test_reader.py` (leitura de logs, deduplicação, arte),
-  `test_itens.py` (raridade, empilhar, pegar/consumir, escudo, tetos, pendência, migração do save de 3 espaços),
-  `test_registro.py` (`run_record`, `runs.jsonl`), `test_estatisticas.py` (métricas e página),
-  `test_folha.py` (corte e decodificador de PNG; `tests/_png.py` escreve PNGs de verdade), `test_visual.py` (efeitos de `visual.py` e composição do pet), `test_textos.py` (Tk real, dados de pior caso em todas
-  as janelas e no HUD, em pt e en; a checagem reutilizável é `tests/_textos.py: checar(janela)`, cartões no Canvas marcados com a tag
-  `card:<id>` via `extra=`), `test_idioma.py` (toda chave de `t()` e todo dado do jogo com tradução EN, `fx_text` e
-  linhas de evento em EN, `BALANCE_VERSION` igual) e `test_gui.py` (tkinter falso
-  que executa os callbacks `after`, joga centenas de salas, morre, renasce, troca de herói, testa o modo interativo e a troca de idioma;
-  usa `random.Random(SEED)` para ser determinístico).
-- `tools/simular.py`: simula 2.000 runs e mostra a distribuição de andares, a taxa de passar do 1º chefe e quem mais mata.
-  `tools/estatisticas.py`: gera `tools/saida/estatisticas.html` e `.json` (gitignored) com simulado x real, itens, pares, mortes e heróis; `METAS` (metas de balanceamento) mora aí.
-  `tools/preview_arte.py`: gera um PNG com todos os desenhos (precisa do Pillow, só para desenvolvimento).
-  `tools/gravar_readme.py`: gera `docs/screenshot.png` e `docs/demo.gif` com o app de verdade (HOME temporário, dados falsos,
-  fundo escuro atrás do pet; aborta sem salvar se outra janela aparecer na área). Não mexer no PC durante os ~30 s.
-- `README.md` (inglês, para o GitHub) e `LEIA-ME.md` (pt-BR). Licença MIT.
-- `statusline.py`: statusline opcional do Claude Code (o usuário liga). Lê o JSON do stdin e grava só os limites oficiais
-  de sessão (5h) e semana em `~/.tokenlike/limites.json`. O pet lê com `read_limits` a cada poll e desenha as barras
-  Sessão/Semana no painel (verde ≤50%, amarelo ≤80%, vermelho acima). Leitura oficial nova calibra um fator por janela
-  (`calibrate`, `state["calib"]`); sem leitura recente (<10 min) mostra `~N%` estimado (`limit_view`); sem fator, mostra os
-  tokens da janela e a barra (cor neutra `PICO_COR`) é a fração do **seu pico** (`pico`, `state["pico"]`, guardado além dos 8 dias),
-  não do limite real; a sessão de 5h é refeita do histórico (`sessoes`: começa no 1º uso depois que a anterior acabou). A statusline
-  só roda no Claude Code do terminal. A barra de energia desliza até o valor (`bar_frac` no tick) e tem um brilho que corre (`desenha_energia`).
-  As barras aparecem sempre.
-- `.claude/skills/balancear/`: skill `/balancear` (lê as estatísticas e propõe mudanças de números, só edita com aprovação do dono).
-- `iniciar.bat` (pythonw, sem console), `testar-demo.bat` (`--demo`: tokens falsos, estado separado).
+## Files
 
-## Comandos
+- `tokenlike.py`: the app (tkinter). Token reading (`TokenReader`), state/saving, characters (built-in Slime +
+  PNG loader) and the GUI (`PetApp`). `tkinter` is imported only in `run_gui()`, so the rest of the module is
+  testable without a screen.
+  Right click opens a custom pixel-art menu (`on_menu`: borderless `Toplevel` from `pixel_box`, golden frame
+  with cut corners, icons from `art.py`, Size/Mode chips, checkboxes from `art.MENU_ART`), not `tk.Menu`.
+  "Heroes…" opens the `show_heroes` grid, with the "Heroes" section (ours: `own_hero`, module in `heroes/`) and
+  "Community" (imported: folder in `characters/` without a module, Petdex/Codex) (locked = silhouette + padlock +
+  achievement; `hero_cards[key]` is None).
+  "Show only when in use" (`state["only_when_used"]`, `adjust_visibility` in poll): `withdraw` after `HIDE_S`
+  (5 min) without tokens (counted from `max(last_fed, opened_at)`; never mid-room or with an open choice),
+  `deiconify` on the 1st token; while hidden the game goes on.
+  "Start with Windows" (`startup_shortcut`): `.cmd` with pythonw in the Startup folder, menu only.
+  Tray icon (`tray.py`, ctypes, Windows only; `start_tray` in `run_gui`, not in tests): a thread with a hidden
+  window and `Shell_NotifyIconW`, icon = the Slime in `~/.tokenlike/icon.ico`; left click = `show`, right click
+  = menu Show the pet / Quit. Clicks come through `events` (`listen_tray`, 150 ms after), since Tk is not thread-safe.
+  Every `window()` is draggable by its title bar (`make_draggable`, `fleur` cursor); the position goes to
+  `state["windows"][attr]` and `beside` reuses it while it is still on the virtual screen (`screen()`: all
+  monitors, negative x allowed; otherwise beside the pet).
+  Status, Achievements and Graveyard are pixel windows too (`window(attr, title)` + `beside`; attributes in
+  `WINDOW_ATTRS`): `show_stats` (thumbnail, HP bar, one line per field of `STAT_LINES`/`stat_lines` with an icon
+  from `art.STAT_ART` and cap, items with rarity glow and name on hover, consumed ones faded),
+  `show_achievements` (cards, icon from `art.ACH_ART`, silhouette if missing, mini icons of what it unlocks) and
+  `show_graveyard` (tombstones on a scrolling `Canvas`). "Items" opens `show_items`: cards on a `Canvas`
+  (`item_card`), every possible rarity with `fx_text` and `consume` in the `RAR_COLOR` color, family from
+  `item_family`/`FAMILIES`, filter All/Unlocked/Locked; locked (`item_unlocked`, same rule as the roll; demo
+  unlocks everything) = silhouette + padlock + achievement, no values.
+  "Profile" (1st menu row) opens `show_profile`: hero/run/HP, tamer level (`level`: floor(sqrt(lifetime energy
+  `xp_total` / 1M)), `LEVEL_XP`), medals from `art.ACH_ART` in fixed cells (`icon(..., side=)`, name on hover),
+  6 cards (today and lifetime energy, `streak_days`, runs, best, heroes N/20 + bosses), last 7 days bars
+  (`usage_per_day`, XP from `usage_hist`, today in gold), limits via `limit_view` and a footer with
+  `last_use`/`fmt_ago` and shortcuts. Pure functions tested in `test_limits.py`; all its texts live in `show_profile`.
+  **Rounded corners:** everything uses `rounded_rect(cv, x0, y0, x1, y1, r, fill, outline, lw, tag, extra)`
+  (pixel steps from `steps(r)`, straight rectangles only: no antialias against the key color). `pixel_box` draws
+  the frame on a background Canvas (`WINDOW_R`); cards are `card_box()` (Canvas, `CARD_BG` inside, children
+  `CARD_PAD` from the border, `backdrop(color)` on hover); buttons/filters are `chip()`; bars are `progress_bar()`
+  (`.set(frac)`). Text that may not fit: `shorten` ("…") + `tooltip` (bubble on hover).
+  Rule: **every new box uses these helpers and passes `tests/test_texts.py`** (`tests/_texts.py: check(window)`).
+  Every scrolling window uses `scrollbar()` (pixel bar: drag, click the track, wheel, arrows). Icons via `icon()`
+  (cache `self.icons`); `map_img`/`png_bytes` build a PNG and load it in one call (one `put` per pixel was slow).
+- `i18n.py`: interface language (pt-BR default or English, `state["lang"]`, PT/EN chips in the menu).
+  `t(text_en, **fmt)`: the English text is the key of the `PT` dictionary; without `fmt`, an already built text
+  (event lines) is translated by template (`"Paid {n} gold"`). In `tokenlike.py` it is `_t`. Game data and
+  records are in English; translation only happens at display time. `legacy_en` turns Portuguese texts saved by
+  old versions into English. Switching language redraws the HUD and reopens the open windows (`change_lang`,
+  `REOPEN`). **Every new visible text goes through `t()`/`_t()` and gets a `PT` entry** (`tests/test_i18n.py`
+  fails otherwise; names are original in both languages, e.g. Empty Knight = Cavaleiro Oco).
+- `legacy.py`: one-time conversion of saves from the Portuguese-key versions (`DATA_VERSION` 2). `migrate_state`
+  maps keys and values with `KEYS` (+ `i18n.legacy_en` for saved display texts); `migrate_all` (in `run_gui`)
+  rewrites `state.json` and `runs.jsonl` once, keeping `<name>.pt.bak`. `load_state` also migrates in memory.
+- `dungeon.py`: game rules, pure and without GUI: energy, rooms, combat, items, achievements, death.
+  `enter_room()` resolves a room and returns an event dict that the GUI only animates (`PetApp.play_room`).
+- `art.py`: all the pixel art as text grids (`'.'` = transparent, letters = colors from `PAL`).
+  Items, monsters, rooms, boss crown, `STAT_ART` (one per `stats()` field, plus `grow`) and `ACH_ART`
+  (one per achievement). `BOSS_PAL` recolors monsters for bosses.
+- `visual.py`: pure effects on pixel maps `{(x, y): "#rrggbb"}` (no tkinter): `thorns`, `drops`, `contour`,
+  `tint`, `sticker`, `place_object` and `compose()`, which builds the pet with the stacked items' `look`
+  (glow in the rarity color). `LOOK_BOX` limits the area: at each anchor only the most recent objects that fully
+  fit stay (older ones at that anchor stop being drawn); the GUI only recomposes when the item list changes (`refresh_look`).
+- `heroes/`: built-in 32 px heroes, one module per hero (`slime`, `ghost`, `doctor`, `witch`, `gravedigger`,
+  `reaper`, `candle`, `mushroom`, `inquisitor`, `doll`, `knight`, `crow`, `alchemist`, `nun`, `scarecrow`,
+  `golem`, `moth`, `frog`, `cat`, `octopus`) with: `PAL` (letter -> color), `FRAMES` (8 drawn states: idle, run_r,
+  waving, jumping, failed, waiting, running, review; 4 to 6 32x32 frames each), `STAGES` (exactly 3: `title`,
+  `floor`, `extra`; the 1st with `extra=None`; the Slime evolves on floors 1/4/10: Droplet, Slime, Slime King) and
+  `ANCHOR` (per state and frame, integer `(x, y)` where the stage's `extra` is pasted).
+  `heroes/common.py`: shared pieces (`z`, `?`, tear, `mirror`, `stamp`, `line`, `outline_cells`, `stroke`).
+  Unlock by achievement: Ghost `boss1`, Doctor `poison1`, Witch `elements3`, Gravedigger `gold300`, Reaper
+  `horde4`, Living Candle `burn1`, Mushroom `floor8full`, Inquisitor `floor15` (base HP 16), Doll `dodge10`,
+  Empty Knight `block10` (base ATK 2, spd 8), Crow `bosses3` (meta, `meta["bosses"]`, spd 12), Alchemist
+  `consume10`, Nun `die10` (meta, `meta["runs"]`), Scarecrow `helpers3` (helper 1), Golem `no_consume10` (DEF +1,
+  HP +3, spd 8), Moth `legendaries3`, Frog `poison3`, Cat `floor13` (death or give-up on 13), Octopus
+  `bosses3run`. That is 20 heroes of ours. `die()` calls `_check_achievements`. In `--demo` every hero is unlocked.
+  Hero balance rule: each one passes the 1st boss in 30-50% (1,500 runs of that hero alone).
+  `heroes/assemble.py`: `states()` builds the 9 states (`run_l` = `run_r` mirrored, never drawn) and `validate()`
+  checks everything (4-6 frames, anchors, 32x32, 3 stages). `tools/make_sheets.py` writes
+  `characters/<hero>/sheet1..3.png` (8x9 grid, 40 px cells, 4-6 frames per state, empty cells where frames are
+  missing) and the preview `tools/out/preview_heroes.png`. The Ghost's old PNGs (`stage1.png`...) stay in the repo.
+- **Hero trait** (`"trait"` in `character.json`, an object with `fx` fields; `"traço"` is still read): goes to
+  `run["trait"]` in `new_run` and adds up in `stats()` like an item, but **without rarity scaling**. An invalid
+  key or a non-numeric value invalidates the hero. `run["counters"]` keeps run counters (`dodges`, `blocks`,
+  `poison_kills`, `burn_kills`, `horde4`; a tied horde of 4 does not count), for achievements and future traits.
+- `characters/<folder>/character.json` + PNGs: extra heroes. The format is in `README.md`.
+- `sheet.py`: spritesheet cutting (9 rows, `STATES`: idle, run_r, run_l, waving, jumping, failed, waiting,
+  running, review). Hero = `characters/<folder>/spritesheet.png` (+ optional `character.json`) or a Petdex pet
+  (`~/.petdex/pets/<slug>/`, `~/.codex/pets/<slug>/`, PNG only, `community=True`, "Community" menu; read only,
+  never copied). In the GUI, `current_state` picks: pending choice `review` > fight `running` > death `failed`
+  (before the tombstone) > rest/sleep `waiting` > `idle`; `waving` ~1 s after petting, `jumping` on evolution
+  and after beating a boss. The PNG is decoded by `sheet.read_png` (zlib + struct, 8 bits; opaque = alpha > 128),
+  not by Tk. Discovery (`all_characters`) only reads the header; the cut (`complete_stage`/`read_sheet`, cache by
+  path+mtime, keeps only the reduced maps) runs in a thread when the hero becomes active, and an `after` swaps
+  the look ("preparing hero…"). `refresh_look` composes only idle and the on-screen state right away; the other
+  `states_fx` come on first read (cache `fx_cache` per state + items + status). Every state uses the same k and
+  the pivot at the base of the trimmed box. The built-in Slime also has `states` (grid) and still blinks in idle;
+  loose PNG heroes have no states. A `characters/slime` folder no longer replaces the built-in Slime (repeated keys keep the first).
+- `tests/`: `test_limits.py` (statusline writes only the limits; reading, stale data, colors, time zone; profile
+  functions), `test_migration.py` (copy from `~/.tokenpet` to `~/.tokenlike`; Portuguese-key save conversion),
+  `test_reader.py` (log reading, dedup, art), `test_items.py` (rarity, stacking, take/consume, shield, caps,
+  pending offer, 3-slot save migration), `test_records.py` (`run_record`, `runs.jsonl`), `test_balance_stats.py`
+  (metrics and page), `test_combat.py`, `test_sheet.py` (cutting and PNG decoder; `tests/_png.py` writes real
+  PNGs), `test_visual.py` (effects of `visual.py` and pet composition), `test_texts.py` (real Tk, worst-case data
+  in every window and the HUD, in pt and en; the reusable check is `tests/_texts.py: check(window)`, cards on a
+  Canvas tagged `card:<id>` via `extra=`), `test_i18n.py` (every `t()` key and every game data text with a PT
+  translation, `fx_text` and event lines in EN, same `BALANCE_VERSION`) and `test_gui.py` (fake tkinter that runs
+  the `after` callbacks, plays hundreds of rooms, dies, respawns, switches hero, tests interactive mode, language
+  switch and the tray; uses `random.Random(SEED)` to be deterministic).
+- `tools/simulate.py`: simulates 2,000 runs and shows the floor distribution, the rate of passing the 1st boss and the top killers.
+  `tools/balance_stats.py`: writes `tools/out/balance_stats.html` and `.json` (gitignored) with simulated x real,
+  items, pairs, deaths and heroes; `TARGETS` (balance targets) lives there.
+  `tools/preview_art.py`: writes a PNG with every drawing (needs Pillow, development only).
+  `tools/record_readme.py`: writes `docs/screenshot.png` and `docs/demo.gif` with the real app (temporary HOME,
+  fake data, dark backdrop behind the pet; aborts without saving if another window shows up in the area). Do not touch the PC during the ~30 s.
+- `README.md` (English, for GitHub). MIT license.
+- `statusline.py`: optional Claude Code statusline (the user turns it on). Reads the JSON from stdin and writes
+  only the official session (5h) and week limits to `~/.tokenlike/limits.json`. The pet reads them with
+  `read_limits` on every poll and draws the Session/Week bars in the panel (green ≤50%, yellow ≤80%, red above).
+  A new official reading calibrates a factor per window (`calibrate`, `state["calib"]`); without a recent reading
+  (<10 min) it shows an estimated `~N%` (`limit_view`); without a factor, it shows the window's tokens and the
+  bar (neutral `PEAK_COLOR`) is the fraction of **your peak** (`peak`, `state["peak"]`, kept beyond the 8 days),
+  not of the real limit; the 5h session is rebuilt from the history (`sessions`: starts at the 1st use after the
+  previous one ended). The statusline only runs in the terminal Claude Code. The energy bar slides to its value
+  (`bar_frac` in the tick) and has a running shimmer (`draw_energy`). The bars always show.
+- `.claude/skills/balance/`: `/balance` skill (reads the stats and proposes number changes, only edits with the owner's approval).
+- `start.bat` (pythonw, no console), `demo.bat` (`--demo`: fake tokens, separate state).
+
+## Commands
 
 ```
 python tests/test_reader.py
-python tests/test_itens.py
+python tests/test_items.py
 python tests/test_visual.py
 python tests/test_gui.py
-python tests/test_migracao.py
-python tests/test_limites.py
-python tests/test_registro.py
-python tests/test_estatisticas.py
-python tests/test_idioma.py
-python tests/test_textos.py     # Tk de verdade (pula sem tela): textos sem cortar/sobrepor, em pt e en
-python tools/estatisticas.py    # página de estatísticas (sim x real); --sem-abrir não abre o navegador
-python tools/simular.py          # depois de mexer em balanceamento/itens/salas
-python tools/preview_arte.py     # depois de mexer em arte.py
-python tokenlike.py --demo        # ver na tela de verdade
+python tests/test_migration.py
+python tests/test_limits.py
+python tests/test_records.py
+python tests/test_balance_stats.py
+python tests/test_combat.py
+python tests/test_sheet.py
+python tests/test_i18n.py
+python tests/test_texts.py     # real Tk (skips without a screen): texts not clipped/overlapping, in pt and en
+python tools/balance_stats.py  # stats page (sim x real); --no-open does not open the browser
+python tools/simulate.py       # after touching balance/items/rooms
+python tools/preview_art.py    # after touching art.py
+python tokenlike.py --demo     # see it on the real screen
 ```
 
-Rode os testes depois de qualquer mudança. Quando mexer em `masmorra.py`, rode também o simulador.
-O `test_gui.py` falha se aparecer "erro" em `~/.tokenlike/tokenlike.log` (num HOME temporário).
+Run the tests after any change. When touching `dungeon.py`, also run the simulator.
+`test_gui.py` fails if "error" shows up in `~/.tokenlike/tokenlike.log` (in a temporary HOME).
 
-## Regras do projeto (não quebrar)
+## Project rules (do not break)
 
-1. **Privacidade:** dos `.jsonl` do Claude Code (`~/.claude/projects/**`, ou `CLAUDE_CONFIG_DIR`) só se usa
-   `message.usage` e o `timestamp` de cada resposta (histórico em baldes de 5 min, 8 dias, em `state["usage_hist"]`). Nunca guardar, mostrar ou logar conteúdo de prompts e respostas. Sem rede, sem telemetria,
-   sem hooks, sem alterar configs do Claude Code. Exceção opcional e manual: `statusline.py` é uma statusline que o
-   **próprio usuário** liga no `settings.json` dele; ela grava só `rate_limits` (porcentagem e reset de 5h/semana) em
-   `~/.tokenlike/limites.json`. O app só lê esse arquivo e nunca instala nem edita a statusline.
-2. **Só biblioteca padrão** no app (tkinter, json etc.). O Pillow só é aceito em `tools/`.
-3. **Windows primeiro:** a transparência usa `-transparentcolor` com a cor chave `#ff00fe`. Texto sempre sobre
-   um retângulo sólido (`PANEL_BG`); se ficar direto sobre a cor chave, o antialiasing deixa um contorno rosa.
-   Em outros sistemas o app cai num fundo escuro.
-4. **Arte 100% original.** Nada de personagens, sprites ou nomes de jogos existentes (ex.: The Binding of Isaac).
-   O clima é roguelike sombrio e fofo, mas com identidade própria.
-5. **Ficar sem usar não pune:** inatividade nunca mata o pet nem tira progresso, ele só descansa (recupera HP) e dorme.
-   O perigo fica dentro da masmorra.
-6. Deduplicar o uso por `message.id:requestId`, porque o Claude Code grava a mesma resposta em várias linhas.
-   Ler só linhas completas (terminadas em `\n`) e guardar o offset de cada arquivo.
+1. **Privacy:** from Claude Code's `.jsonl` files (`~/.claude/projects/**`, or `CLAUDE_CONFIG_DIR`) only
+   `message.usage` and the `timestamp` of each response are used (history in 5-min buckets, 8 days, in
+   `state["usage_hist"]`). Never store, show or log prompt or response content. No network, no telemetry, no
+   hooks, no changes to Claude Code's settings. Optional, manual exception: `statusline.py` is a statusline the
+   **user** turns on in their own `settings.json`; it writes only `rate_limits` (percentage and reset of 5h/week)
+   to `~/.tokenlike/limits.json`. The app only reads that file and never installs or edits the statusline.
+2. **Standard library only** in the app (tkinter, json, ctypes etc.). Pillow is only allowed in `tools/`.
+3. **Windows first:** transparency uses `-transparentcolor` with the key color `#ff00fe`. Text always on a solid
+   rectangle (`PANEL_BG`); right on the key color, antialiasing leaves a pink fringe. Elsewhere the app falls back
+   to a dark background.
+4. **100% original art.** No characters, sprites or names from existing games (e.g. The Binding of Isaac).
+   The mood is dark and cute roguelike, with its own identity.
+5. **Not using it never punishes:** inactivity never kills the pet or removes progress, it only rests (heals)
+   and sleeps. The danger stays inside the dungeon.
+6. Dedup usage by `message.id:requestId`, because Claude Code writes the same response on several lines.
+   Read only complete lines (ending in `\n`) and keep the offset of each file.
 
-## Como as peças se encaixam
+## How the pieces fit
 
-- XP de tokens = entrada + saída + criação de cache + 10% da leitura de cache (`CACHE_READ_WEIGHT`). Vira `run["energy"]`.
-- `ROOM_COST` = 100 mil por sala, com no máximo 20 salas guardadas. São 5 salas por andar e depois a escada;
-  o chefe vem na sala 5 dos andares múltiplos de 5.
-- Evolução dentro da run por **andar** (`stage_floors` do herói), com +4 HP máx e +1 ATK.
-- **Itens empilham:** `run["items"]` é uma lista de `{"key", "rar"}` sem limite (cada item no máximo uma vez por run).
-  Raridade `comum|raro|epico|lendario` multiplica os valores positivos de `fx` e de `consume` por `RAR_MULT`
-  (negativos, `trap`, `area` e `custo_ataque` não escalam; `crescer` escala para baixo: `ceil(N / RAR_MULT)`, piso 3);
-  `_rarity_weights(andar)` sorteia a raridade (a `sorte` dos itens multiplica os pesos de raro, épico e lendário) e
-  cada item lista as `rarities` possíveis. São 100 itens: ~74 em 3 raridades, ~16 em 2 e 10 só lendários.
-  Cores (`RAR_COLOR`): raro azul, épico roxo, lendário dourado.
-- **Pegar ou consumir:** cada oferta (baú, mímico, chefe, loja) pode ser pega (entra na lista) ou consumida
-  (`consume`: `heal` cura na hora, `shield` vira escudo, que absorve dano antes do HP em `apply_damage`).
-  Modo `auto` (`state["mode"]`): `auto_choice` consome cura se o HP < 40%, senão pega. Modo `interativo`: a oferta
-  fica em `run["pending"]` (salva no state) e a GUI abre a janela de escolha; sem resposta em `CHOICE_WINDOW_S` (30 s),
-  a regra automática decide quando a próxima sala estiver pronta. Nunca entra em sala com pendência aberta.
-- **Tetos:** `energy` somada ≤ +100% (`MAX_ENERGY_BONUS`), multiplicador de armadilha em `TRAP_LIMITS` (0,25 a 3),
-  esquiva ≤ `MAX_DODGE`, crítico ≤ `MAX_CRIT` (0,35), chance de cada elemento ≤ `MAX_ELEM_CHANCE` (0,3),
-  `bloqueio` ≤ `MAX_BLOQUEIO` (2), `espinhos` ≤ `MAX_ESPINHOS` (0,5), `duplo` ≤ `MAX_DUPLO` (0,25),
-  `sorte` ≤ `MAX_SORTE` (1,0), `desconto` ≤ `MAX_DESCONTO` (0,6). Os tetos valem sobre o total somado em `stats()`.
-  Saves antigos de 3 espaços viram itens comuns em `migrate_run`.
-- **Campos de `fx` das famílias** (todos somam em `stats()`): `bloqueio` (golpes anulados no começo de cada luta),
-  `espinhos` (fração do dano recebido devolvida), `cura_sala`/`cura_andar` (HP ao entrar numa sala/descer a escada),
-  `custo_ataque` (HP perdido por ataque do pet, nunca mata), `furia` (+ATK a cada 10% de HP que falta), `duplo`
-  (chance de segundo golpe), `ajudante` (dano de um ajudante que ataca uma vez por rodada no inimigo de menor HP e
-  não pode ser alvo), `crescer` (+1 ATK a cada N kills feitos depois de pegar o item: `kills0` guardado na pegada),
-  `sorte` (raridade) e `desconto` (loja, `shop_price`). `fx_text` mostra todos; todo item precisa de texto.
-- **Combate por rodadas** (`masmorra.combate`, inimigos são dicts de `make_foe`/`make_mimic`): a cada rodada,
-  1) dano de status (queimadura e veneno, ignoram escudo); 2) todos agem por `spd`, do maior para o menor (empate: pet
-  primeiro, depois a ordem da lista). Pet: `PET_SPD` 10 (ou `stats.spd` do herói), `PET_CRIT`, `PET_CRITDMG`.
-  Monstro: `spd` = `MON_SPD` (base + por andar) x `spd_mult` do monstro (x `BOSS_SPD_BONUS` no chefe), crítico fixo
-  (`MON_CRIT`/`BOSS_CRIT`, dano `FOE_CRITDMG`). Quem tem o **dobro da velocidade** do alvo ganha `DOBRO_CRIT` de
-  chance e `critdmg` x2 (vale dos dois lados; o esqueleto lento apanha muito crítico).
-- **Status:** chefes têm elemento (`BOSS_ELEMENT`) e aplicam o status com `BOSS_STATUS_CHANCE` por golpe; itens com
-  `queimar|eletrizar|envenenar|congelar` aplicam nos inimigos. Queimadura (`QUEIMA`, `QUEIMA_TURNOS`) e veneno
-  (pilhas de 1,2,3,4 de dano, até `VENENO_MAX_PILHAS`) tiram HP; eletricidade (`ELETRO_CHANCE`) e congelamento
-  (`GELO_CHANCE`) fazem perder a vez. Morte por Queimadura/Veneno vira `kind` "status" no cemitério.
-- **Hordas** (`"horde"` em `ROOM_WEIGHTS`, a partir de `HORDE_MIN_FLOOR`): 2 a `horde_max(andar)` inimigos com HP/ATK
-  x `HORDE_MULT[n]`, ouro x `HORDE_GOLD_MULT`, nunca chefe. Sem `area` o pet bate no de menor HP; com `area`, em todos.
-- **Empate:** a luta para em `MAX_ROUNDS` (60); o pet passa da sala, mas sem ouro, kill, item ou bônus de chefe.
-- Meta-progressão em `state["meta"]`: `achievements`, `graveyard` (últimas 50), `best`, `runs`, `next_char`.
-  Itens com `req` e heróis com `unlock` só entram depois da conquista.
-- Estado em `~/.tokenlike/state.json` (ou `state-demo.json`). Na 1ª execução, se `~/.tokenlike` não existe e
-  `~/.tokenpet` (nome antigo) existe, `migrate_old_data()` copia os `state*.json` sem apagar o antigo. Gravação atômica (tmp + replace).
-  Um arquivo de lock impede duas instâncias abertas.
-- Registro de runs: toda run encerrada vira uma linha em `~/.tokenlike/runs.jsonl` (demo: `runs-demo.jsonl`) via
-  `masmorra.run_record`, com `masmorra.BALANCE_VERSION` (hash de 8 caracteres só dos números de balanceamento).
-  Mudou número, mudou a versão e o histórico real recomeça (`--todas-versoes` mostra tudo).
-  O hash não vê fórmulas nem números escritos no código: ao mudar regra/fórmula de combate, suba `masmorra.REGRAS_REV`
-  (hoje 8). Mudar só constante já muda a versão sozinho.
-- Metas de balanceamento: em `METAS` de `tools/estatisticas.py` (passar do 1º chefe 35-45%, p90 13-16, máx <= 50).
-  São julgadas na **calibração** (só slime, igual ao `simular.py`, sem e com conquistas); o "sim" com todos os
-  heróis misturados é só informativo. Item verde/vermelho usa `vs_media` (vs esperado menos a média dos itens).
-  Rode `python tools/estatisticas.py`, não decore números aqui.
-- Último resultado do simulador (`tools/simular.py`, só como referência, pode estar defasado): 40-43% passam do
-  1º chefe, p90 = andar 15, p99 = 20, máx = 35-45. Mortes (sem conquistas): chefe ~62%, monstro ~19%, horda ~9%,
-  status ~5%, mímico ~3%, armadilha ~1%. Itens empilham, o herói fica forte rápido (`CHEST_ITEM_CHANCE` = 1.0,
-  `RAR_MULT` baixo) e quem segura as runs são os chefes (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), ou seja
-  `valor + por_andar * (andar - BOSS_EVERY)`, mínimo 1); o 2º chefe (andar 10) é o muro. `MON_ATK` = (1.5, 1.2).
-  **Rampa dos chefes:** depois do andar `BOSS_RAMP_FROM` (10), HP e ATK do chefe ainda são multiplicados por
-  `1 + BOSS_RAMP * (andar - 10)` (`BOSS_RAMP` = 0.07). Não mexe no 1º e no 2º chefe; é ela que corta a cauda das runs
-  com muitos itens (sem ela, com 100 itens, o máx passava de 200). Para alongar ou encurtar as runs longas, mexa nela.
-  Combate: `MON_SPD` = (6, 0.1), `BOSS_SPD_BONUS` = 1.1, `PET_CRIT` = 0.10, `BOSS_STATUS_CHANCE` = 0.15.
-  Hordas: `HORDE_MULT` = {2: 0.75, 3: 0.6, 4: 0.5} é decisão do dono (não mexer); quem ajusta é o peso "horde"
-  (hoje 9 em `ROOM_WEIGHTS`), `horde_max` e `HORDE_GOLD_MULT`. Crítico do pet: a base só guarda `crit`/`critdmg`
-  se o herói definir; senão `stats()` usa `PET_CRIT`/`PET_CRITDMG`.
-  Ordem das alavancas: raridade, `consume`, baú/mímico/loja (`SHOP_PRICE`); no combate: status e crítico,
-  velocidades, horda (peso, `horde_max`, `HORDE_GOLD_MULT`); só então `MON_*`/`BOSS_*`; para a cauda (máx), `BOSS_RAMP`. Hordas devem ficar entre 5% e 35% das mortes
-  e status acima de 0 (sem ser a maioria).
+- Token XP = input + output + cache creation + 10% of cache reads (`CACHE_READ_WEIGHT`). It becomes `run["energy"]`.
+- `ROOM_COST` = 100k per room, at most 20 rooms stored. 5 rooms per floor, then the stairs; the boss comes in
+  room 5 of floors that are multiples of 5.
+- Evolution within the run by **floor** (the hero's `stage_floors`), with +4 max HP and +1 ATK.
+- **Items stack:** `run["items"]` is a list of `{"key", "rar"}` with no limit (each item at most once per run).
+  Rarity `common|rare|epic|legendary` multiplies the positive values of `fx` and of `consume` by `RAR_MULT`
+  (negatives, `trap`, `area` and `attack_cost` do not scale; `grow` scales down: `ceil(N / RAR_MULT)`, floor 3);
+  `_rarity_weights(floor)` rolls the rarity (the items' `luck` multiplies the rare, epic and legendary weights) and
+  each item lists its possible `rarities`. 100 items: ~74 in 3 rarities, ~16 in 2 and 10 legendary only.
+  Colors (`RAR_COLOR`): rare blue, epic purple, legendary gold.
+- **Take or consume:** every offer (chest, mimic, boss, shop) can be taken (joins the list) or consumed
+  (`consume`: `heal` heals right away, `shield` becomes a shield that absorbs damage before HP in `apply_damage`).
+  `auto` mode (`state["mode"]`): `auto_choice` consumes a heal if HP < 40%, otherwise takes. `interactive` mode:
+  the offer goes to `run["pending"]` (saved in the state) and the GUI opens the choice window; without an answer
+  within `CHOICE_WINDOW_S` (30 s), the automatic rule decides when the next room is ready. Never enters a room
+  with an open pending offer. Choices are `"take"` / `"consume"`.
+- **Caps:** summed `energy` ≤ +100% (`MAX_ENERGY_BONUS`), trap multiplier in `TRAP_LIMITS` (0.25 to 3),
+  dodge ≤ `MAX_DODGE`, crit ≤ `MAX_CRIT` (0.35), each element's chance ≤ `MAX_ELEM_CHANCE` (0.3),
+  `block` ≤ `MAX_BLOCK` (2), `thorns` ≤ `MAX_THORNS` (0.5), `double` ≤ `MAX_DOUBLE` (0.25),
+  `luck` ≤ `MAX_LUCK` (1.0), `discount` ≤ `MAX_DISCOUNT` (0.6). Caps apply to the total summed in `stats()`.
+  Old 3-slot saves become common items in `migrate_run`.
+- **Family `fx` fields** (all add up in `stats()`): `block` (hits cancelled at the start of each fight),
+  `thorns` (fraction of the damage taken sent back), `heal_room`/`heal_floor` (HP when entering a room/going down
+  the stairs), `attack_cost` (HP lost per pet attack, never kills), `fury` (+ATK for every 10% of missing HP),
+  `double` (chance of a second hit), `helper` (damage of a helper that attacks once per round the lowest-HP enemy
+  and cannot be targeted), `grow` (+1 ATK every N kills made after taking the item: `kills0` kept when taken),
+  `luck` (rarity) and `discount` (shop, `shop_price`). `fx_text` shows them all; every item needs a text.
+- **Round-based combat** (`dungeon.combat`, enemies are dicts from `make_foe`/`make_mimic`): each round,
+  1) status damage (burn and poison, ignore the shield); 2) everyone acts by `spd`, highest first (tie: pet
+  first, then list order). Pet: `PET_SPD` 10 (or the hero's `stats.spd`), `PET_CRIT`, `PET_CRITDMG`.
+  Monster: `spd` = `MON_SPD` (base + per floor) x the monster's `spd_mult` (x `BOSS_SPD_BONUS` for bosses), fixed
+  crit (`MON_CRIT`/`BOSS_CRIT`, damage `FOE_CRITDMG`). Whoever has **twice the target's speed** gains `DOUBLE_CRIT`
+  chance and `critdmg` x2 (both ways; the slow skeleton takes a lot of crits).
+- **Status:** bosses have an element (`BOSS_ELEMENT`: `fire|lightning|poison|ice`) and apply the status with
+  `BOSS_STATUS_CHANCE` per hit; items with `burn|shock|poison|freeze` apply it on enemies (`ELEMENTS`,
+  `STATUS_NAME`). Burn (`BURN`, `BURN_TURNS`) and poison (stacks of 1,2,3,4 damage, up to `POISON_MAX_STACKS`)
+  take HP; shock (`SHOCK_CHANCE`) and freeze (`FREEZE_CHANCE`) skip turns. Death by Burn/Poison becomes `kind`
+  "status" in the graveyard.
+- **Hordes** (`"horde"` in `ROOM_WEIGHTS`, from `HORDE_MIN_FLOOR`): 2 to `horde_max(floor)` enemies with HP/ATK
+  x `HORDE_MULT[n]`, gold x `HORDE_GOLD_MULT`, never a boss. Without `area` the pet hits the lowest-HP one; with `area`, all.
+- **Tie:** the fight stops at `MAX_ROUNDS` (60); the pet clears the room, but without gold, kill, item or boss bonus.
+- Meta-progression in `state["meta"]`: `achievements`, `graveyard` (last 50), `best`, `runs`, `next_char`, `bosses`.
+  Items with `req` and heroes with `unlock` only come in after the achievement.
+- State in `~/.tokenlike/state.json` (or `state-demo.json`), `data_version` 2. On the 1st run, if `~/.tokenlike`
+  does not exist and `~/.tokenpet` (old name) does, `migrate_old_data()` copies the `state*.json` without deleting
+  the old one. Atomic writes (tmp + replace). A lock file prevents two open instances.
+- Run records: every finished run becomes a line in `~/.tokenlike/runs.jsonl` (demo: `runs-demo.jsonl`) via
+  `dungeon.run_record`, with `dungeon.BALANCE_VERSION` (8-char hash of the balance numbers only).
+  A number changed, the version changed and the real history restarts (`--all-versions` shows everything).
+  The hash does not see formulas or numbers written in the code: when changing a combat rule/formula, bump
+  `dungeon.RULES_REV` (now 8). Changing only a constant already changes the version by itself.
+- Balance targets: in `TARGETS` of `tools/balance_stats.py` (pass the 1st boss 35-45%, p90 13-16, max <= 50).
+  They are judged on the **calibration** (slime only, same as `simulate.py`, without and with achievements); the
+  "sim" with all heroes mixed is informative only. Green/red item uses `vs_mean` (vs expected minus the items'
+  mean). Run `python tools/balance_stats.py`, do not memorize numbers here.
+- Last simulator result (`tools/simulate.py`, reference only, may be stale): 40-43% pass the 1st boss, p90 =
+  floor 15, p99 = 20, max = 35-45. Deaths (without achievements): boss ~62%, monster ~19%, horde ~9%,
+  status ~5%, mimic ~3%, trap ~1%. Items stack, the hero gets strong fast (`CHEST_ITEM_CHANCE` = 1.0,
+  low `RAR_MULT`) and the bosses are what hold runs back (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), i.e.
+  `value + per_floor * (floor - BOSS_EVERY)`, minimum 1); the 2nd boss (floor 10) is the wall. `MON_ATK` = (1.5, 1.2).
+  **Boss ramp:** after floor `BOSS_RAMP_FROM` (10), boss HP and ATK are also multiplied by
+  `1 + BOSS_RAMP * (floor - 10)` (`BOSS_RAMP` = 0.07). It does not touch the 1st and 2nd bosses; it cuts the tail
+  of runs with many items (without it, with 100 items, the max went past 200). To lengthen or shorten long runs, change it.
+  Combat: `MON_SPD` = (6, 0.1), `BOSS_SPD_BONUS` = 1.1, `PET_CRIT` = 0.10, `BOSS_STATUS_CHANCE` = 0.15.
+  Hordes: `HORDE_MULT` = {2: 0.75, 3: 0.6, 4: 0.5} is the owner's decision (do not change); what gets tuned is the
+  "horde" weight (now 9 in `ROOM_WEIGHTS`), `horde_max` and `HORDE_GOLD_MULT`. Pet crit: the base only keeps
+  `crit`/`critdmg` if the hero defines them; otherwise `stats()` uses `PET_CRIT`/`PET_CRITDMG`.
+  Lever order: rarity, `consume`, chest/mimic/shop (`SHOP_PRICE`); in combat: status and crit, speeds, horde
+  (weight, `horde_max`, `HORDE_GOLD_MULT`); only then `MON_*`/`BOSS_*`; for the tail (max), `BOSS_RAMP`. Hordes
+  should stay between 5% and 35% of deaths and status above 0 (without being the majority).
 
-## Para adicionar coisas
+## Adding things
 
-- **Item novo:** desenho em `arte.ITEM_ART[chave]` (se o `look` usar arte) e entrada em `masmorra.ITEMS` com `name`,
-  `rarities` (lista das raridades possíveis), `fx`, `consume` (`{"heal": n}` ou `{"shield": n}`), `look` e `req` opcional.
-  Não existe mais `slot` nem `tier`. `look` é um dos efeitos de `visual.py`: `{"type": "obj", "anchor": "dir|esq|topo|frente|flutua", "art": ...}`,
-  `espinhos`/`gotas`/`contorno` (`color`), `tingir` (`color`, `amount`), `adesivo` (`art`, `at`) ou um dos **animados**
-  dos elementais: `chamas`, `faiscas`, `gotas_veneno`, `geada` (`color` opcional; 3 fases calculadas uma vez em
-  `refresh_look` e trocadas no tick pelo relógio `FX_MS`). Ajudantes usam sempre `obj` `flutua`.
-  Famílias (cada uma com pelo menos 4 itens, conferido em `tests/test_itens.py`): elementais (5 por elemento, look
-  animado), defesa (`bloqueio`, `espinhos`, `dodge`), regeneração (`cura_sala`, `cura_andar`, `lifesteal`), sangue
-  (`custo_ataque` sempre com `atk` ou `furia`), golpes (`crit`, `critdmg`, `duplo`), área (`area`), ajudantes
-  (`ajudante`), crescimento (`crescer`) e sorte/ouro (`sorte`, `gold`, `desconto`). Todo item precisa de ícone e de
-  `fx_text` não vazio; nomes não se repetem. Rode `tools/simular.py` e `tools/estatisticas.py` depois.
-- **Monstro novo:** desenho em `arte.FOE_ART`, entrada em `masmorra.MONSTERS`
-  `(sprite, nome, mult_hp, mult_atk, andar_min, spd_mult)` (+ nome de chefe em `BOSS_NAMES` e elemento em
-  `BOSS_ELEMENT`: `fogo|raio|veneno|gelo`; sem elemento o chefe quebra `make_foe`).
-- **Campos de `fx` do combate:** `spd`, `crit`, `critdmg`, `area` (bool, não escala com raridade) e a chance por golpe
-  de cada elemento: `queimar`, `eletrizar`, `envenenar`, `congelar` (0..1, teto `MAX_ELEM_CHANCE`; `crit` teto `MAX_CRIT`),
-  mais os das famílias (`bloqueio`, `espinhos`, `cura_sala`, `cura_andar`, `custo_ataque`, `furia`, `duplo`,
-  `ajudante`, `crescer`, `sorte`, `desconto`), descritos em "Como as peças se encaixam".
-- **Tipo de sala novo:** `ROOM_WEIGHTS` + um ramo em `enter_room` + a animação em `PetApp.play_room`.
-- **Conquista nova:** `masmorra.ACHIEVEMENTS` + regra em `_check_achievements` + ícone em `arte.CONQ_ART` (teste).
-- **Campo de `fx`/`stats()` novo:** ícone em `arte.STAT_ART` e linha em `tokenlike.STAT_LINHAS` (teste).
-- **Herói novo:** de preferência uma pasta em `characters/` com PNGs e `character.json` (`stats` com `spd` opcional, `unlock`, `stages[].floor`).
+- **New item:** drawing in `art.ITEM_ART[key]` (if the `look` uses art) and an entry in `dungeon.ITEMS` with
+  `name` (English; add the PT translation to `i18n.PT`), `rarities`, `fx`, `consume` (`{"heal": n}` or
+  `{"shield": n}`), `look` and optional `req`. `look` is one of the effects of `visual.py`:
+  `{"type": "obj", "anchor": "right|left|top|front|float", "art": ...}`, `thorns`/`drops`/`outline` (`color`),
+  `tint` (`color`, `amount`), `sticker` (`art`, `at`) or one of the elementals' **animated** ones: `flames`,
+  `sparks`, `poison_drops`, `frost` (optional `color`; 3 phases computed once in `refresh_look` and swapped in the
+  tick by the `FX_MS` clock). Helpers always use a floating `obj`.
+  Families (each with at least 4 items, checked in `tests/test_items.py`): elementals (5 per element, animated
+  look), defense (`block`, `thorns`, `dodge`), regeneration (`heal_room`, `heal_floor`, `lifesteal`), blood
+  (`attack_cost` always with `atk` or `fury`), blows (`crit`, `critdmg`, `double`), area (`area`), helpers
+  (`helper`), growth (`grow`) and luck/gold (`luck`, `gold`, `discount`). Every item needs an icon and a non-empty
+  `fx_text`; names never repeat. Run `tools/simulate.py` and `tools/balance_stats.py` afterwards.
+- **New monster:** drawing in `art.FOE_ART`, entry in `dungeon.MONSTERS`
+  `(sprite, name, mult_hp, mult_atk, min_floor, spd_mult)` (+ boss name in `BOSS_NAMES` and element in
+  `BOSS_ELEMENT`: `fire|lightning|poison|ice`; without an element the boss breaks `make_foe`).
+- **Combat `fx` fields:** `spd`, `crit`, `critdmg`, `area` (bool, does not scale with rarity) and the per-hit
+  chance of each element: `burn`, `shock`, `poison`, `freeze` (0..1, cap `MAX_ELEM_CHANCE`; `crit` cap `MAX_CRIT`),
+  plus the family ones described in "How the pieces fit".
+- **New room type:** `ROOM_WEIGHTS` + a branch in `enter_room` + the animation in `PetApp.play_room`.
+- **New achievement:** `dungeon.ACHIEVEMENTS` + rule in `_check_achievements` + icon in `art.ACH_ART` (test).
+- **New `fx`/`stats()` field:** icon in `art.STAT_ART` and a line in `tokenlike.STAT_LINES` (test).
+- **New hero:** preferably a folder in `characters/` with PNGs and `character.json` (`stats` with optional
+  `spd`, `unlock`, `stages[].floor`), or a module in `heroes/` validated by `heroes/assemble.py`.
 
-## Antes do lançamento
+## Before release
 
-- Capricho visual da página de estatísticas e ícones de itens e heróis nela.
-- Testar na tela de verdade o modo interativo e as barras de sessão e semana.
+- Visual polish of the stats page and item/hero icons on it.
+- Test interactive mode and the session/week bars on the real screen.
 
-## Ideias em aberto
+## Open ideas
 
-- Heróis desbloqueáveis: velinha viva, cogumelo de caverna, baú mímico (cada um com stats e uma mecânica própria).
-- Mais salas (evento raro, sala secreta), mais chefes com sprite próprio, sinergias entre itens.
-- Mais escolhas do jogador (hoje só pegar/consumir no modo interativo), sons, estatísticas de runs.
+- Unlockable heroes with their own mechanic (e.g. mimic chest).
+- More rooms (rare event, secret room), more bosses with their own sprite, item synergies.
+- More player choices (today only take/consume in interactive mode), sounds, run statistics.

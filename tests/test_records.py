@@ -6,13 +6,13 @@ import dungeon as M
 
 run = M.new_run("slime", {"hp": 20, "atk": 3}, 1); run["floor"] = 4
 assert run["consumed"] == []
-M.resolve_offer(run, {"key": "adaga", "rar": "raro"}, "pegar", {"lines": []})
-M.resolve_offer(run, {"key": "tampa", "rar": "comum"}, "consumir", {"lines": []})
-assert run["items"] == [{"key": "adaga", "rar": "raro", "floor": 4, "kills0": 0}]
-assert run["consumed"] == [{"key": "tampa", "rar": "comum", "floor": 4}]
-old = {"items": [{"key": "adaga", "rar": "comum"}], "hp": 5}
+M.resolve_offer(run, {"key": "dagger", "rar": "rare"}, "take", {"lines": []})
+M.resolve_offer(run, {"key": "pot_lid", "rar": "common"}, "consume", {"lines": []})
+assert run["items"] == [{"key": "dagger", "rar": "rare", "floor": 4, "kills0": 0}]
+assert run["consumed"] == [{"key": "pot_lid", "rar": "common", "floor": 4}]
+old = {"items": [{"key": "dagger", "rar": "common"}], "hp": 5}
 M.migrate_run(old); assert old["items"][0]["floor"] is None and old["consumed"] == []
-rec = M.run_record(run, "Rei Rato", False, "auto", ["andar5"])
+rec = M.run_record(run, "Rat King", False, "auto", ["floor5"])
 assert set(rec) == {"run", "char", "floor", "room", "killer", "gave_up", "items", "consumed", "gold",
                     "kills", "bosses", "date", "mode", "version", "achievements", "killer_kind"}
 assert rec["killer_kind"] == ""
@@ -20,16 +20,16 @@ assert M.run_record(run, "x", False, "auto", [], killer_kind="horde")["killer_ki
 assert rec["version"] == M.BALANCE_VERSION and len(M.BALANCE_VERSION) == 8
 assert json.loads(json.dumps(rec)) == rec                       # serializable
 v0 = M.BALANCE_VERSION
-dagger = copy.deepcopy(M.ITEMS["adaga"])                         # restore afterwards: other tests use ITEMS
-M.ITEMS["adaga"]["look"] = {"type": "obj", "anchor": "esq", "art": "adaga"}
+dagger = copy.deepcopy(M.ITEMS["dagger"])                         # restore afterwards: other tests use ITEMS
+M.ITEMS["dagger"]["look"] = {"type": "obj", "anchor": "left", "art": "dagger"}
 assert M._balance_version() == v0                              # visuals do not change the version
-M.ITEMS["adaga"]["fx"] = {"atk": 99}
+M.ITEMS["dagger"]["fx"] = {"atk": 99}
 assert M._balance_version() != v0                              # a number changes the version
-M.ITEMS["adaga"] = dagger
+M.ITEMS["dagger"] = dagger
 assert M._balance_version() == v0
 M.MONSTERS[0] = (M.MONSTERS[0][0], "Outro Nome") + M.MONSTERS[0][2:]
 assert M._balance_version() == v0                              # a monster name does not change the version
-M.MONSTERS[0] = (M.MONSTERS[0][0], "Morcego") + M.MONSTERS[0][2:]
+M.MONSTERS[0] = (M.MONSTERS[0][0], "Bat") + M.MONSTERS[0][2:]
 rev = M.RULES_REV; M.RULES_REV += 1
 assert M._balance_version() != v0                              # a new rule/formula: bump RULES_REV
 M.RULES_REV = rev; assert M._balance_version() == v0
@@ -54,9 +54,9 @@ def dies(room_kind=None, **kw):
         yield meta["graveyard"][-1]
 kinds = {g["kind"] for g in dies()}
 assert kinds <= {"monster", "horde", "boss", "mimic", "trap", "status"} and "horde" in kinds, kinds
-assert all((g["kind"] == "status") == (g["killer"] in ("Queimadura", "Veneno")) for g in dies())
+assert all((g["kind"] == "status") == (g["killer"] in ("Burn", "Poison")) for g in dies())
 m2 = M.new_meta(); r2 = M.new_run("slime", {"hp": 5, "atk": 1}, 0)
-M.die(r2, m2, {}, "Desistiu", "desistiu"); assert m2["graveyard"][-1]["kind"] == "desistiu"
-r3 = M.new_run("slime", {}, 9); r3["items"] = [{"key": "adaga", "rar": "raro", "floor": 1, "kills0": 0}]; m3 = M.new_meta()
-M.die(r3, m3, {}, "x"); assert m3["graveyard"][-1]["items"] == [{"key": "adaga", "rar": "raro"}]   # the tombstone keeps the rarity
-print("ok: registro")
+M.die(r2, m2, {}, "Gave up", "gave_up"); assert m2["graveyard"][-1]["kind"] == "gave_up"
+r3 = M.new_run("slime", {}, 9); r3["items"] = [{"key": "dagger", "rar": "rare", "floor": 1, "kills0": 0}]; m3 = M.new_meta()
+M.die(r3, m3, {}, "x"); assert m3["graveyard"][-1]["items"] == [{"key": "dagger", "rar": "rare"}]   # the tombstone keeps the rarity
+print("ok: records")

@@ -1,0 +1,31 @@
+{
+  "name": "Lunar Moth",
+  "unlock": "legendaries3",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0
+  },
+  "trait": {
+    "dodge": 0.05,
+    "shock": 0.06
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Lunar Caterpillar",
+      "floor": 1,
+      "sheet": "sheet1.png"
+    },
+    {
+      "title": "Lunar Moth",
+      "floor": 4,
+      "sheet": "sheet2.png"
+    },
+    {
+      "title": "Eclipse Moth",
+      "floor": 10,
+      "sheet": "sheet3.png"
+    }
+  ]
+}

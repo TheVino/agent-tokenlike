@@ -8,7 +8,7 @@ unlocks and **permadeath**.
 > "Claude" and "Claude Code" are trademarks of Anthropic; they are mentioned here only to describe
 > what the app reads.
 
-The in-game text is in Brazilian Portuguese. A Portuguese readme is in [LEIA-ME.md](LEIA-ME.md).
+The interface comes in Brazilian Portuguese (default) and English: switch with the PT/EN chips in the menu.
 
 ![Agent Tokenlike on the desktop](docs/screenshot.png)
 
@@ -29,11 +29,11 @@ The in-game text is in Brazilian Portuguese. A Portuguese readme is in [LEIA-ME.
 
 1. Install Python 3.9+ from [python.org](https://www.python.org/) (tick "Add python.exe to PATH").
 2. Download or clone this repository.
-3. Double-click **`testar-demo.bat`** to try demo mode: fake tokens, so you can watch rooms, fights,
+3. Double-click **`demo.bat`** to try demo mode: fake tokens, so you can watch rooms, fights,
    deaths and unlocks happen fast. Demo progress is kept separate from the real one, and every hero is unlocked in demo mode.
-4. Double-click **`iniciar.bat`** for the real thing. The pet appears in the bottom-right corner of the screen.
+4. Double-click **`start.bat`** for the real thing. The pet appears in the bottom-right corner of the screen.
 
-To start it with Windows: `Win + R` → `shell:startup` → create a shortcut to `iniciar.bat` there.
+To start it with Windows: `Win + R` → `shell:startup` → create a shortcut to `start.bat` there (or use **Start with Windows** in the menu).
 
 | Action | What it does |
 |---|---|
@@ -68,10 +68,10 @@ Add this to `%USERPROFILE%\.claude\settings.json` (use the real path to this fol
 "statusLine": { "type": "command", "command": "python \"C:/path/to/agent-tokenlike/statusline.py\"" }
 ```
 
-Your Claude Code status line will show `sessão 42% · semana 18%`, and the pet grows two bars under the energy bar
+Your Claude Code status line will show `session 42% · week 18%`, and the pet grows two bars under the energy bar
 (green up to 50%, yellow up to 80%, red above). The numbers update whenever Claude Code refreshes its status line,
 after the first reply of a session. They cover your whole account (other computers and claude.ai included).
-To turn it off, remove the line and delete `%USERPROFILE%\.tokenlike\limites.json`. Requires Claude Code 2.1.80+.
+To turn it off, remove the line and delete `%USERPROFILE%\.tokenlike\limits.json`. Requires Claude Code 2.1.80+.
 If you already use another status line, Claude Code only allows one.
 
 Other systems: it runs anywhere tkinter does, but the transparent overlay is Windows-only;
@@ -106,7 +106,7 @@ elsewhere the pet sits on a dark background.
   Items come in a **rarity**: common, **rare** (blue), **epic** (purple) or **legendary** (gold); rarer means bigger
   bonuses (downsides don't grow). When you find an item you can **take** it (it joins the stack) or **consume** it (instant healing, or a **shield** that soaks damage before HP).
 - **Modes:** in **Auto** the pet decides by itself (consumes when low on HP, otherwise takes). In **Interactive** a small
-  window offers Take/Consume (*Pegar*/*Consumir*) and the pet waits; if nobody picks within **30 seconds**, the automatic rule decides
+  window offers Take/Consume and the pet waits; if nobody picks within **30 seconds**, the automatic rule decides
   as soon as the next room is ready.
 - **Evolution within a run:** heroes evolve when they reach certain floors (+4 max HP, +1 ATK).
 - **Permadeath:** dying in combat or to a trap leaves a tombstone in the **Graveyard** (floor, killer, items)
@@ -124,35 +124,35 @@ elsewhere the pet sits on a dark background.
   Graveyard Cat (die on floor 13) and Well Octopus (3 bosses in one run).
 
 In simulation about 40% of runs get past the first boss and the best reach floors 15–25.
-Balance numbers live at the top of `masmorra.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...).
+Balance numbers live at the top of `dungeon.py` (`MON_HP`, `BOSS_HP`, `RAR_MULT`, `ROOM_COST`...).
 
 ## Making your own heroes
 
 Each hero is a folder in `characters/` with PNG images and a `character.json`.
-See `characters/fantasma/`:
+For example (the Ghost in `characters/ghost/` uses a spritesheet, see below):
 
 ```json
 {
-  "name": "Fantasma",
-  "unlock": "chefe1",
+  "name": "Ghost",
+  "unlock": "boss1",
   "stats": { "hp": 16, "atk": 3, "def": 0, "dodge": 0.2 },
   "frame_ms": 600,
   "stages": [
-    { "floor": 1,  "title": "Fantasminha",   "frames": ["estagio1.png"], "blink": "estagio1_piscando.png" },
-    { "floor": 4,  "title": "Fantasma",      "frames": ["estagio2.png"], "blink": "estagio2_piscando.png" },
-    { "floor": 10, "title": "Fantasma Mago", "frames": ["estagio3.png"], "blink": "estagio3_piscando.png" }
+    { "floor": 1,  "title": "Little Ghost", "frames": ["stage1.png"], "blink": "stage1_blink.png" },
+    { "floor": 4,  "title": "Ghost",        "frames": ["stage2.png"], "blink": "stage2_blink.png" },
+    { "floor": 10, "title": "Ghost Mage",   "frames": ["stage3.png"], "blink": "stage3_blink.png" }
   ]
 }
 ```
 
 - `stats`: starting HP, attack, defense and dodge chance (0.2 = 20%). `spd` (speed) is optional and
   defaults to 10 (the Slime's), e.g. `"spd": 12`.
-- `traço` (optional, "trait"): a passive for the hero, an object using the same fields as items (`crit`,
-  `dodge`, `atk`, `espinhos`, `cura_sala`...), e.g. `"traço": { "crit": 0.05 }`. It adds to the hero during the
+- `trait` (optional): a passive for the hero, an object using the same fields as items (`crit`,
+  `dodge`, `atk`, `thorns`, `heal_room`...), e.g. `"trait": { "crit": 0.05 }`. It adds to the hero during the
   run and does not scale with rarity. An unknown field or a non-numeric value makes the hero be skipped (the
   reason goes to the log).
-- `unlock` (optional): the achievement that unlocks the hero: `andar5`, `chefe1`, `mimico`, `rico`,
-  `colecionador`, `andar10` or `andar20`. Without it the hero is available from the start.
+- `unlock` (optional): the achievement that unlocks the hero, e.g. `floor5`, `boss1`, `mimic`, `rich`,
+  `collector`, `floor10` or `floor20` (all keys in `ACHIEVEMENTS` of `dungeon.py`). Without it the hero is available from the start.
 - `stages`: the hero's forms and the **floor** at which it evolves into each one.
 - `frames`: one or more images, cycled every `frame_ms` milliseconds. `blink` (eyes closed) and
   `sleep` are optional.
@@ -160,7 +160,7 @@ See `characters/fantasma/`:
   automatically and items snap around the drawn area. Avoid semi-transparent edges: on Windows they can
   show a pinkish outline.
 
-Then right-click the pet → **Recarregar personagens** (reload characters). Errors go to
+Then right-click the pet → **Reload characters**. Errors go to
 `%USERPROFILE%\.tokenlike\tokenlike.log`.
 
 Please keep art original: no sprites, characters or names from existing games.
@@ -187,9 +187,9 @@ cells is also detected). Frames are cut automatically, aligned at the bottom and
 
 A missing or empty row falls back to Idle. These heroes don't blink.
 
-**Community pets (Petdex):** pets already installed in `~/.petdex/pets/<slug>/` or `~/.codex/pets/<slug>/` OpenPets `pet.json` (`displayName`, `spritesheetPath`) works in both; for `.webp` sheets run `python tools/converter_webp.py <folder>` (needs Pillow).
+**Community pets (Petdex):** pets already installed in `~/.petdex/pets/<slug>/` or `~/.codex/pets/<slug>/` OpenPets `pet.json` (`displayName`, `spritesheetPath`) works in both; for `.webp` sheets run `python tools/convert_webp.py <folder>` (needs Pillow).
 (`pet.json` + a PNG spritesheet; WebP is skipped, convert it to PNG) show up in the menu under
-**Comunidade** with default stats. Agent Tokenlike only reads those folders: it never downloads,
+**Community** with default stats. Agent Tokenlike only reads those folders: it never downloads,
 copies or redistributes them. Community pets belong to their authors and their licenses; they are only
 shown locally on your machine.
 
@@ -207,19 +207,22 @@ shown locally on your machine.
 ```
 python tests/test_reader.py      # log reading, deduplication, art
 python tests/test_gui.py         # fake tkinter: plays hundreds of rooms, dies, respawns
-python tests/test_migracao.py    # copies old ~/.tokenpet progress to ~/.tokenlike
-python tests/test_limites.py     # statusline stores only the limits; bars, stale data, time zone
-python tests/test_registro.py    # run log (runs.jsonl) and balance version
-python tests/test_estatisticas.py # balance metrics and stats page
-python tools/estatisticas.py     # stats page: simulated vs real runs (dev only)
-python tools/simular.py          # simulates 2,000 runs (after balance changes)
-python tools/preview_arte.py     # renders all art to a PNG (needs Pillow, dev only)
+python tests/test_migration.py   # copies old ~/.tokenpet progress; converts Portuguese-key saves
+python tests/test_limits.py      # statusline stores only the limits; bars, stale data, time zone
+python tests/test_records.py     # run log (runs.jsonl) and balance version
+python tests/test_balance_stats.py # balance metrics and stats page
+python tests/test_i18n.py        # every visible text has a PT translation
+python tests/test_texts.py       # real Tk: no clipped or overlapping text, in pt and en
+python tools/balance_stats.py    # stats page: simulated vs real runs (dev only)
+python tools/simulate.py         # simulates 2,000 runs (after balance changes)
+python tools/preview_art.py      # renders all art to a PNG (needs Pillow, dev only)
 ```
 
-The Claude Code skill `/balancear` (in `.claude/skills/`) reads those stats and proposes balance changes, editing only with the owner's approval.
+The Claude Code skill `/balance` (in `.claude/skills/`) reads those stats and proposes balance changes, editing only with the owner's approval.
 
 Formerly called *TokenPet*. On first launch, if `%USERPROFILE%\.tokenlike` doesn't exist and
-`%USERPROFILE%\.tokenpet` does, your saves are **copied** over (the old folder is left untouched).
+`%USERPROFILE%\.tokenpet` does, your saves are **copied** over (the old folder is left untouched). Saves from the versions with
+Portuguese keys are converted once to the English ones, keeping a `.pt.bak` copy.
 
 ## License
 

@@ -36,7 +36,7 @@ def outline_cells(g, px):
             g[y][x] = c
 
 
-def trait(g, a, b, color):
+def stroke(g, a, b, color):
     px = {}
     for x, y in line(*a, *b):
         px[(x, y)] = color

@@ -33,10 +33,10 @@ def sim(n=2000, achs=(), seed=1):
     killers = collections.Counter(r["killer"] for r in recs if r["killer"] != "—")
     nitems = [len(r["items"]) for r in recs]
     q = statistics.quantiles(floors, n=10)
-    print(f"achs={len(achs)} mediana andar={statistics.median(floors)} p10={q[0]} p90={q[-1]} max={max(floors)} salas med={statistics.median(rooms)} itens med={statistics.median(nitems)}")
-    print("  passou do 1º chefe:", sum(f>5 for f in floors)/n, " andar10+:", sum(f>=10 for f in floors)/n)
-    print("  matadores:", killers.most_common(6))
-    print("  mortes por tipo:", dict(collections.Counter(r["killer_kind"] for r in recs if r["killer"] != "—").most_common()))
+    print(f"achs={len(achs)} median floor={statistics.median(floors)} p10={q[0]} p90={q[-1]} max={max(floors)} rooms med={statistics.median(rooms)} items med={statistics.median(nitems)}")
+    print("  passed the 1st boss:", sum(f>5 for f in floors)/n, " floor10+:", sum(f>=10 for f in floors)/n)
+    print("  killers:", killers.most_common(6))
+    print("  deaths by kind:", dict(collections.Counter(r["killer_kind"] for r in recs if r["killer"] != "—").most_common()))
 
 def main():
     sim(); sim(achs=list(M.ACHIEVEMENTS))

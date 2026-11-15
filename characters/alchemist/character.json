@@ -1,0 +1,31 @@
+{
+  "name": "Alchemist",
+  "unlock": "consume10",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0
+  },
+  "trait": {
+    "discount": 0.2,
+    "heal_floor": 3
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Alchemy Apprentice",
+      "floor": 1,
+      "sheet": "sheet1.png"
+    },
+    {
+      "title": "Alchemist",
+      "floor": 4,
+      "sheet": "sheet2.png"
+    },
+    {
+      "title": "Master Alchemist",
+      "floor": 10,
+      "sheet": "sheet3.png"
+    }
+  ]
+}

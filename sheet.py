@@ -121,10 +121,10 @@ OPAQUE = bytes(1 if a > 128 else 0 for a in range(256))   # table for bytes.tran
 def info_png(head: bytes):
     """(w, h, type) from IHDR; ValueError if it is not a PNG that read_png understands."""
     if head[:8] != _SIGNATURE or head[12:16] != b"IHDR":
-        raise ValueError("não é um PNG")
+        raise ValueError("not a PNG")
     w, h, prof, kind, _, _, entrel = struct.unpack(">IIBBBBB", head[16:29])
     if prof != 8 or kind not in _BPP or entrel:
-        raise ValueError(f"formato de PNG não suportado (bits {prof}, tipo {kind}, entrelaçado {entrel})")
+        raise ValueError(f"unsupported PNG format (bits {prof}, type {kind}, interlaced {entrel})")
     return w, h, kind
 
 
@@ -178,7 +178,7 @@ def read_png(path):
                 pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
                 lin[x] = (lin[x] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
         elif f:
-            raise ValueError(f"filtro de PNG inválido: {f}")
+            raise ValueError(f"invalid PNG filter: {f}")
         data += lin
         ant = lin
     if kind == 6:

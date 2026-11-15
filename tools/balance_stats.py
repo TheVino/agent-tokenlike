@@ -6,7 +6,7 @@ import dungeon as M
 import art, visual
 
 # Balance targets: (minimum, maximum); None = no limit.
-TARGETS = {"passou_chefe1": (0.35, 0.45), "p90": (13, 16), "max": (None, 50)}
+TARGETS = {"passed_boss1": (0.35, 0.45), "p90": (13, 16), "max": (None, 50)}
 
 
 def check_targets(res: dict) -> dict:
@@ -22,7 +22,7 @@ def check_targets(res: dict) -> dict:
 
 def load_real(folder: Path, all_versions: bool = False):
     """Reads <folder>/runs.jsonl (never runs-demo.jsonl). Returns (lines, info)."""
-    info = {"outras_versoes": 0, "ignoradas": 0, "desistencias": 0, "modos": {}}
+    info = {"other_versions": 0, "ignored": 0, "gave_ups": 0, "modes": {}}
     arq = Path(folder) / "runs.jsonl"
     if not arq.exists():
         return [], info
@@ -35,17 +35,17 @@ def load_real(folder: Path, all_versions: bool = False):
         except ValueError:
             rec = None
         if not _line_ok(rec):
-            info["ignoradas"] += 1
+            info["ignored"] += 1
             continue
         if rec.get("version") != M.BALANCE_VERSION:
-            info["outras_versoes"] += 1
+            info["other_versions"] += 1
             if not all_versions:
                 continue
         recs.append(rec)
         if rec.get("gave_up"):
-            info["desistencias"] += 1
+            info["gave_ups"] += 1
         mode = rec.get("mode", "?")
-        info["modos"][mode] = info["modos"].get(mode, 0) + 1
+        info["modes"][mode] = info["modes"].get(mode, 0) + 1
     return recs, info
 
 
@@ -76,11 +76,11 @@ def _line_ok(rec) -> bool:
 def summary(recs) -> dict:
     recs = valid(recs)
     if not recs:
-        return {"n": 0, "mediana": None, "p90": None, "max": None, "passou_chefe1": None, "itens_med": None}
+        return {"n": 0, "median": None, "p90": None, "max": None, "passed_boss1": None, "items_median": None}
     floors = [r["floor"] for r in recs]
-    return {"n": len(recs), "mediana": statistics.median(floors), "p90": _p90(floors), "max": max(floors),
-            "passou_chefe1": sum(f > M.BOSS_EVERY for f in floors) / len(floors),
-            "itens_med": statistics.median(len(r["items"]) for r in recs)}
+    return {"n": len(recs), "median": statistics.median(floors), "p90": _p90(floors), "max": max(floors),
+            "passed_boss1": sum(f > M.BOSS_EVERY for f in floors) / len(floors),
+            "items_median": statistics.median(len(r["items"]) for r in recs)}
 
 
 def expected(recs) -> dict:
@@ -113,21 +113,21 @@ def per_item(recs) -> dict:
             offers[mode][1] += sum(i["key"] == key and i.get("floor") is not None for i in r.get("consumed", []))
         per_mode = {m: c / (p + c) for m, (p, c) in offers.items() if p + c}
         tp, tc = sum(p for p, _ in offers.values()), sum(c for _, c in offers.values())
-        d = {"n": len(rs), "pego": None, "andar_pego": None, "durou": None, "vs_esperado": None,
-             "andar_final": None, "mortes_rapidas": None,
-             "consumido": tc / (tp + tc) if tp + tc else None, "consumido_por_modo": per_mode}
+        d = {"n": len(rs), "taken": None, "taken_floor": None, "lasted": None, "vs_expected": None,
+             "final_floor": None, "quick_deaths": None,
+             "consumed_pct": tc / (tp + tc) if tp + tc else None, "consumed_by_mode": per_mode}
         if rs:
-            d.update(pego=len(rs) / len(recs), andar_pego=statistics.median(f for _, f in rs),
-                     durou=statistics.mean(fin - f for fin, f in rs),
-                     vs_esperado=statistics.mean(fin - f - esp[f] for fin, f in rs),
-                     andar_final=statistics.mean(fin for fin, _ in rs),
-                     mortes_rapidas=sum(fin - f <= 2 for fin, f in rs) / len(rs))
+            d.update(taken=len(rs) / len(recs), taken_floor=statistics.median(f for _, f in rs),
+                     lasted=statistics.mean(fin - f for fin, f in rs),
+                     vs_expected=statistics.mean(fin - f - esp[f] for fin, f in rs),
+                     final_floor=statistics.mean(fin for fin, _ in rs),
+                     quick_deaths=sum(fin - f <= 2 for fin, f in rs) / len(rs))
         out[key] = d
     # vs_mean: vs_expected minus the (n-weighted) mean of the items, because taking an item already helps
     com = [d for d in out.values() if d["n"]]
-    mean = sum(d["n"] * d["vs_esperado"] for d in com) / sum(d["n"] for d in com) if com else 0
+    mean = sum(d["n"] * d["vs_expected"] for d in com) / sum(d["n"] for d in com) if com else 0
     for d in out.values():
-        d["vs_media"] = None if d["vs_esperado"] is None else d["vs_esperado"] - mean
+        d["vs_mean"] = None if d["vs_expected"] is None else d["vs_expected"] - mean
     return out
 
 
@@ -135,7 +135,7 @@ def pairs(recs, minimum: int = 30) -> dict:
     """Item pairs with at least `minimum` runs together, counted from the floor of the 2nd item."""
     recs = valid(recs)
     esp = expected(recs)
-    vs = {k: d["vs_esperado"] for k, d in per_item(recs).items()}
+    vs = {k: d["vs_expected"] for k, d in per_item(recs).items()}
     groups = collections.defaultdict(list)
     # ponytail: O(items² per run), fine for thousands of runs with ~5 items each
     for r in recs:
@@ -146,9 +146,9 @@ def pairs(recs, minimum: int = 30) -> dict:
     for (a, b), xs in groups.items():
         if len(xs) >= minimum and a in vs and b in vs:  # an item that left the game is skipped
             m = statistics.mean(xs)
-            lst.append({"a": a, "b": b, "n": len(xs), "vs_esperado": m, "ganho": m - max(vs[a], vs[b])})
-    lst.sort(key=lambda p: p["ganho"], reverse=True)
-    return {"melhores": lst[:10], "piores": lst[10:][::-1][:5]}  # the worst ones do not repeat the best ones
+            lst.append({"a": a, "b": b, "n": len(xs), "vs_expected": m, "gain": m - max(vs[a], vs[b])})
+    lst.sort(key=lambda p: p["gain"], reverse=True)
+    return {"best_items": lst[:10], "worst_items": lst[10:][::-1][:5]}  # the worst ones do not repeat the best ones
 
 
 def deaths(recs) -> dict:
@@ -156,15 +156,15 @@ def deaths(recs) -> dict:
     per_floor = collections.Counter(r["floor"] for r in recs)
     killers = collections.Counter(r["killer"] for r in recs if r.get("killer") not in (None, "—"))
     per_kind = collections.Counter(r.get("killer_kind") or "?" for r in recs)   # old line: "?"
-    return {"por_andar": dict(sorted(per_floor.items())), "matadores": killers.most_common(6),
-            "por_tipo": dict(per_kind.most_common())}
+    return {"per_floor": dict(sorted(per_floor.items())), "killers": killers.most_common(6),
+            "per_kind": dict(per_kind.most_common())}
 
 
 def heroes(recs) -> dict:
     groups = collections.defaultdict(list)
     for r in valid(recs):
         groups[r["char"]].append(r["floor"])
-    return {c: {"n": len(fs), "mediana": statistics.median(fs), "p90": _p90(fs)} for c, fs in groups.items()}
+    return {c: {"n": len(fs), "median": statistics.median(fs), "p90": _p90(fs)} for c, fs in groups.items()}
 
 
 # ---------- collection, page and command line ----------
@@ -178,55 +178,55 @@ def collect(n_sim: int, real_folder: Path, all_versions: bool, seed: int = 1) ->
     no_recs = S.simulate(n_sim, achs=(), seed=seed, heroes=hero_keys)[0]
     real_recs, info = load_real(real_folder, all_versions)
     pi_s, pi_r = per_item(sim_recs), per_item(real_recs)
-    cal = {"sem_conquistas": summary(S.simulate(n_sim, achs=(), seed=seed)[0]),
-           "com_conquistas": summary(S.simulate(n_sim, achs=list(M.ACHIEVEMENTS), seed=seed)[0])}
+    cal = {"without_achievements": summary(S.simulate(n_sim, achs=(), seed=seed)[0]),
+           "with_achievements": summary(S.simulate(n_sim, achs=list(M.ACHIEVEMENTS), seed=seed)[0])}
     real = summary(real_recs)
     return {
-        "versao": M.BALANCE_VERSION, "gerado_em": datetime.now().isoformat(timespec="seconds"),
-        "sim": summary(sim_recs), "sim_sem_conquistas": summary(no_recs), "real": real, "calibracao": cal,
-        "info_real": info,
-        "metas": {**{k: check_targets(v) for k, v in cal.items()}, "real": check_targets(real)},
-        "itens": {k: {"nome": M.ITEMS[k]["name"], "raridades": M.ITEMS[k].get("rarities"),
+        "version": M.BALANCE_VERSION, "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "sim": summary(sim_recs), "sim_without_achievements": summary(no_recs), "real": real, "calibration": cal,
+        "real_info": info,
+        "targets": {**{k: check_targets(v) for k, v in cal.items()}, "real": check_targets(real)},
+        "items": {k: {"name": M.ITEMS[k]["name"], "rarities": M.ITEMS[k].get("rarities"),
                       "sim": pi_s[k], "real": pi_r[k]} for k in M.ITEMS},
-        "pares": {"sim": pairs(sim_recs), "real": pairs(real_recs)},
-        "mortes": {"sim": deaths(sim_recs), "real": deaths(real_recs)},
-        "herois": {"sim": heroes(sim_recs), "real": heroes(real_recs)},
+        "pairs": {"sim": pairs(sim_recs), "real": pairs(real_recs)},
+        "deaths": {"sim": deaths(sim_recs), "real": deaths(real_recs)},
+        "heroes": {"sim": heroes(sim_recs), "real": heroes(real_recs)},
     }
 
 
 CSS = """
-:root{--bg:#1d1b2b;--cx:#25223a;--zb:#2b2844;--bd:#3d3866;--tx:#f2f0ff;--mu:#a9a4d6;--ok:#7ee081;--ruim:#ff6b81;
---ouro:#ffd23f;--roxo:#7a73d6;--roxo2:#b48cff}
+:root{--bg:#1d1b2b;--cx:#25223a;--zb:#2b2844;--bd:#3d3866;--tx:#f2f0ff;--mu:#a9a4d6;--ok:#7ee081;--bad:#ff6b81;
+--gold:#ffd23f;--purple:#7a73d6;--purple2:#b48cff}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--tx);font:14px/1.5 "Segoe UI",system-ui,sans-serif;padding:24px 16px;max-width:1200px;margin:auto}
 td{font-family:Consolas,"Cascadia Mono","Courier New",monospace;font-size:13px}
-header{border:2px solid var(--roxo);background:linear-gradient(135deg,#2a2545,#1d1b2b);padding:16px 20px;border-radius:6px;
+header{border:2px solid var(--purple);background:linear-gradient(135deg,#2a2545,#1d1b2b);padding:16px 20px;border-radius:6px;
 box-shadow:4px 4px 0 #0b0b14}
-h1{font-size:22px;margin:0 0 4px;color:var(--ouro);letter-spacing:.04em;text-shadow:2px 2px 0 #6a3fb5}
-h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--ouro);margin:32px 0 10px;padding-left:10px;
-border-left:4px solid var(--roxo2)}
-.mu{color:var(--mu)}.ok{color:var(--ok)}.ruim{color:var(--ruim)}.aviso{color:var(--ouro)}.fraco{opacity:.5}
-.rolar{overflow-x:auto;border:1px solid var(--bd);border-radius:6px}
+h1{font-size:22px;margin:0 0 4px;color:var(--gold);letter-spacing:.04em;text-shadow:2px 2px 0 #6a3fb5}
+h2{font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin:32px 0 10px;padding-left:10px;
+border-left:4px solid var(--purple2)}
+.mu{color:var(--mu)}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--gold)}.weak{opacity:.5}
+.scroll{overflow-x:auto;border:1px solid var(--bd);border-radius:6px}
 table{border-collapse:collapse;width:100%;background:var(--cx)}
 th,td{padding:6px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--bd)}
 tbody tr:nth-child(even){background:var(--zb)}tbody tr:hover{background:#363159}
 th:first-child,td:first-child{text-align:left}
 th{color:var(--mu);font-weight:600;font-size:12px;background:#221f36}
-th.ord{cursor:pointer}th.ord:hover{color:var(--ouro)}
+th.ord{cursor:pointer}th.ord:hover{color:var(--gold)}
 .cols{display:flex;gap:16px;flex-wrap:wrap}.cols>div{flex:1 1 320px;min-width:0}
-.cartao{background:var(--cx);border:1px solid var(--bd);border-radius:6px;padding:12px 14px}
-.fonte{color:var(--roxo2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:12px;margin:0 0 6px}
+.card{background:var(--cx);border:1px solid var(--bd);border-radius:6px;padding:12px 14px}
+.source{color:var(--purple2);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:12px;margin:0 0 6px}
 .badge{display:inline-block;padding:0 6px;border-radius:9px;font-size:11px;font-weight:700;margin-left:4px}
-.badge.ok{background:#1f3d2a;border:1px solid #3d7a4f}.badge.ruim{background:#4a1f2a;border:1px solid #8f3a4d}
+.badge.ok{background:#1f3d2a;border:1px solid #3d7a4f}.badge.bad{background:#4a1f2a;border:1px solid #8f3a4d}
 .ic{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;margin-right:8px;
 background:#14121f;border:2px solid #4b4680;border-radius:4px;flex:none}
 .ic img{image-rendering:pixelated}
-.ic.grande{width:72px;height:72px}
-.nome{display:inline-flex;align-items:center;font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;vertical-align:middle}
-.barras{list-style:none;padding:0;margin:0 0 12px}
-.barras li{display:grid;grid-template-columns:minmax(90px,40%) 1fr 48px;gap:8px;align-items:center;margin:3px 0}
-.barras .b{background:#14121f;height:12px;border-radius:2px;overflow:hidden}.barras .b span{display:block;height:100%;background:var(--roxo)}
-.barras .v{text-align:right;font-family:Consolas,monospace;font-size:12px;color:var(--mu)}
+.ic.big{width:72px;height:72px}
+.name{display:inline-flex;align-items:center;font-family:"Segoe UI",system-ui,sans-serif;font-size:14px;vertical-align:middle}
+.bars{list-style:none;padding:0;margin:0 0 12px}
+.bars li{display:grid;grid-template-columns:minmax(90px,40%) 1fr 48px;gap:8px;align-items:center;margin:3px 0}
+.bars .b{background:#14121f;height:12px;border-radius:2px;overflow:hidden}.bars .b span{display:block;height:100%;background:var(--purple)}
+.bars .v{text-align:right;font-family:Consolas,monospace;font-size:12px;color:var(--mu)}
 svg{max-width:100%;height:auto}
 """
 
@@ -262,10 +262,10 @@ def _img(pm, side=28) -> str:
         for x in range(x0, x1):
             c = pm.get((x, y))
             raw += bytes.fromhex(c[1:]) + b"\xff" if c else b"\0\0\0\0"
-    def bloco(n, d):
+    def chunk(n, d):
         return struct.pack(">I", len(d)) + n + d + struct.pack(">I", zlib.crc32(n + d))
-    png = (b"\x89PNG\r\n\x1a\n" + bloco(b"IHDR", struct.pack(">IIBBBBB", x1 - x0, y1 - y0, 8, 6, 0, 0, 0))
-           + bloco(b"IDAT", zlib.compress(bytes(raw), 9)) + bloco(b"IEND", b""))
+    png = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", x1 - x0, y1 - y0, 8, 6, 0, 0, 0))
+           + chunk(b"IDAT", zlib.compress(bytes(raw), 9)) + chunk(b"IEND", b""))
     k = max(1, side // max(x1 - x0, y1 - y0))
     return (f'<img alt="" width="{(x1 - x0) * k}" height="{(y1 - y0) * k}" '
             f'src="data:image/png;base64,{base64.b64encode(png).decode()}">')
@@ -290,24 +290,24 @@ def _hero_icon(key) -> str:
         pm = visual.grid_to_map(assemble.states(mod, 0)["idle"][0], mod.PAL)
     except (ImportError, AttributeError, KeyError):
         return ""
-    return f'<span class="ic grande">{_img(pm, 64)}</span>'
+    return f'<span class="ic big">{_img(pm, 64)}</span>'
 
 
 def _item_name(key, items) -> str:
-    name = items[key]["nome"] if key in items else key
-    return f'<span class="nome">{_item_icon(key) if key in M.ITEMS else ""}{_e(name)}</span>'
+    name = items[key]["name"] if key in items else key
+    return f'<span class="name">{_item_icon(key) if key in M.ITEMS else ""}{_e(name)}</span>'
 
 
 def _summary_line(name, r, metas=None) -> str:
     """Summary table row; without `targets` (or with a None target) it shows no ✓/✗."""
     def cel(k, txt):
         m = (metas or {}).get(k)
-        sign = "" if m is None else (' <span class="badge ok">✓</span>' if m else ' <span class="badge ruim">✗</span>')
+        sign = "" if m is None else (' <span class="badge ok">✓</span>' if m else ' <span class="badge bad">✗</span>')
         return f"<td>{txt}{sign}</td>"
-    warning = ' <span class="aviso">(menos de 10 runs, pouco confiável)</span>' if 0 < r["n"] < 10 else ""
-    return (f"<tr><td>{_e(name)}{warning}</td><td>{r['n']}</td><td>{_n(r['mediana'])}</td>"
-            + cel("p90", _n(r["p90"])) + cel("max", _n(r["max"], 0)) + cel("passou_chefe1", _pct(r["passou_chefe1"]))
-            + f"<td>{_n(r['itens_med'])}</td></tr>")
+    warning = ' <span class="warn">(fewer than 10 runs, unreliable)</span>' if 0 < r["n"] < 10 else ""
+    return (f"<tr><td>{_e(name)}{warning}</td><td>{r['n']}</td><td>{_n(r['median'])}</td>"
+            + cel("p90", _n(r["p90"])) + cel("max", _n(r["max"], 0)) + cel("passed_boss1", _pct(r["passed_boss1"]))
+            + f"<td>{_n(r['items_median'])}</td></tr>")
 
 
 def _pair_sr(sim, real, fmt, vs=False, weak=False, fmt_real=None) -> str:
@@ -315,39 +315,39 @@ def _pair_sr(sim, real, fmt, vs=False, weak=False, fmt_real=None) -> str:
     def un(v, f, dim):
         txt = f(v)
         if vs and v is not None and abs(v) > 1:
-            txt = f'<span class="{"ok" if v > 0 else "ruim"}">{txt}</span>'
-        return f'<span class="fraco">{txt}</span>' if dim else txt
+            txt = f'<span class="{"ok" if v > 0 else "bad"}">{txt}</span>'
+        return f'<span class="weak">{txt}</span>' if dim else txt
     return f"{un(sim, fmt, False)} / {un(real, fmt_real or fmt, weak)}"
 
 
 def _items_table(items) -> str:
-    cab = [("Item", None), ("Pego", "pego"), ("Andar em que é pego", "andar_pego"), ("Durou", "durou"),
-           ("vs média", "vs_media"), ("Andar final", "andar_final"),
-           ("Em mortes rápidas", "mortes_rapidas"), ("Consumido", "consumido")]
-    fmts = {"pego": _pct, "andar_pego": _n, "durou": _n, "vs_media": lambda v: _n(v, 2),
-            "andar_final": _n, "mortes_rapidas": _pct, "consumido": _pct}
-    out = ['<div class="rolar"><table id="itens"><thead><tr>']
+    cab = [("Item", None), ("Taken", "taken"), ("Floor when taken", "taken_floor"), ("Lasted", "lasted"),
+           ("vs mean", "vs_mean"), ("Final floor", "final_floor"),
+           ("In quick deaths", "quick_deaths"), ("Consumed", "consumed_pct")]
+    fmts = {"taken": _pct, "taken_floor": _n, "lasted": _n, "vs_mean": lambda v: _n(v, 2),
+            "final_floor": _n, "quick_deaths": _pct, "consumed_pct": _pct}
+    out = ['<div class="scroll"><table id="items"><thead><tr>']
     out += [f'<th class="ord">{_e(t)}{"<br>sim / real" if k else ""}</th>' for t, k in cab]
     out.append("</tr></thead><tbody>")
-    for key, it in sorted(items.items(), key=lambda x: x[1]["nome"]):
+    for key, it in sorted(items.items(), key=lambda x: x[1]["name"]):
         s, r = it["sim"], it["real"]
         weak = r["n"] < 10
         rares = ", ".join(f'<span style="color:{M.RAR_COLOR[x]}">{_e(M.RAR_NAMES[x])}</span>' if M.RAR_COLOR.get(x)
-                          else _e(M.RAR_NAMES[x]) for x in (it["raridades"] or []) if x in M.RAR_NAMES)
-        warning = f' <span class="aviso" title="menos de 10 runs reais">⚠ n={r["n"]}</span>' if weak and r["n"] else ""
-        out.append(f'<tr><td data-v="{_e(it["nome"])}"><span class="nome">{_item_icon(key)}<span>{_e(it["nome"])}'
+                          else _e(M.RAR_NAMES[x]) for x in (it["rarities"] or []) if x in M.RAR_NAMES)
+        warning = f' <span class="warn" title="fewer than 10 real runs">⚠ n={r["n"]}</span>' if weak and r["n"] else ""
+        out.append(f'<tr><td data-v="{_e(it["name"])}"><span class="name">{_item_icon(key)}<span>{_e(it["name"])}'
                    f'<br><small class="mu">{rares}</small>{warning}</span></span></td>')
         for _, k in cab[1:]:
             order = "" if s[k] is None else s[k]
             modes, fr = "", None
-            if k == "pego":  # real: how many runs and the fraction
+            if k == "taken":  # real: how many runs and the fraction
                 fr = lambda v, n=r["n"]: "—" if v is None else f"{n} ({_pct(v)})"
-            if k == "vs_media":  # raw value, not centered on the mean
-                modes = f'<br><small class="mu">bruto {_n(s["vs_esperado"], 2)} / {_n(r["vs_esperado"], 2)}</small>'
-            if k == "consumido" and r["consumido_por_modo"]:  # real split by game mode
+            if k == "vs_mean":  # raw value, not centered on the mean
+                modes = f'<br><small class="mu">raw {_n(s["vs_expected"], 2)} / {_n(r["vs_expected"], 2)}</small>'
+            if k == "consumed_pct" and r["consumed_by_mode"]:  # real split by game mode
                 modes = "<br><small class=\"mu\">" + " · ".join(
-                    f"{_e(m)} {_pct(v)}" for m, v in sorted(r["consumido_por_modo"].items())) + "</small>"
-            out.append(f'<td data-v="{order}">{_pair_sr(s[k], r[k], fmts[k], vs=(k == "vs_media"), weak=weak, fmt_real=fr)}{modes}</td>')
+                    f"{_e(m)} {_pct(v)}" for m, v in sorted(r["consumed_by_mode"].items())) + "</small>"
+            out.append(f'<td data-v="{order}">{_pair_sr(s[k], r[k], fmts[k], vs=(k == "vs_mean"), weak=weak, fmt_real=fr)}{modes}</td>')
         out.append("</tr>")
     out.append("</tbody></table></div>")
     return "".join(out)
@@ -355,18 +355,18 @@ def _items_table(items) -> str:
 
 def _pairs_table(lst, items) -> str:
     if not lst:
-        return '<p class="mu">Poucos pares com amostra suficiente.</p>'
-    color = lambda g: "ok" if g > 1 else "ruim" if g < -1 else ""
+        return '<p class="mu">Few pairs with a large enough sample.</p>'
+    color = lambda g: "ok" if g > 1 else "bad" if g < -1 else ""
     lines = "".join(f'<tr><td>{_item_name(p["a"], items)} <span class="mu">+</span> {_item_name(p["b"], items)}</td><td>{p["n"]}</td>'
-                     f'<td>{_n(p["vs_esperado"], 2)}</td><td class="{color(p["ganho"])}">{_n(p["ganho"], 2)}</td></tr>'
+                     f'<td>{_n(p["vs_expected"], 2)}</td><td class="{color(p["gain"])}">{_n(p["gain"], 2)}</td></tr>'
                      for p in lst)
-    return ('<div class="rolar">' "<table><thead><tr><th>Par</th><th>n</th><th>vs esperado</th><th>Ganho do par</th></tr></thead>"
+    return ('<div class="scroll">' "<table><thead><tr><th>Pair</th><th>n</th><th>vs expected</th><th>Pair gain</th></tr></thead>"
             f"<tbody>{lines}</tbody></table></div>")
 
 
 def _histogram(per_floor, title) -> str:
     if not per_floor:
-        return f'<p class="mu">{_e(title)}: sem runs.</p>'
+        return f'<p class="mu">{_e(title)}: no runs.</p>'
     until, total, maxv = max(int(a) for a in per_floor), sum(per_floor.values()), max(per_floor.values())
     larg, alt, esp = 22, 120, 14
     bars = []
@@ -374,9 +374,9 @@ def _histogram(per_floor, title) -> str:
         v = per_floor.get(a, per_floor.get(str(a), 0))  # int key (memory) or str (JSON)
         h, x = alt * v / maxv, (a - 1) * larg
         bars.append(f'<rect x="{x + 2}" y="{alt - h:.1f}" width="{larg - 4}" height="{h:.1f}" fill="{"#ffd23f" if a % M.BOSS_EVERY == 0 else "#7a73d6"}" rx="2">'
-                      f'<title>andar {a}: {v} ({v / total * 100:.0f}%)</title></rect>'
+                      f'<title>floor {a}: {v} ({v / total * 100:.0f}%)</title></rect>'
                       f'<text x="{x + larg / 2}" y="{alt + esp}" fill="#a9a4d6" font-size="10" text-anchor="middle">{a}</text>')
-    return (f'<p class="mu">Andar em que morreram ({total} runs; dourado = andar de chefe)</p>'
+    return (f'<p class="mu">Floor where they died ({total} runs; gold = boss floor)</p>'
             f'<svg viewBox="0 0 {until * larg} {alt + esp + 2}" width="{until * larg}" role="img" aria-label="{_e(title)}">'
             + "".join(bars) + "</svg>")
 
@@ -385,71 +385,71 @@ def _bars(pairs) -> str:
     """Horizontal CSS bars: label, bar proportional to the largest and value."""
     pairs = list(pairs)
     top = max(c for _, c in pairs) or 1
-    return '<ul class="barras">' + "".join(
+    return '<ul class="bars">' + "".join(
         f'<li><span>{_e(n)}</span><span class="b"><span style="width:{c / top * 100:.0f}%"></span></span>'
         f'<span class="v">{c}</span></li>' for n, c in pairs) + "</ul>"
 
 
 def _killers(lst) -> str:
     if not lst:
-        return '<p class="mu">sem dados</p>'
+        return '<p class="mu">no data</p>'
     return _bars(lst)
 
 
-KINDS = {"monster": "Monstro", "horde": "Horda", "boss": "Chefe", "mimic": "Mímico", "trap": "Armadilha",
-         "status": "Status", "desistiu": "Desistiu", "?": "Antigo"}
+KINDS = {"monster": "Monster", "horde": "Horde", "boss": "Boss", "mimic": "Mimic", "trap": "Trap",
+         "status": "Status", "gave_up": "Gave up", "?": "Old"}
 
 
 def _kinds(d) -> str:
     if not d:
-        return '<p class="mu">sem dados</p>'
+        return '<p class="mu">no data</p>'
     return _bars((KINDS.get(k, k), c) for k, c in d.items())
 
 
 def make_html(data: dict) -> str:
-    items, info = data["itens"], data["info_real"]
+    items, info = data["items"], data["real_info"]
     real_empty = data["real"]["n"] == 0
-    p = ['<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">',
+    p = ['<!doctype html><html lang="en"><head><meta charset="utf-8">',
          '<meta name="viewport" content="width=device-width,initial-scale=1">',
-         f"<title>Estatísticas da masmorra</title><style>{CSS}</style></head><body>",
-         f'<header><h1>Masmorra de Tokens · estatísticas de balanceamento</h1><p class="mu">Versão {_e(data["versao"])} · '
-         f'gerado em {_e(data["gerado_em"])} · ferramenta de desenvolvimento</p></header>',
-         "<h2>Resumo</h2>"]
+         f"<title>Dungeon statistics</title><style>{CSS}</style></head><body>",
+         f'<header><h1>Token Dungeon · balance statistics</h1><p class="mu">Version {_e(data["version"])} · '
+         f'generated at {_e(data["generated_at"])} · development tool</p></header>',
+         "<h2>Summary</h2>"]
     if real_empty:
-        p.append('<p class="aviso">sem runs reais: a coluna real fica vazia até acabarem runs (runs.jsonl em ~/.tokenlike).</p>')
-    modes = ", ".join(f"{m}: {c}" for m, c in sorted(info["modos"].items())) or "nenhuma"
-    p.append(f'<p class="mu">Runs reais por modo: {_e(modes)} · {info["desistencias"]} desistências fora das contas · '
-             f'{info["ignoradas"]} linhas ignoradas · {info["outras_versoes"]} linhas de outras versões.</p>')
-    p.append(f'<div class="rolar"><table><thead><tr><th>Fonte</th><th>Runs</th><th>Mediana</th><th>p90 ({TARGETS["p90"][0]}–{TARGETS["p90"][1]})</th>'
-             f'<th>Máx (até {TARGETS["max"][1]})</th><th>Passou do 1º chefe '
-             f'({TARGETS["passou_chefe1"][0] * 100:.0f}–{TARGETS["passou_chefe1"][1] * 100:.0f}%)</th><th>Itens (mediana)</th></tr></thead><tbody>')
-    cal, metas = data["calibracao"], data["metas"]
-    for key, name in (("sem_conquistas", "calibração (slime) sem conquistas"),
-                        ("com_conquistas", "calibração (slime) com conquistas")):
+        p.append('<p class="warn">no real runs: the real column stays empty until runs finish (runs.jsonl in ~/.tokenlike).</p>')
+    modes = ", ".join(f"{m}: {c}" for m, c in sorted(info["modes"].items())) or "none"
+    p.append(f'<p class="mu">Real runs per mode: {_e(modes)} · {info["gave_ups"]} give-ups left out · '
+             f'{info["ignored"]} ignored lines · {info["other_versions"]} lines from other versions.</p>')
+    p.append(f'<div class="scroll"><table><thead><tr><th>Source</th><th>Runs</th><th>Median</th><th>p90 ({TARGETS["p90"][0]}–{TARGETS["p90"][1]})</th>'
+             f'<th>Max (up to {TARGETS["max"][1]})</th><th>Passed the 1st boss '
+             f'({TARGETS["passed_boss1"][0] * 100:.0f}–{TARGETS["passed_boss1"][1] * 100:.0f}%)</th><th>Items (median)</th></tr></thead><tbody>')
+    cal, metas = data["calibration"], data["targets"]
+    for key, name in (("without_achievements", "calibration (slime) without achievements"),
+                        ("with_achievements", "calibration (slime) with achievements")):
         p.append(_summary_line(name, cal[key], metas[key]))
     # all heroes mixed: informative only, the targets are judged in the calibration
-    p.append(_summary_line("sim (todos os heróis)", data["sim"]))
-    p.append(_summary_line("sim sem conquistas (todos os heróis)", data["sim_sem_conquistas"]))
+    p.append(_summary_line("sim (all heroes)", data["sim"]))
+    p.append(_summary_line("sim without achievements (all heroes)", data["sim_without_achievements"]))
     p.append(_summary_line("real", data["real"], metas["real"]))
     p.append("</tbody></table></div>")
-    p.append('<h2>Itens</h2><p class="mu">Cada célula: sim / real. Clique no cabeçalho para ordenar. '
-             "vs média: vs esperado menos a média dos itens (pegar item já ajuda). Verde: acima de +1; vermelho: abaixo de −1. "
-             "Embaixo, o vs esperado bruto. Real esmaecido: menos de 10 runs reais com o item.</p>")
+    p.append('<h2>Items</h2><p class="mu">Each cell: sim / real. Click a header to sort. '
+             "vs mean: vs expected minus the items' mean (taking an item already helps). Green: above +1; red: below −1. "
+             "Below, the raw vs expected. Faded real: fewer than 10 real runs with the item.</p>")
     p.append(_items_table(items))
-    for rot, key in (("Melhores pares", "melhores"), ("Piores pares", "piores")):
+    for rot, key in (("Best pairs", "best_items"), ("Worst pairs", "worst_items")):
         p.append(f'<h2>{rot}</h2><div>')  # stacked: names with icons do not fit side by side
         for font in ("sim", "real"):
-            lst = data["pares"][font][key]
-            body = '<p class="mu">sem runs reais</p>' if font == "real" and real_empty else _pairs_table(lst, items)
-            p.append(f'<div><p class="fonte">{font}</p>{body}</div>')
+            lst = data["pairs"][font][key]
+            body = '<p class="mu">no real runs</p>' if font == "real" and real_empty else _pairs_table(lst, items)
+            p.append(f'<div><p class="source">{font}</p>{body}</div>')
         p.append("</div>")
-    p.append('<h2>Onde as runs morrem</h2><div class="cols">')
+    p.append('<h2>Where runs die</h2><div class="cols">')
     for font in ("sim", "real"):
-        m = data["mortes"][font]
-        p.append(f'<div class="cartao"><p class="fonte">{font}</p>{_histogram(m["por_andar"], font)}<p class="mu">Quem mais mata</p>{_killers(m["matadores"])}<p class="mu">Por tipo de morte</p>{_kinds(m["por_tipo"])}</div>')
-    p.append('</div><h2>Heróis</h2><div class="rolar"><table><thead><tr><th>Herói</th><th>Runs sim / real</th>'
-             "<th>Mediana sim / real</th><th>p90 sim / real</th></tr></thead><tbody>")
-    hs, hr = data["herois"]["sim"], data["herois"]["real"]
+        m = data["deaths"][font]
+        p.append(f'<div class="card"><p class="source">{font}</p>{_histogram(m["per_floor"], font)}<p class="mu">Top killers</p>{_killers(m["killers"])}<p class="mu">By kind of death</p>{_kinds(m["per_kind"])}</div>')
+    p.append('</div><h2>Heroes</h2><div class="scroll"><table><thead><tr><th>Hero</th><th>Runs sim / real</th>'
+             "<th>Median sim / real</th><th>p90 sim / real</th></tr></thead><tbody>")
+    hs, hr = data["heroes"]["sim"], data["heroes"]["real"]
     g = lambda d, k, f=_n: f(d[k]) if d else "—"
     try:
         import tokenlike
@@ -458,16 +458,16 @@ def make_html(data: dict) -> str:
         names = {}
     for c in sorted(set(hs) | set(hr)):
         s, r = hs.get(c), hr.get(c)
-        name = f'<span class="nome">{_hero_icon(c)}{_e(names.get(c, c))}</span>'
+        name = f'<span class="name">{_hero_icon(c)}{_e(names.get(c, c))}</span>'
         p.append(f"<tr><td>{name}</td><td>{g(s, 'n', str)} / {g(r, 'n', str)}</td>"
-                 f"<td>{g(s, 'mediana')} / {g(r, 'mediana')}</td><td>{g(s, 'p90')} / {g(r, 'p90')}</td></tr>")
+                 f"<td>{g(s, 'median')} / {g(r, 'median')}</td><td>{g(s, 'p90')} / {g(r, 'p90')}</td></tr>")
     p.append(f"</tbody></table></div><script>{JS}</script></body></html>")
     return "".join(p)
 
 
 def main(argv=None):
     import argparse, webbrowser
-    ap = argparse.ArgumentParser(description="Página de estatísticas de balanceamento (sim x real).")
+    ap = argparse.ArgumentParser(description="Balance statistics page (sim x real).")
     ap.add_argument("--runs", type=int, default=2000)
     ap.add_argument("--no-open", action="store_true")
     ap.add_argument("--real-dir", default=str(Path.home() / ".tokenlike"))
@@ -476,7 +476,7 @@ def main(argv=None):
     a = ap.parse_args(argv)
     data = collect(a.runs, Path(a.real_dir), a.all_versions)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    h, j = out / "estatisticas.html", out / "estatisticas.json"
+    h, j = out / "balance_stats.html", out / "balance_stats.json"
     h.write_text(make_html(data), encoding="utf-8")
     j.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
     print(h); print(j)

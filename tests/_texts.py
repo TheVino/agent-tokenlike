@@ -39,7 +39,7 @@ def _words(w, text, font, larg, where, out):
     f = _font(w, font)
     for p in text.split():
         if f.measure(p) > larg:
-            out.append(f"{where}: a palavra {p!r} ({f.measure(p)} px) não cabe na quebra de {larg} px")
+            out.append(f"{where}: the word {p!r} ({f.measure(p)} px) does not fit the wrap of {larg} px")
 
 
 def _canvas(cv, out):
@@ -59,19 +59,19 @@ def _canvas(cv, out):
     boxes = {i: cv.bbox(i) for i in texts}
     for i in texts:
         b, txt = boxes[i], cv.itemcget(i, "text")
-        where = f"{_name(cv)} texto {txt[:40]!r}"
+        where = f"{_name(cv)} text {txt[:40]!r}"
         if b[0] < 0 or b[2] > width:
-            out.append(f"{where}: sai da largura do canvas ({b[0]}..{b[2]} de {width})")
+            out.append(f"{where}: leaves the canvas width ({b[0]}..{b[2]} of {width})")
         _words(cv, txt, cv.itemcget(i, "font"), float(cv.itemcget(i, "width") or 0), where, out)
         cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
         for k, c in cards.items():
             if c[0] <= cx <= c[2] and c[1] <= cy <= c[3]:
                 if b[0] < c[0] + MARGIN or b[2] > c[2] - MARGIN or b[1] < c[1] + MARGIN or b[3] > c[3] - MARGIN:
-                    out.append(f"{where}: encosta/passa da borda do cartão {k} ({b} em {c})")
+                    out.append(f"{where}: touches/crosses the card border {k} ({b} in {c})")
     for n, i in enumerate(texts):
         for j in texts[n + 1:]:
             if _crosses(boxes[i], boxes[j]):
-                out.append(f"{_name(cv)}: textos sobrepostos {cv.itemcget(i, 'text')[:30]!r} e "
+                out.append(f"{_name(cv)}: overlapping texts {cv.itemcget(i, 'text')[:30]!r} and "
                            f"{cv.itemcget(j, 'text')[:30]!r}")
 
 
@@ -92,14 +92,14 @@ def check(window):
             if c.winfo_manager() not in ("pack", "grid"):
                 continue                     # place: drawn background, stays below on purpose
             if c.winfo_class() != "Canvas" and (cw < c.winfo_reqwidth() or ch < c.winfo_reqheight()):
-                out.append(f"{_name(c)}: cortado ({cw}x{ch} de {c.winfo_reqwidth()}x{c.winfo_reqheight()})")
+                out.append(f"{_name(c)}: cut off ({cw}x{ch} of {c.winfo_reqwidth()}x{c.winfo_reqheight()})")
             if x < m or y < m or x + cw > pw - m or y + ch > ph - m:
-                out.append(f"{_name(c)}: {'encosta na borda do cartão' if card_box else 'sai do pai'} "
-                           f"({geo[c]} em {pw}x{ph})")
+                out.append(f"{_name(c)}: {'touches the card border' if card_box else 'leaves the parent'} "
+                           f"({geo[c]} in {pw}x{ph})")
             if c.winfo_class() == "Label" and str(c.cget("image")):
                 iw, ih = (int(c.tk.call("image", d, c.cget("image"))) for d in ("width", "height"))
                 if iw > cw or ih > ch:
-                    out.append(f"{_name(c)}: imagem {iw}x{ih} cortada em {cw}x{ch}")
+                    out.append(f"{_name(c)}: image {iw}x{ih} cut to {cw}x{ch}")
             if c.winfo_class() == "Label":
                 wl = int(float(str(c.cget("wraplength")) or 0))
                 _words(c, c.cget("text"), c.cget("font"), wl, _name(c), out)
@@ -107,7 +107,7 @@ def check(window):
         for n, a in enumerate(managed):
             for b in managed[n + 1:]:
                 if _crosses(geo[a], geo[b]):
-                    out.append(f"{_name(a)} sobrepõe {_name(b)}")
+                    out.append(f"{_name(a)} overlaps {_name(b)}")
         if w.winfo_class() == "Canvas":
             _canvas(w, out)
         for c in children:
