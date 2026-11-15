@@ -85,6 +85,8 @@ GOOD = "#7ee081"
 HURT = "#ff6b81"
 GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
+# soft pastel tints for the HUD info line: only to tell the fields apart, never to draw attention
+INFO_COLOR = {"atk": "#e3a6a6", "def": "#a6bfe3", "gold": "#e3d3a0"}
 STATUS_COLOR = {"burn": "#ff9f43", "shock": "#fff27a", "poison": "#4fbf5a", "freeze": "#9fe8ff"}
 MENU_HOVER = "#2e2a48"      # menu row background on mouse hover
 GOLD_HOVER = "#fff27a"      # scrollbar thumb on mouse hover
@@ -1191,7 +1193,10 @@ class PetApp:
         self.hp_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=HURT, font=self.font)
         self.status_y = py + 11
         self.status_txt = c.create_text(self.W - 14, py + 11, anchor="e", fill=MUTED, font=self.font_small)
-        self.info_txt = c.create_text(14, py + 26, anchor="w", fill=MUTED, font=self.font_small)
+        self.info_y = py + 26
+        self.info_txt = c.create_text(14, self.info_y, anchor="w", fill=MUTED, font=self.font_small)   # floor
+        self.info_parts = [(k, c.create_text(14, self.info_y, anchor="w", fill=INFO_COLOR[k], font=self.font_small))
+                           for k in ("atk", "def", "gold")]
         self.bar_x0, self.bar_x1, self.bar_y = 14, self.W - 14, py + 38
         rounded_rect(c, self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, 3, BAR_BG, tag="barra_t")
         self.bar = "barra_e"            # fill tag (redrawn in update_panel)
@@ -1347,9 +1352,14 @@ class PetApp:
         self.canvas.coords(self.status_txt, x0, self.status_y)
         self.canvas.itemconfigure(self.status_txt, text=_t(self.pet_status) if self.pet_status else "",
                                   fill=STATUS_COLOR.get(self.pet_status, MUTED))
-        self.canvas.itemconfigure(
-            self.info_txt,
-            text=f"{depth(run)}   ATK {st['atk']}  DEF {st['def']}   $ {run['gold']}")
+        self.canvas.itemconfigure(self.info_txt, text=depth(run))
+        # each field in its own tint, laid out after the previous one (gap in px)
+        x = self.canvas.bbox(self.info_txt)[2]
+        for (k, item), (gap, txt) in zip(self.info_parts, ((10, f"ATK {st['atk']}"), (7, f"DEF {st['def']}"),
+                                                           (10, f"$ {run['gold']}"))):
+            self.canvas.itemconfigure(item, text=txt)
+            self.canvas.coords(item, x + gap, self.info_y)
+            x = self.canvas.bbox(item)[2]
         cost = M.room_cost(run)
         self.bar_target = min(1.0, run["energy"] / cost) if cost else 0
         if getattr(self, "bar_frac", None) is None:     # 1st draw: already at the value, no sliding
