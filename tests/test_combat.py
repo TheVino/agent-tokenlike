@@ -385,7 +385,6 @@ M.ITEMS.pop("_t", None)
 _s = {}; M._apply_status(_s, "burn", 1); assert _s["burn"] == M.BURN_TURNS + 1
 _s = {}; M._apply_status(_s, "freeze", 1); assert _s["freeze"] == M.FREEZE_TURNS + 1
 _s = {}; M._apply_status(_s, "burn"); assert _s["burn"] == M.BURN_TURNS
-print("ok: combat")
 
 # _react skips a foe that already died from an earlier reaction of the same hit
 dead = foe(hp=5); dead["hp"] = 0; seen = []
@@ -393,3 +392,4 @@ M._react("overload", 0, 3, 1, [dead], dead, lambda *a, **k: seen.append(k.get("r
 assert dead["hp"] == 0 and seen == []
 alive = foe(hp=50); M._react("overload", 0, 3, 1, [alive], alive, lambda *a, **k: seen.append(k.get("reaction")))
 assert seen == ["overload"] and alive["hp"] < 50
+print("ok: combat")
