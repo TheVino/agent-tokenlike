@@ -1,0 +1,31 @@
+{
+  "name": "Empty Knight",
+  "unlock": "block10",
+  "stats": {
+    "hp": 20,
+    "atk": 2,
+    "def": 0,
+    "spd": 8
+  },
+  "trait": {
+    "block": 1
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Empty Armor",
+      "floor": 1,
+      "sheet": "sheet1.png"
+    },
+    {
+      "title": "Empty Knight",
+      "floor": 4,
+      "sheet": "sheet2.png"
+    },
+    {
+      "title": "Empty Paladin",
+      "floor": 10,
+      "sheet": "sheet3.png"
+    }
+  ]
+}

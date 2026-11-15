@@ -1,0 +1,31 @@
+{
+  "name": "Messenger Crow",
+  "unlock": "bosses3",
+  "stats": {
+    "hp": 20,
+    "atk": 3,
+    "def": 0,
+    "spd": 12
+  },
+  "trait": {
+    "double": 0.08
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Crow Chick",
+      "floor": 1,
+      "sheet": "sheet1.png"
+    },
+    {
+      "title": "Messenger Crow",
+      "floor": 4,
+      "sheet": "sheet2.png"
+    },
+    {
+      "title": "Herald Crow",
+      "floor": 10,
+      "sheet": "sheet3.png"
+    }
+  ]
+}

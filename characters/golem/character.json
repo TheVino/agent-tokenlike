@@ -1,32 +1,32 @@
 {
-  "name": "Golem de Musgo",
-  "unlock": "sem_consumir10",
+  "name": "Moss Golem",
+  "unlock": "no_consume10",
   "stats": {
     "hp": 20,
     "atk": 3,
     "def": 0,
     "spd": 8
   },
-  "traço": {
+  "trait": {
     "def": 1,
     "maxhp": 3
   },
   "frame_ms": 600,
   "stages": [
     {
-      "title": "Pedrinha",
+      "title": "Pebble",
       "floor": 1,
-      "sheet": "folha1.png"
+      "sheet": "sheet1.png"
     },
     {
-      "title": "Golem de Musgo",
+      "title": "Moss Golem",
       "floor": 4,
-      "sheet": "folha2.png"
+      "sheet": "sheet2.png"
     },
     {
-      "title": "Golem Ancião",
+      "title": "Elder Golem",
       "floor": 10,
-      "sheet": "folha3.png"
+      "sheet": "sheet3.png"
     }
   ]
 }

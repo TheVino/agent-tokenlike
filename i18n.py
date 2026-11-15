@@ -1,0 +1,340 @@
+# -*- coding: utf-8 -*-
+"""Interface language (stdlib only, no GUI). The English text is the key itself: `t("Quit")` returns
+"Sair" in Portuguese. With `**fmt`, the key is a template (`t("Floor {n}", n=3)`). Without `fmt`, an already
+built English text (dungeon event lines) is translated by template: "Paid 12 gold" matches "Paid {n} gold".
+Text without a translation (community pets) comes back as it was. `legacy_en` turns Portuguese texts saved by
+old versions (graveyard) into English. Every new visible text goes through `t()` and gets a PT entry
+(tests/test_i18n.py checks it)."""
+import re
+
+LANGS = {"pt": "PT", "en": "EN"}
+LANG = "pt"
+
+
+def set_lang(lang):
+    global LANG
+    LANG = lang if lang in LANGS else "pt"
+
+
+def t(text, **fmt):
+    if LANG == "pt":
+        pt = PT.get(text)
+        if pt is None and not fmt:
+            return _by_template(text, PT)
+        text = pt or text
+    return text.format(**fmt) if fmt else text
+
+
+_TEMPLATES = {}
+
+
+def _by_template(text, table):
+    """Translates an already built text by matching the `{name}` templates of `table`."""
+    if id(table) not in _TEMPLATES:
+        rows = []
+        for k, v in table.items():
+            if "{" in k:
+                rx = re.escape(k)
+                rx = re.sub(r"\\\{(\w+)\\\}", r"(?P<\1>.+?)", rx)
+                rows.append((re.compile(rx + r"\Z"), v))
+        _TEMPLATES[id(table)] = rows
+    for rx, tr in _TEMPLATES[id(table)]:
+        m = rx.match(text)
+        if m:
+            return tr.format(**{k: table.get(v, v) for k, v in m.groupdict().items()})
+    return text
+
+
+def legacy_en(text):
+    """Portuguese text saved by an old version (graveyard, killer names) -> English."""
+    return LEGACY_EN.get(text) or _by_template(text, LEGACY_EN)
+
+
+PT = {
+    # items
+    "Rusty Dagger": "Adaga Enferrujada",
+    "Bone Sword": "Espada de Osso",
+    "Spectral Staff": "Cajado Espectral",
+    "Shadow Scythe": "Foice Sombria",
+    "Pot Lid": "Tampa de Panela",
+    "Iron Shield": "Escudo de Ferro",
+    "Pale Lantern": "Lanterna Pálida",
+    "Forbidden Grimoire": "Grimório Proibido",
+    "Witch Hat": "Chapéu de Bruxa",
+    "Thief's Cap": "Gorro de Ladrão",
+    "Demon Horns": "Chifres de Demônio",
+    "Cracked Halo": "Auréola Rachada",
+    "Cursed Candle": "Vela Amaldiçoada",
+    "Spiky Carapace": "Carapaça Espinhosa",
+    "Sticky Drool": "Baba Pegajosa",
+    "Dark Aura": "Aura Sombria",
+    "Crimson Flask": "Frasco Carmesim",
+    "Third Eye": "Terceiro Olho",
+    "Firefly Orb": "Orbe Vaga-lume",
+    "Crown of Ashes": "Coroa de Cinzas",
+    "Live Ember": "Brasa Viva",
+    "Singed Fur": "Pelagem Chamuscada",
+    "Tallow Torch": "Tocha de Sebo",
+    "Red Wisp": "Fogo-fátuo Rubro",
+    "Magma Heart": "Coração de Magma",
+    "Static Fur": "Pelo Estático",
+    "Electric Lemon": "Limão Elétrico",
+    "Crooked Lightning Rod": "Para-raios Torto",
+    "Angry Little Cloud": "Nuvenzinha Raivosa",
+    "Storm Antenna": "Antena de Tempestade",
+    "Toxic Moss": "Musgo Tóxico",
+    "Mudfrog Tooth": "Dente de Sapo-lodo",
+    "Suspicious Mushroom": "Cogumelo Suspeito",
+    "Boiling Sludge": "Lodo Fervente",
+    "Plague Censer": "Incensário da Peste",
+    "Frosty Breath": "Bafo Gélido",
+    "Ice Shard": "Estilhaço de Gelo",
+    "Snow Scarf": "Cachecol de Neve",
+    "Frost Rind": "Casca de Geada",
+    "Eternal Snowflake": "Floco Eterno",
+    "Bark Buckler": "Broquel de Casca",
+    "Old Tortoise Shell": "Casco de Jabuti Velho",
+    "Riveted Gauntlet": "Manopla Rebitada",
+    "Warning Bell": "Sininho de Alerta",
+    "Living Stone Wall": "Muralha de Pedra Viva",
+    "Chestnut Husk": "Casca de Castanha",
+    "Grumpy Cactus": "Cacto Mal-humorado",
+    "Barbed Doublet": "Gibão de Farpas",
+    "Fang Necklace": "Colar de Presas",
+    "Cracked Mirror": "Espelho Rachado",
+    "Lukewarm Teapot": "Bule Morno",
+    "Stubborn Root": "Raiz Teimosa",
+    "Pocket Hearth": "Lareirinha de Bolso",
+    "Bottled Spring Drop": "Gota de Fonte Presa",
+    "Ancestral Sap": "Seiva Ancestral",
+    "Thirsty Blade": "Lâmina Sedenta",
+    "Patched Heart": "Coração Remendado",
+    "Gnashing Mask": "Máscara Rangente",
+    "Ruby Chalice": "Cálice Rubro",
+    "Seal of the Red Drop": "Selo da Gota Rubra",
+    "Nimble Glove": "Luvinha Ligeira",
+    "Twin Stinger": "Ferrão Gêmeo",
+    "Snapping Tail": "Rabicho Estalante",
+    "Echo Bracelet": "Pulseira do Eco",
+    "Twin Moon Claws": "Garras Gêmeas da Lua",
+    "Blade Top": "Pião de Lâminas",
+    "Crooked Link Chain": "Corrente de Elos Tortos",
+    "Bottled Howl": "Uivo Engarrafado",
+    "Black Feather Fan": "Leque de Penas Negras",
+    "Pocket Whirlwind": "Redemoinho de Bolso",
+    "Guard Beetle": "Besourinho de Guarda",
+    "Cloth Bat": "Morceguinho de Pano",
+    "Hopping Skull": "Caveirinha Saltitante",
+    "Sock Puppet": "Fantoche de Meia",
+    "Ash Crow": "Corvo de Cinza",
+    "Cracked Monocle": "Monóculo Trincado",
+    "Whetstone": "Pedra de Amolar",
+    "Wilted Clover": "Trevo Murcho",
+    "Shadow Wolf Fang": "Presa de Lobo-sombra",
+    "Onyx Cat's Eye": "Olho de Gato Ônix",
+    "Sharp Baby Tooth": "Dente de Leite Afiado",
+    "Restless Cocoon": "Casulo Inquieto",
+    "Trophy Collar": "Coleira de Troféus",
+    "Hungry Seed": "Semente Faminta",
+    "Ringed Horn": "Chifre de Anéis",
+    "Hunter's Buckle": "Fivela do Caçador",
+    "Bone Grinder": "Moedor de Ossos",
+    "Bone Die": "Dado de Osso",
+    "Two-Crowned Coin": "Moeda de Duas Coroas",
+    "Rusty Horseshoe": "Ferradura Enferrujada",
+    "Scribbled Map": "Mapa Rabiscado",
+    "Three-Thread Talisman": "Talismã de Três Fios",
+    "Shooting Star Shard": "Caco de Estrela Cadente",
+    "Black Cat Whisker": "Bigode de Gato Preto",
+    "Frogskin Pouch": "Bolsa de Couro de Sapo",
+    "Bargain Ticket": "Bilhete de Barganha",
+    "Crooked Scales": "Balança Torta",
+    "Gold Tooth": "Dente de Ouro",
+    "Coin Jug": "Moringa de Moedas",
+    "Tame Leech": "Sanguessuga Mansa",
+    # achievements
+    "Reach floor 5": "Chegar ao andar 5",
+    "Defeat a boss": "Derrotar um chefe",
+    "Defeat a mimic": "Derrotar um mímico",
+    "Gather 100 gold in a run": "Juntar 100 de ouro numa run",
+    "Take 10 items in a run": "Pegar 10 itens numa run",
+    "Reach floor 10": "Chegar ao andar 10",
+    "Reach floor 20": "Chegar ao andar 20",
+    "Kill an enemy with poison": "Matar um inimigo com veneno",
+    "Take 3 elemental items in a run": "Pegar 3 itens elementais numa run",
+    "Gather 300 gold in a run": "Juntar 300 de ouro numa run",
+    "Beat a horde of 4 enemies": "Vencer uma horda de 4 inimigos",
+    "Kill an enemy with a burn": "Matar um inimigo com queimadura",
+    "Reach floor 8 at full HP": "Chegar ao andar 8 com o HP cheio",
+    "Reach floor 15": "Chegar ao andar 15",
+    "Dodge 10 hits in a run": "Esquivar 10 golpes numa run",
+    "Block 10 hits in a run": "Bloquear 10 golpes numa run",
+    "Beat 3 bosses in total": "Vencer 3 chefes no total",
+    "Consume 10 items in a run": "Consumir 10 itens numa run",
+    "Die 10 times": "Morrer 10 vezes",
+    "Take 3 helper items in a run": "Pegar 3 itens de ajudante numa run",
+    "Reach floor 10 consuming nothing": "Chegar ao andar 10 sem consumir nenhum item",
+    "Take 3 legendary items in a run": "Pegar 3 itens lendários numa run",
+    "Kill 3 enemies with poison in a run": "Matar 3 inimigos com veneno numa run",
+    "Die on floor 13": "Morrer no andar 13",
+    "Beat 3 bosses in a single run": "Vencer 3 chefes numa mesma run",
+    # heroes (name and stages)
+    "Slime": "Slime",
+    "Droplet": "Gotinha",
+    "Slime Monarch": "Rei Slime",
+    "Alchemist": "Alquimista",
+    "Alchemy Apprentice": "Aprendiz de Alquimia",
+    "Master Alchemist": "Mestre Alquimista",
+    "Rag Doll": "Boneca de Pano",
+    "Scrap": "Retalho",
+    "Patched Doll": "Boneca Remendada",
+    "Swamp Witch": "Bruxa do Pântano",
+    "Witchling": "Bruxinha",
+    "Bog Matriarch": "Matriarca do Brejo",
+    "Empty Knight": "Cavaleiro Oco",
+    "Empty Armor": "Armadura Vazia",
+    "Empty Paladin": "Paladino Oco",
+    "Little Reaper": "Ceifeirinho",
+    "Reaper": "Ceifador",
+    "Elder Reaper": "Ceifador Ancião",
+    "Cave Mushroom": "Cogumelo de Caverna",
+    "Sporeling": "Esporinho",
+    "Mycelium Elder": "Ancião do Micélio",
+    "Messenger Crow": "Corvo Mensageiro",
+    "Crow Chick": "Filhote de Corvo",
+    "Herald Crow": "Corvo Arauto",
+    "Gravedigger": "Coveiro",
+    "Gravedigger's Helper": "Ajudante de Coveiro",
+    "Cemetery Warden": "Guardião do Cemitério",
+    "Scarecrow": "Espantalho",
+    "Little Scarecrow": "Espantalhinho",
+    "Field Guardian": "Guardião da Lavoura",
+    "Ghost": "Fantasma",
+    "Little Ghost": "Fantasminha",
+    "Ghost Mage": "Fantasma Mago",
+    "Ash Nun": "Freira das Cinzas",
+    "Ash Novice": "Noviça das Cinzas",
+    "Ash Abbess": "Abadessa das Cinzas",
+    "Black Graveyard Cat": "Gato Preto de Cemitério",
+    "Black Kitten": "Gatinho Preto",
+    "Graveyard Cat": "Gato de Cemitério",
+    "Cat of Seven Lives": "Gato das Sete Vidas",
+    "Moss Golem": "Golem de Musgo",
+    "Pebble": "Pedrinha",
+    "Elder Golem": "Golem Ancião",
+    "Inquisitor": "Inquisidor",
+    "Novice": "Noviço",
+    "Grand Inquisitor": "Grão-Inquisidor",
+    "Lunar Moth": "Mariposa Lunar",
+    "Lunar Caterpillar": "Lagartinha Lunar",
+    "Eclipse Moth": "Mariposa Eclipse",
+    "Plague Doctor": "Médico da Peste",
+    "Plague Apprentice": "Aprendiz da Peste",
+    "Blight Doctor": "Doutor da Praga",
+    "Well Octopus": "Polvo do Poço",
+    "Little Octopus": "Polvinho",
+    "Lord of the Well": "Senhor do Poço",
+    "Frog Shaman": "Sapo Xamã",
+    "Tadpole Shaman": "Girino Xamã",
+    "Bog Elder": "Ancião do Brejo",
+    "Living Candle": "Vela Viva",
+    "Candle Stub": "Tôco de Vela",
+    "Ancient Taper": "Círio Antigo",
+    # monsters, bosses, rarities, statuses, killers
+    "Bat": "Morcego", "Rat": "Rato", "Spider": "Aranha", "Skeleton": "Esqueleto", "Floating Eye": "Olho Flutuante",
+    "Vampire Bat": "Morcego Vampiro", "Rat King": "Rei Rato", "Mother Spider": "Aranha Mãe",
+    "Skeleton Lord": "Lorde Esqueleto", "Abyssal Eye": "Olho Abissal", "Mimic": "Mímico",
+    "Trap": "Armadilha", "Burn": "Queimadura", "Poison": "Veneno", "Gave up": "Desistiu",
+    "Common": "Comum", "Rare": "Raro", "Epic": "Épico", "Legendary": "Lendário",
+    "burn": "queimadura", "shock": "eletricidade", "poison": "veneno", "freeze": "congelamento",
+    # rooms and event lines (dungeon.enter_room; translated by template)
+    "Chest": "Baú", "Fountain": "Fonte", "Little Shop": "Lojinha", "Dark Altar": "Altar Sombrio",
+    "Horde ({n})": "Horda ({n})", "Floor {n}": "Andar {n}",
+    "Bought a potion (-{n} gold)": "Comprou poção (-{n} ouro)", "Paid {n} gold": "Pagou {n} ouro",
+    "The shop has nothing new...": "A loja não tem nada novo...", "No gold to buy...": "Sem ouro pra comprar...",
+    "Blood pact: -{n} max HP, +2 ATK": "Pacto de sangue: -{n} HP máx, +2 ATK",
+    "Stone skin: -1 ATK, +1 DEF": "Pele de pedra: -1 ATK, +1 DEF", "The altar ignores you...": "O altar te ignora...",
+    "Dark blessing: +4 max HP": "Bênção sombria: +4 HP máx",
+    "Traded 10 gold for a full heal": "Trocou 10 ouro por cura total", "Found 5 coins on the altar": "Achou 5 moedas no altar",
+    # fx_text
+    "{v}% dodge": "{v}% esquiva", "+{v}% gold": "+{v}% ouro", "+{v}% energy": "+{v}% energia",
+    "+{v} HP per win": "+{v} HP por vitória", "traps x{v}": "armadilhas x{v}", "{v} speed": "{v} velocidade",
+    "{v}% crit": "{v}% crítico", "{v}x crit damage": "{v}x dano crítico", "area attack": "ataque em área",
+    "blocks {v} hit": "bloqueia {v} golpe", "blocks {v} hits": "bloqueia {v} golpes",
+    "returns {v}% of damage": "devolve {v}% do dano", "+{v} HP per room": "+{v} HP por sala",
+    "+{v} HP per floor": "+{v} HP por andar", "-{v} HP per attack": "-{v} HP por ataque",
+    "fury +{v} ATK/10% HP lost": "fúria +{v} ATK/10% HP perdido", "{v}% double hit": "{v}% golpe duplo",
+    "helper {v} damage": "ajudante {v} de dano", "+1 ATK every {v} kills": "+1 ATK a cada {v} kills",
+    "+{v}% luck": "+{v}% sorte", "-{v}% shop price": "-{v}% preço na loja",
+    # Status (STAT_LINES) and item families
+    "Max HP": "HP máx", "Attack": "Ataque", "Defense": "Defesa", "Speed": "Velocidade", "Crit": "Crítico",
+    "Crit damage": "Dano crítico", "Dodge": "Esquiva", "Lifesteal": "Roubo de vida", "Double hit": "Golpe duplo",
+    "Area attack": "Ataque em área", "Ignite": "Queimar", "Shock": "Eletrizar", "Envenom": "Envenenar",
+    "Freeze": "Congelar", "Blocks per fight": "Bloqueios por luta", "Thorns": "Espinhos", "Heal per room": "Cura por sala",
+    "Heal per floor": "Cura por andar", "Attack cost": "Custo de ataque", "Fury": "Fúria", "Helper": "Ajudante",
+    "Grow": "Crescer", "Gold": "Ouro", "Energy": "Energia", "Traps": "Armadilhas", "Luck": "Sorte",
+    "Discount": "Desconto", "+{v} per win": "+{v} por vitória", "yes": "sim", "+{v} ATK per 10%": "+{v} ATK a cada 10%",
+    "{v} damage": "{v} de dano",
+    "Elemental": "Elemental", "Growth": "Crescimento", "Area": "Área", "Blood": "Sangue", "Strikes": "Golpes",
+    "Regeneration": "Regeneração", "Luck & gold": "Sorte e ouro", "Basic": "Básico",
+    # menu
+    "Profile": "Perfil", "Status": "Status", "Graveyard": "Cemitério", "Achievements": "Conquistas", "Items": "Itens",
+    "Heroes…": "Heróis…", "Size": "Tamanho", "Mode": "Modo", "Language": "Idioma", "Small": "Pequeno",
+    "Medium": "Médio", "Large": "Grande", "Auto": "Auto", "Interactive": "Interativo",
+    "Always on top": "Sempre por cima", "Flip hero": "Virar herói", "Give up the run": "Desistir da run",
+    "Open characters folder": "Abrir pasta de personagens", "Reload characters": "Recarregar personagens",
+    "Quit": "Sair", "{n} characters": "{n} personagens",
+    # heroes
+    "Next run's hero": "Herói da próxima run", "Heroes": "Heróis", "Community": "Comunidade", "no trait": "sem traço",
+    "{nome} joins the next run.": "{nome} entra na próxima run.", "preparing hero…": "preparando herói…",
+    # HUD, bubbles and floaters
+    "Welcome to the Token Dungeon!": "Bem-vindo à Masmorra de Tokens!",
+    "Your Claude Code tokens become energy": "Seus tokens do Claude Code viram energia",
+    "and I go down the dungeon on my own.": "e eu desço a masmorra sozinho.",
+    "Drag to move me · right-click = menu": "Arraste para me mover · botão direito = menu",
+    "Double-click = status": "Duplo clique = status", "DEMO MODE": "MODO DEMO",
+    "Run #{n} started!": "Run #{n} começou!", "{nome} enters the dungeon...": "{nome} entra na masmorra...",
+    "Session": "Sessão", "Week": "Semana", "resets {h}": "reseta {h}",
+    "Show only when in use": "Aparecer só com uso", "Start with Windows": "Abrir com o Windows",
+    "Show the pet": "Mostrar o pet",
+    "{n} · {p}% of your peak": "{n} · {p}% do seu pico",
+    "Mon": "seg", "Tue": "ter", "Wed": "qua", "Thu": "qui", "Fri": "sex", "Sat": "sáb", "Sun": "dom",
+    "draw": "empate", "dodged!": "esquivou!", "blocked!": "bloqueou!", "lost a turn": "perdeu a vez",
+    "HP already full": "HP já cheio", "+{n} shield": "+{n} escudo", "EVOLVED!": "EVOLUIU!",
+    "{a} evolved into {b}!": "{a} evoluiu para {b}!", "+4 max HP, +1 ATK": "+4 HP máx, +1 ATK",
+    "{nome} died on floor {n}": "{nome} morreu no andar {n}", "Defeated by: {k}": "Derrotado por: {k}",
+    "Monsters beaten: {k}   Gold: {o}": "Monstros vencidos: {k}   Ouro: {o}", "Best: floor {n}": "Recorde: andar {n}",
+    "A new run starts in a moment...": "Uma nova run começa em instantes...", "ACHIEVEMENT!": "CONQUISTA!",
+    "  unlocks: {x}": "  libera: {x}", "hero {nome}": "herói {nome}",
+    # choice (interactive mode)
+    "Take": "Pegar", "Consume": "Consumir", "Take: {x}": "Pegar: {x}", "Consume: {x}": "Consumir: {x}",
+    "1 room waiting": "1 sala esperando", "{n} rooms waiting": "{n} salas esperando",
+    # Status
+    "Status  ·  Run #{n}": "Status  ·  Run #{n}", "Mode {m}": "Modo {m}", "shield {n}": "escudo {n}",
+    "{n} boss": "{n} chefe", "{n} bosses": "{n} chefes", "Trait: {x}": "Traço: {x}",
+    "hover over an item": "passe o mouse num item", "Items ({n})": "Itens ({n})", "Consumed ({n})": "Consumidos ({n})",
+    "none yet": "nenhum ainda", "Stored energy: {n} room(s)": "Energia guardada: {n} sala(s)",
+    "Tokens today: {n}": "Tokens hoje: {n}", "Waiting for a choice: {x}": "Esperando escolha: {x}",
+    "(demo mode)": "(modo demo)",
+    # Graveyard
+    "floor {n}": "andar {n}", "gave up": "desistiu", "killed by {k}": "morto por {k}", "no items": "sem itens",
+    "{n} runs   ·   best: floor {a}": "{n} runs   ·   recorde: andar {a}",
+    "   ·   top killer: {k}": "   ·   quem mais matou: {k}",
+    "No tombstones yet...\nthe hero stands strong!": "Nenhuma lápide ainda...\no herói segue firme!",
+    # Items
+    "Items  ·  {a} of {b} unlocked": "Itens  ·  {a} de {b} liberados", "heal": "cura", "shield": "escudo",
+    "consume: {x}": "consumir: {x}", "heal {n}": "cura {n}", "No items here.": "Nenhum item aqui.",
+    "All": "Todos", "Unlocked": "Liberados", "Locked": "Bloqueados",
+    # Achievements
+    "Achievements  ·  {a} of {b}": "Conquistas  ·  {a} de {b}", "unlocks": "libera",
+    # Profile
+    "Tamer  Lv {n}": "Domador  Nv {n}", "~{x} energy left to Lv {n}": "faltam ~{x} de energia para o Nv {n}",
+    "hover over a medal": "passe o mouse numa medalha", "  (locked)": "  (bloqueada)",
+    "TODAY": "HOJE", "energy": "de energia", "STREAK": "SEQUÊNCIA", "days in a row": "dias seguidos",
+    "LIFETIME": "NA VIDA", "RUNS": "RUNS", "played": "jogadas", "BEST": "RECORDE", "floor-room": "andar-sala",
+    "HEROES": "HERÓIS", "Last 7 days  (energy)": "Últimos 7 dias  (energia)", "Limits": "Limites",
+    "last use: {x}": "último uso: {x}", "now": "agora", "{n} min ago": "há {n} min", "{n} h ago": "há {n} h",
+    "{n} d ago": "há {n} d",
+}
+
+LEGACY_EN = {pt: en for en, pt in PT.items()}

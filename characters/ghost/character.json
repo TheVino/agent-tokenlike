@@ -1,0 +1,28 @@
+{
+  "name": "Ghost",
+  "unlock": "boss1",
+  "stats": {
+    "hp": 16,
+    "atk": 3,
+    "def": 0,
+    "dodge": 0.2
+  },
+  "frame_ms": 600,
+  "stages": [
+    {
+      "title": "Little Ghost",
+      "floor": 1,
+      "sheet": "sheet1.png"
+    },
+    {
+      "title": "Ghost",
+      "floor": 4,
+      "sheet": "sheet2.png"
+    },
+    {
+      "title": "Ghost Mage",
+      "floor": 10,
+      "sheet": "sheet3.png"
+    }
+  ]
+}
