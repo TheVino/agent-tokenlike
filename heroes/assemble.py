@@ -1,4 +1,4 @@
-"""Monta os 9 estados de um herói 32 px a partir do módulo `herois/<chave>.py` (PAL, QUADROS, ESTAGIOS, ANCORA)."""
+"""Builds the 9 states of a 32 px hero from the `heroes/<key>.py` module (PAL, FRAMES, STAGES, ANCHOR)."""
 
 N = 32
 DRAWN = ("idle", "run_r", "waving", "jumping", "failed", "waiting", "running", "review")
@@ -14,7 +14,7 @@ def overlap(frame, extra, ax, ay):
 
 
 def states(hero, stage):
-    """Os 9 estados (run_l = run_r espelhado) com o `extra` do estágio na âncora de cada quadro."""
+    """The 9 states (run_l = run_r mirrored) with the stage's `extra` at each frame's anchor."""
     extra = hero.STAGES[stage]["extra"]
     est = {}
     for e in DRAWN:

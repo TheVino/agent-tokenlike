@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Regras da Masmorra de Tokens (sem interface: dá para testar e simular).
+Token Dungeon rules (no interface: can be tested and simulated).
 
-Tokens viram ENERGIA. Cada sala custa ROOM_COST de energia. A cada 5 salas
-o herói desce uma escada; a cada 5 andares a última sala é um chefe.
-Morreu em combate ou em armadilha -> lápide no cemitério e run nova.
+Tokens become ENERGY. Each room costs ROOM_COST energy. Every 5 rooms
+the hero goes down a staircase; every 5 floors the last room is a boss.
+Died in combat or in a trap -> tombstone in the graveyard and a new run.
 """
 from __future__ import annotations
 
@@ -16,24 +16,24 @@ from datetime import date
 
 from i18n import t
 
-ROOM_COST = 100_000          # XP de tokens por sala
+ROOM_COST = 100_000          # token XP per room
 ROOMS_PER_FLOOR = 5
-MAX_STORED_ROOMS = 20        # a "mochila" de energia guarda no máximo 20 salas
+MAX_STORED_ROOMS = 20        # the energy "backpack" holds at most 20 rooms
 BOSS_EVERY = 5
 
-# balanceamento (vida/ataque = base + por_andar * andar)
+# balance (health/attack = base + per_floor * floor)
 MON_HP = (4, 2.2)
 MON_ATK = (1.5, 1.2)
-# chefes: (valor no 1º chefe, por andar) = v + por_andar * (andar - BOSS_EVERY); crescem mais rápido que os itens
+# bosses: (value at the 1st boss, per floor) = v + per_floor * (floor - BOSS_EVERY); they grow faster than items
 BOSS_HP = (55, 18)
 BOSS_ATK = (7.5, 3.1)
-# rampa extra dos chefes depois do andar BOSS_RAMP_FROM: HP e ATK x (1 + BOSS_RAMP * (andar - BOSS_RAMP_FROM));
-# corta a cauda das runs com muitos itens empilhados sem mexer no 1º e no 2º chefe
+# extra boss ramp after floor BOSS_RAMP_FROM: HP and ATK x (1 + BOSS_RAMP * (floor - BOSS_RAMP_FROM));
+# cuts the tail of runs with many stacked items without touching the 1st and 2nd bosses
 BOSS_RAMP, BOSS_RAMP_FROM = 0.07, 10
 REGEN_PER_ROOM = 2
-FLOOR_BONUS_HP = 2           # HP máx ganho a cada andar
-CHEST_ITEM_CHANCE = 1.0      # chance de o baú trazer item (senão, ouro)
-SHOP_PRICE = (8, 2)          # preço do item na loja = base + por_andar * andar
+FLOOR_BONUS_HP = 2           # max HP gained each floor
+CHEST_ITEM_CHANCE = 1.0      # chance that a chest holds an item (otherwise, gold)
+SHOP_PRICE = (8, 2)          # shop item price = base + per_floor * floor
 
 ACHIEVEMENTS = {
     "andar5": "Chegar ao andar 5",
@@ -67,17 +67,17 @@ RARITIES = ("comum", "raro", "epico", "lendario")
 RAR_MULT = {"comum": 1, "raro": 1.2, "epico": 1.4, "lendario": 1.6}
 RAR_NAMES = {"comum": "Comum", "raro": "Raro", "epico": "Épico", "lendario": "Lendário"}
 RAR_COLOR = {"comum": None, "raro": "#6fd6ff", "epico": "#b48cff", "lendario": "#ffd23f"}
-CHOICE_WINDOW_S = 30         # janela de escolha do modo interativo (a GUI conta o tempo)
-MAX_ENERGY_BONUS = 1.0       # soma de "energy" limitada a +100%
-TRAP_LIMITS = (0.25, 3.0)    # piso e teto do multiplicador de armadilha somado
-MAX_DODGE = 0.5              # teto da esquiva somada
+CHOICE_WINDOW_S = 30         # choice window in interactive mode (the GUI keeps the time)
+MAX_ENERGY_BONUS = 1.0       # summed "energy" capped at +100%
+TRAP_LIMITS = (0.25, 3.0)    # floor and cap of the summed trap multiplier
+MAX_DODGE = 0.5              # cap of the summed dodge
 
 _C = ["comum", "raro", "epico"]
 _R = ["raro", "epico", "lendario"]
 
-# fx: atk, def, maxhp, dodge, gold (+% ouro), trap (multiplicador de dano de
-#     armadilha), energy (+% energia => salas mais baratas), lifesteal (cura por vitória)
-# consume: o que acontece se o herói consumir o item em vez de pegar (heal ou shield)
+# fx: atk, def, maxhp, dodge, gold (+% gold), trap (trap damage
+#     multiplier), energy (+% energy => cheaper rooms), lifesteal (heal per win)
+# consume: what happens if the hero consumes the item instead of taking it (heal or shield)
 ITEMS = {
     "adaga":        {"name": "Adaga Enferrujada",  "rarities": _C, "fx": {"atk": 2}, "consume": {"heal": 6},
                      "look": {"type": "obj", "anchor": "dir", "art": "adaga"}},
@@ -129,7 +129,7 @@ ITEMS = {
     "coroa_cinzas": {"name": "Coroa de Cinzas",    "rarities": ["lendario"], "fx": {"atk": 2, "maxhp": 5},
                      "consume": {"heal": 15}, "look": {"type": "obj", "anchor": "topo", "art": "coroa_cinzas"},
                      "req": "andar10"},
-    # leva A: elementais (fogo, raio, veneno, gelo); fx = chance por golpe de aplicar o status
+    # batch A: elementals (fire, lightning, poison, ice); fx = chance per hit to apply the status
     "brasa":        {"name": "Brasa Viva",         "rarities": _C, "fx": {"queimar": 0.12, "atk": 1},
                      "consume": {"heal": 6}, "look": {"type": "chamas"}},
     "pelagem_chamuscada": {"name": "Pelagem Chamuscada", "rarities": _R, "fx": {"queimar": 0.1, "atk": 2},
@@ -174,7 +174,7 @@ ITEMS = {
     "floco_eterno": {"name": "Floco Eterno",       "rarities": ["epico", "lendario"], "fx": {"congelar": 0.12, "maxhp": 4, "atk": 1},
                      "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "floco_eterno"},
                      "req": "chefe1"},
-    # leva B: defesa (bloqueio, espinhos), regeneração (cura por sala/andar) e sangue (custo de ataque, fúria)
+    # batch B: defense (block, thorns), regeneration (heal per room/floor) and blood (attack cost, fury)
     "broquel":      {"name": "Broquel de Casca",   "rarities": _C, "fx": {"bloqueio": 1},
                      "consume": {"shield": 6}, "look": {"type": "obj", "anchor": "esq", "art": "broquel"}},
     "casco_tartaruga": {"name": "Casco de Jabuti Velho", "rarities": _R, "fx": {"bloqueio": 1, "spd": -2},
@@ -224,7 +224,7 @@ ITEMS = {
     "pacto_carmesim": {"name": "Selo da Gota Rubra", "rarities": ["epico", "lendario"], "fx": {"custo_ataque": 2, "furia": 1, "atk": 2},
                      "consume": {"heal": 12}, "look": {"type": "obj", "anchor": "flutua", "art": "pacto_carmesim"},
                      "req": "chefe1"},
-    # leva C: golpes (duplo), área, ajudantes (sempre obj flutua) e crítico
+    # batch C: blows (double), area, helpers (always a floating obj) and crit
     "luvinha_ligeira": {"name": "Luvinha Ligeira", "rarities": _C, "fx": {"duplo": 0.15, "crit": 0.05},
                      "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "luvinha_ligeira"}},
     "ferrao_gemeo": {"name": "Ferrão Gêmeo",       "rarities": _C, "fx": {"duplo": 0.1, "envenenar": 0.1, "atk": 1},
@@ -273,7 +273,7 @@ ITEMS = {
     "olho_gato":    {"name": "Olho de Gato Ônix",  "rarities": ["epico", "lendario"], "fx": {"crit": 0.12, "dodge": 0.08},
                      "consume": {"shield": 12}, "look": {"type": "obj", "anchor": "topo", "art": "olho_gato"},
                      "req": "chefe1"},
-    # leva D: crescimento (crescer = kills por +1 ATK), sorte (raridade), ouro e desconto na loja
+    # batch D: growth (grow = kills per +1 ATK), luck (rarity), gold and shop discount
     "dente_leite":  {"name": "Dente de Leite Afiado", "rarities": _C, "fx": {"crescer": 8, "atk": 2},
                      "consume": {"heal": 6}, "look": {"type": "obj", "anchor": "dir", "art": "dente_leite"}},
     "casulo":       {"name": "Casulo Inquieto",    "rarities": _C, "fx": {"crescer": 10, "maxhp": 6, "def": 1},
@@ -323,7 +323,7 @@ ITEMS = {
                      "consume": {"heal": 7}, "look": {"type": "adesivo", "art": "sanguessuga", "at": [0.25, 0.7]}},
 }
 
-# sprite, nome, mult. de vida, mult. de ataque, andar mínimo, mult. de velocidade
+# sprite, name, health mult., attack mult., min floor, speed mult.
 MONSTERS = [
     ("morcego", "Morcego", 0.8, 0.9, 1, 1.4),
     ("rato", "Rato", 1.0, 0.8, 1, 1.1),
@@ -334,22 +334,22 @@ MONSTERS = [
 BOSS_NAMES = {"morcego": "Morcego Vampiro", "rato": "Rei Rato", "aranha": "Aranha Mãe",
               "esqueleto": "Lorde Esqueleto", "olho": "Olho Abissal"}
 
-# combate: velocidade, crítico e elementos
-MON_SPD = (6, 0.1)            # (base, por andar)
+# combat: speed, crit and elements
+MON_SPD = (6, 0.1)            # (base, per floor)
 BOSS_SPD_BONUS = 1.1
 MON_CRIT, BOSS_CRIT, FOE_CRITDMG = 0.02, 0.03, 1.5
 PET_SPD, PET_CRIT, PET_CRITDMG = 10, 0.10, 1.5
-MAX_CRIT = 0.35             # 0.6 deixava as runs longas sem fim com a leva C (crítico x duplo)
+MAX_CRIT = 0.35             # 0.6 made long runs endless with batch C (crit x double)
 MAX_ELEM_CHANCE = 0.3
-MAX_BLOCK, MAX_THORNS = 2, 0.5   # bloqueio 3 deixava os chefes inofensivos (leva B)
-MAX_LUCK, MAX_DISCOUNT = 1.0, 0.6   # tetos de sorte (raridade) e desconto da loja
-MAX_DOUBLE = 0.25             # teto da chance de golpe duplo somada (0.5 alongava demais a cauda)
+MAX_BLOCK, MAX_THORNS = 2, 0.5   # block 3 made bosses harmless (batch B)
+MAX_LUCK, MAX_DISCOUNT = 1.0, 0.6   # caps for luck (rarity) and shop discount
+MAX_DOUBLE = 0.25             # cap of the summed double-hit chance (0.5 stretched the tail too much)
 ELEMENTS = {"fogo": "queimar", "raio": "eletrizar", "veneno": "envenenar", "gelo": "congelar"}
 BOSS_ELEMENT = {"morcego": "raio", "rato": "veneno", "aranha": "veneno", "esqueleto": "gelo", "olho": "fogo"}
 BOSS_STATUS_CHANCE = 0.15
-DOUBLE_CRIT = 0.5              # bônus de crítico de quem tem o dobro da velocidade do alvo (e critdmg x2)
+DOUBLE_CRIT = 0.5              # crit bonus for whoever has twice the target's speed (and critdmg x2)
 STATUS_NAME = {"queimar": "queimadura", "eletrizar": "eletricidade", "envenenar": "veneno", "congelar": "congelamento"}
-BURN = (2, 0.3)             # dano por turno: base + por andar
+BURN = (2, 0.3)             # damage per turn: base + per floor
 BURN_TURNS = 3
 SHOCK_CHANCE, SHOCK_TURNS = 0.3, 2
 POISON_TURNS, POISON_MAX_STACKS = 4, 2
@@ -358,7 +358,7 @@ MAX_ROUNDS = 60
 
 
 def make_foe(m: tuple, f: int, boss: bool = False, mult: float = 1.0) -> dict:
-    """Monta o inimigo (monstro ou chefe) do andar f; mult escala HP e ATK antes de arredondar."""
+    """Builds the enemy (monster or boss) for floor f; mult scales HP and ATK before rounding."""
     if boss:
         hp = BOSS_HP[0] + BOSS_HP[1] * (f - BOSS_EVERY)
         atk = BOSS_ATK[0] + BOSS_ATK[1] * (f - BOSS_EVERY)
@@ -384,21 +384,21 @@ def make_mimic(f: int) -> dict:
 
 ROOM_WEIGHTS = [("monster", 46), ("chest", 16), ("trap", 12), ("fountain", 11),
                 ("shop", 8), ("altar", 7), ("horde", 9)]
-# hordas: 2 a 4 inimigos mais fracos (HP e ATK x HORDE_MULT[n]); só a partir do andar HORDE_MIN_FLOOR
+# hordes: 2 to 4 weaker enemies (HP and ATK x HORDE_MULT[n]); only from floor HORDE_MIN_FLOOR on
 HORDE_MIN_FLOOR = 3
 HORDE_MULT = {2: 0.75, 3: 0.6, 4: 0.5}
 HORDE_GOLD_MULT = 1.25
 
 
 def horde_max(f: int) -> int:
-    """Tamanho máximo da horda no andar f."""
+    """Max horde size on floor f."""
     return 2 if f < 5 else 3 if f < 8 else 4
 
 DEFAULT_STAGE_FLOORS = [1, 3, 8, 15, 25, 40]
 
 
 def fx_text(fx: dict) -> str:
-    """Texto dos efeitos no idioma atual (idioma.t); as regras não dependem dele."""
+    """Effects text in the current language (i18n.t); the rules do not depend on it."""
     parts = []
     for k, label in (("atk", "ATK"), ("def", "DEF"), ("maxhp", "HP")):
         if fx.get(k):
@@ -465,7 +465,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = N
         "base": {"maxhp": hp, "atk": int(base_stats.get("atk", 3)),
                  "def": int(base_stats.get("def", 0)), "dodge": float(base_stats.get("dodge", 0)),
                  "spd": float(base_stats.get("spd", PET_SPD)),
-                 # crit/critdmg só se o herói definir; sem eles, stats() usa PET_CRIT/PET_CRITDMG atuais
+                 # crit/critdmg only if the hero defines them; without them, stats() uses the current PET_CRIT/PET_CRITDMG
                  **{k: float(base_stats[k]) for k in ("crit", "critdmg") if k in base_stats}},
         "traco": dict(trait or {}),
         "cont": dict(COUNTERS_ZERO),
@@ -476,16 +476,16 @@ def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = N
 
 
 def _scale(fx: dict, rar: str) -> dict:
-    """Multiplica os valores positivos pela raridade; negativos, trap, area e custo_ataque ficam iguais."""
+    """Multiplies the positive values by the rarity; negatives, trap, area and attack_cost stay the same."""
     m = RAR_MULT[rar]
     out = {}
     for k, v in fx.items():
         if k in ("trap", "area", "custo_ataque") or v <= 0:
             out[k] = v
-        elif k == "crescer":                          # menos kills por ponto = melhor: escala para baixo, piso 3
+        elif k == "crescer":                          # fewer kills per point = better: scales down, floor of 3
             out[k] = max(3, math.ceil(v / m))
         elif isinstance(v, int):
-            out[k] = math.floor(v * m + 0.5)      # arredonda .5 para cima
+            out[k] = math.floor(v * m + 0.5)      # round .5 up
         else:
             out[k] = v * m
     return out
@@ -500,7 +500,7 @@ def consume_fx(key: str, rar: str) -> dict:
 
 
 def migrate_run(run: dict) -> dict:
-    """Save antigo (3 espaços) -> lista de itens comuns; itens e pendência com chaves que sumiram são descartados."""
+    """Old save (3 slots) -> list of common items; items and pending offers with keys that no longer exist are dropped."""
     items = run.get("items")
     if isinstance(items, dict):
         run["items"] = [{"key": items[s], "rar": "comum"} for s in ("mao", "escudo", "cabeca")
@@ -518,7 +518,7 @@ def migrate_run(run: dict) -> dict:
         cont.setdefault(k, v)
     b = run.setdefault("base", {})
     b.setdefault("spd", PET_SPD)
-    # saves antigos congelavam os padrões do pet (0.10 e 1.5) na base: sem eles, valem as constantes atuais
+    # old saves froze the pet defaults (0.10 and 1.5) in the base: without them, the current constants apply
     if b.get("crit") == 0.10:
         del b["crit"]
     if b.get("critdmg") == 1.5:
@@ -536,11 +536,11 @@ def stats(run: dict) -> dict:
           "area": False, "queimar": 0.0, "eletrizar": 0.0, "envenenar": 0.0, "congelar": 0.0,
           "bloqueio": 0, "espinhos": 0.0, "cura_sala": 0, "cura_andar": 0, "custo_ataque": 0, "furia": 0,
           "duplo": 0.0, "ajudante": 0, "sorte": 0.0, "desconto": 0.0}
-    # o traço do herói soma como um item, mas sem escalar por raridade
+    # the hero trait adds up like an item, but without rarity scaling
     for kills0, fx in [(0, run.get("traco", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
                                                       for it in run["items"]]:
         for k, v in fx.items():
-            if k == "crescer":                        # +1 ATK a cada v kills feitos depois de pegar o item
+            if k == "crescer":                        # +1 ATK every v kills made after taking the item
                 st["atk"] += max(0, run["kills"] - kills0) // v
             elif k == "trap":
                 st["trap"] *= v
@@ -596,7 +596,7 @@ def _rarity_weights(f: int) -> list[float]:
 
 
 def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) -> dict | None:
-    """Sorteia raridade e item (um de cada por run). None quando não sobra item liberado."""
+    """Rolls rarity and item (each item once per run). None when no unlocked item is left."""
     taken = {i["key"] for i in run["items"]}
     if run.get("pending"):
         taken.add(run["pending"]["key"])
@@ -606,9 +606,9 @@ def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) ->
     lo = 1 if best else 0
     w = _rarity_weights(run["floor"])
     luck = 1 + stats(run)["sorte"]
-    w = [w[0]] + [x * luck for x in w[1:]]            # sorte puxa raro, épico e lendário
+    w = [w[0]] + [x * luck for x in w[1:]]            # luck pulls rare, epic and legendary
     idx = max(lo, rng.choices(range(len(RARITIES)), w)[0])
-    # desce uma raridade por vez, depois sobe; abaixo do piso só em último caso
+    # goes down one rarity at a time, then up; below the floor only as a last resort
     order = list(range(idx, lo - 1, -1)) + list(range(idx + 1, len(RARITIES))) + list(range(lo - 1, -1, -1))
     for i in order:
         rar = RARITIES[i]
@@ -619,20 +619,20 @@ def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) ->
 
 
 def shop_price(run: dict, f: int) -> int:
-    """Preço do item na loja no andar f, com o desconto dos itens (mínimo 1)."""
+    """Shop price of the item on floor f, with the items' discount (minimum 1)."""
     return max(1, round((SHOP_PRICE[0] + SHOP_PRICE[1] * f) * (1 - stats(run)["desconto"])))
 
 
 def auto_choice(run: dict, offer: dict) -> str:
-    """Regra automática: consome se for cura e o HP estiver abaixo de 40%; senão pega."""
+    """Automatic rule: consumes if it is a heal and HP is below 40%; otherwise takes it."""
     if "heal" in ITEMS[offer["key"]]["consume"] and run["hp"] < 0.4 * stats(run)["maxhp"]:
         return "consumir"
     return "pegar"
 
 
 def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
-    """Aplica a escolha. As conquistas ficam com quem chama (enter_room / *_pending)."""
-    item = {"key": offer["key"], "rar": offer["rar"]}      # sem andar: é o que o evento (GUI) recebe
+    """Applies the choice. Achievements are left to the caller (enter_room / *_pending)."""
+    item = {"key": offer["key"], "rar": offer["rar"]}      # without the floor: this is what the event (GUI) receives
     if choice == "pegar":
         run["items"].append({**item, "floor": run["floor"], "kills0": run["kills"]})
         hp_bonus = item_fx(item["key"], item["rar"]).get("maxhp", 0)
@@ -653,7 +653,7 @@ def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
 
 
 def choose_pending(run: dict, meta: dict, choice: str) -> dict:
-    """Resolve a oferta pendente com a escolha do jogador ("pegar" ou "consumir")."""
+    """Resolves the pending offer with the player's choice ("take" or "consume")."""
     ev: dict = {"lines": []}
     offer, run["pending"] = run.get("pending"), None
     if offer:
@@ -663,14 +663,14 @@ def choose_pending(run: dict, meta: dict, choice: str) -> dict:
 
 
 def resolve_pending(run: dict, meta: dict) -> dict:
-    """Resolve a oferta pendente pela regra automática."""
+    """Resolves the pending offer with the automatic rule."""
     if not run.get("pending"):
         return {"lines": []}
     return choose_pending(run, meta, auto_choice(run, run["pending"]))
 
 
 def apply_damage(run: dict, d: int) -> int:
-    """O escudo absorve primeiro; devolve o dano que chegou ao HP."""
+    """The shield absorbs first; returns the damage that reached HP."""
     absorbed = min(run["shield"], d)
     run["shield"] -= absorbed
     run["hp"] -= d - absorbed
@@ -678,7 +678,7 @@ def apply_damage(run: dict, d: int) -> int:
 
 
 def _apply_status(s: dict, name: str) -> None:
-    """Coloca o status em s. Queimadura renova; veneno ganha uma pilha (no teto, renova a mais velha)."""
+    """Puts the status on s. Burn renews; poison gains a stack (at the cap, renews the oldest)."""
     if name == "veneno":
         v = s.setdefault("veneno", [])
         if len(v) < POISON_MAX_STACKS:
@@ -690,30 +690,30 @@ def _apply_status(s: dict, name: str) -> None:
 
 
 def _status_damage(s: dict, f: int) -> list[tuple[str, int]]:
-    """Tique do começo da rodada: [(nome, dano)] e já desconta a duração."""
+    """Start-of-round tick: [(name, damage)] and already decrements the duration."""
     out = []
     if s.get("queimadura"):
         s["queimadura"] -= 1
         out.append(("queimadura", round(BURN[0] + BURN[1] * f)))
     if s.get("veneno"):
-        v = [t + 1 for t in s["veneno"]]                # cada pilha dá 1, 2, 3, 4 de dano
+        v = [t + 1 for t in s["veneno"]]                # each stack deals 1, 2, 3, 4 damage
         out.append(("veneno", sum(v)))
         s["veneno"] = [t for t in v if t < POISON_TURNS]
     return out
 
 
 def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
-    """Luta por rodadas. Devolve (venceu, passos, assassino, empate); muta run["hp"] e hp/status dos inimigos.
+    """Round-based fight. Returns (won, steps, killer, tie); mutates run["hp"] and the enemies' hp/status.
 
-    Sem `area` o pet bate no inimigo vivo de menor HP; com `area`, um passo por alvo vivo.
-    `duplo`: chance de um 2º golpe no mesmo alvo (passo com duplo=True). Com `ajudante` > 0, o participante
-    "ajudante" age uma vez por rodada (spd do pet, logo depois dele) no inimigo vivo de menor HP; nunca é alvo.
-    empate: a luta bateu no limite de MAX_ROUNDS (o pet sobrevive, mas a sala não dá prêmio).
+    Without `area` the pet hits the living enemy with the lowest HP; with `area`, one step per living target.
+    `double`: chance of a 2nd hit on the same target (step with double=True). With `helper` > 0, the "helper"
+    participant acts once per round (pet's spd, right after it) on the living enemy with the lowest HP; it is never a target.
+    tie: the fight hit the MAX_ROUNDS limit (the pet survives, but the room gives no reward).
     """
     steps = []
-    pst: dict = {}                                       # status do pet (só durante a luta)
+    pst: dict = {}                                       # pet status (only during the fight)
 
-    charges = st["bloqueio"]                              # golpes inimigos que o pet anula nesta luta
+    charges = st["bloqueio"]                              # enemy hits the pet cancels in this fight
 
     def step(who, target, dmg=0, crit=False, status=None, skip=False, dot=False, dodge=False,
               locked=False, thorns=False, double=False):
@@ -735,13 +735,13 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
         return lost
 
     def critical(crit, critdmg, spd, target_spd):
-        """(é crítico, multiplicador); o dobro da velocidade dá +DOBRO_CRIT e critdmg x2."""
+        """(is crit, multiplier); twice the speed gives +DOUBLE_CRIT and critdmg x2."""
         double = spd >= 2 * target_spd
         e_crit = rng.random() < crit + (DOUBLE_CRIT if double else 0)
         return e_crit, (critdmg * (2 if double else 1) if e_crit else 1)
 
     for _ in range(MAX_ROUNDS):
-        # 1. dano de status no começo da rodada (ignora o escudo)
+        # 1. status damage at the start of the round (ignores the shield)
         for name, d in _status_damage(pst, f):
             run["hp"] -= d
             step("pet", "pet", d, status=name, dot=True)
@@ -754,16 +754,16 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 step(i, i, d, status=name, dot=True)
         if not alive():
             return True, steps, "", False
-        # 2. ordem por velocidade; empate: pet primeiro, depois a ordem da lista (sort estável)
-        # o ajudante vem logo depois do pet (mesmo spd, sort estável)
+        # 2. order by speed; tie: pet first, then list order (stable sort)
+        # the helper comes right after the pet (same spd, stable sort)
         ajud = [("ajudante", st["spd"])] if st["ajudante"] > 0 else []
         order = sorted([("pet", st["spd"])] + ajud + [(i, foes[i]["spd"]) for i in alive()], key=lambda x: -x[1])
         for who, _spd in order:
             if who not in ("pet", "ajudante") and foes[who]["hp"] <= 0:
                 continue
-            if who == "ajudante":                          # sem status, crítico nem perder a vez
+            if who == "ajudante":                          # no status, crit or skipped turn
                 i = min(alive(), key=lambda i: foes[i]["hp"])
-                d = max(1, round(st["ajudante"]))      # nunca 0 de dano
+                d = max(1, round(st["ajudante"]))      # never 0 damage
                 foes[i]["hp"] -= d
                 step("ajudante", i, d)
                 if not alive():
@@ -775,13 +775,13 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
             if who == "pet":
                 vs = alive()
                 targets = vs if st["area"] else [min(vs, key=lambda i: foes[i]["hp"])]
-                # fúria: +furia de ATK a cada 10% de HP que falta (conta inteira, sem erro de float)
+                # fury: +fury ATK for every 10% of missing HP (integer math, no float error)
                 atk = st["atk"] + st["furia"] * ((st["maxhp"] - run["hp"]) * 10 // st["maxhp"])
-                if st["custo_ataque"]:                     # sangue: o ataque custa HP, mas nunca abaixo de 1
+                if st["custo_ataque"]:                     # blood: attacking costs HP, but never below 1
                     run["hp"] = max(1, run["hp"] - st["custo_ataque"])
                 for i in targets:
                     x = foes[i]
-                    # 2º golpe (duplo): rola por alvo, só se o alvo sobreviveu; sem bônus de dobro de velocidade
+                    # 2nd hit (double): rolled per target, only if the target survived; no double-speed bonus
                     for dup in (False, True):
                         if dup and (x["hp"] <= 0 or not st["duplo"] or rng.random() >= st["duplo"]):
                             break
@@ -790,7 +790,7 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                         x["hp"] -= d
                         applied = None
                         if x["hp"] > 0:
-                            for el, name in STATUS_NAME.items():      # cada elemento rola separado
+                            for el, name in STATUS_NAME.items():      # each element rolls separately
                                 if st[el] and rng.random() < st[el]:
                                     _apply_status(x["status"], name)
                                     applied = applied or name
@@ -802,7 +802,7 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 if rng.random() < st["dodge"]:
                     step(who, "pet", dodge=True)
                     continue
-                if charges:                                 # bloqueio: depois da esquiva, gasta uma carga
+                if charges:                                 # block: after the dodge, spends one charge
                     charges -= 1
                     step(who, "pet", locked=True)
                     continue
@@ -817,17 +817,17 @@ def combate(run: dict, st: dict, foes: list[dict], rng: random.Random, f: int):
                 if run["hp"] <= 0:
                     run["hp"] = 0
                     return False, steps, x["name"], False
-                returns = round(raw * st["espinhos"])      # espinhos: fração do dano antes do escudo
+                returns = round(raw * st["espinhos"])      # thorns: fraction of the damage before the shield
                 if returns:
                     x["hp"] -= returns
                     step("pet", who, returns, thorns=True)
                     if not alive():
                         return True, steps, "", False
-    return True, steps, "", True                        # limite de segurança: empate, sem prêmio
+    return True, steps, "", True                        # safety limit: tie, no reward
 
 
 def _count(run: dict, steps: list[dict], foes: list[dict], horde4: bool) -> None:
-    """Contadores de conquista a partir dos passos da luta. Morte por status: o inimigo cruza hp 0 num passo dot."""
+    """Achievement counters from the fight steps. Death by status: the enemy crosses hp 0 on a dot step."""
     c = run.setdefault("cont", dict(COUNTERS_ZERO))
     hp = [x["hp_max"] for x in foes]
     for p in steps:
@@ -845,7 +845,7 @@ def _count(run: dict, steps: list[dict], foes: list[dict], horde4: bool) -> None
 
 
 def die(run: dict, meta: dict, ev: dict, killer: str, kind: str = "monster") -> None:
-    """kind: monster|horde|boss|mimic|trap|desistiu; morte por Queimadura/Veneno vira "status"."""
+    """kind: monster|horde|boss|mimic|trap|gave_up; death by Burn/Poison becomes "status"."""
     if killer in ("Queimadura", "Veneno"):
         kind = "status"
     run["dead"] = True
@@ -908,7 +908,7 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
 
 
 def _heal_by_item(run, ev, maxhp, hp, heal):
-    """HP = hp + cura (até maxhp); o que a cura do item somou de verdade vai em ev["cura_item"] (floater na GUI)."""
+    """HP = hp + heal (up to maxhp); what the item heal actually added goes into ev["item_heal"] (floater in the GUI)."""
     run["hp"] = min(maxhp, hp + heal)
     if run["hp"] > hp:
         ev["cura_item"] = run["hp"] - hp
@@ -916,10 +916,10 @@ def _heal_by_item(run, ev, maxhp, hp, heal):
 
 def enter_room(run: dict, meta: dict, rng: random.Random,
                stage_floors: list[int] | None = None, mode: str = "auto") -> dict:
-    """Gasta energia, resolve a próxima sala e devolve o que aconteceu.
+    """Spends energy, resolves the next room and returns what happened.
 
-    mode "auto": a regra automática decide as ofertas na hora.
-    mode "interativo": a oferta vai para run["pending"] e ev["pending"] (a GUI resolve).
+    mode "auto": the automatic rule decides offers right away.
+    mode "interactive": the offer goes to run["pending"] and ev["pending"] (the GUI resolves it).
     """
     stage_floors = stage_floors or DEFAULT_STAGE_FLOORS
     run["energy"] -= room_cost(run)
@@ -927,7 +927,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     ev: dict = {"lines": [], "won": False, "died": False}
     f = run["floor"]
 
-    # escada para o próximo andar
+    # stairs to the next floor
     if run["room"] >= ROOMS_PER_FLOOR:
         run["floor"] += 1
         run["room"] = 0
@@ -948,7 +948,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         return ev
 
     run["room"] += 1
-    # regenera a cada sala (+ cura_sala)
+    # regenerates every room (+ heal_room)
     _heal_by_item(run, ev, st["maxhp"], min(st["maxhp"], run["hp"] + REGEN_PER_ROOM), st["cura_sala"])
 
     if run["room"] == ROOMS_PER_FLOOR and f % BOSS_EVERY == 0:
@@ -971,7 +971,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         offer = roll_offer(run, meta, rng, best)
         if offer:
             deliver(offer)
-        else:                                  # acabaram os itens: ouro do baú
+        else:                                  # out of items: chest gold
             gold = round((5 + 2 * f) * (1 + st["gold"]))
             run["gold"] += gold
             ev["gold"] = ev.get("gold", 0) + gold
@@ -980,7 +980,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         pool = [m for m in MONSTERS if m[4] <= f]
         if kind == "mimic":
             foes = [make_mimic(f)]
-        elif kind == "horde":                 # chefe nunca vem em horda
+        elif kind == "horde":                 # a boss never comes in a horde
             n = rng.randint(2, horde_max(f))
             foes = [make_foe(rng.choice(pool), f, mult=HORDE_MULT[n]) for _ in range(n)]
         else:
@@ -994,7 +994,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         if not won:
             die(run, meta, ev, killer, kind)
             return ev
-        if tie:                            # passou da sala, mas sem ouro, kills, bônus de chefe ou item
+        if tie:                            # cleared the room, but without gold, kills, boss bonus or item
             ev["empate"] = True
             _check_achievements(run, meta, ev)
             return ev
@@ -1024,7 +1024,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         ev.update(name="Baú", sprite="bau")
         if rng.random() < CHEST_ITEM_CHANCE:
             give()
-        else:                                  # só acontece se CHEST_ITEM_CHANCE < 1
+        else:                                  # only happens if CHEST_ITEM_CHANCE < 1
             gold = round((5 + 2 * f) * (1 + st["gold"]))
             run["gold"] += gold
             ev["gold"] = gold
@@ -1103,14 +1103,14 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     return ev
 
 
-# Suba quando mudar fórmula de combate/regra ou número escrito direto no código (o hash abaixo não vê isso).
+# Bump when a combat formula/rule or a number written straight in the code changes (the hash below does not see that).
 RULES_REV = 8
 
 
 def _balance_version() -> str:
-    """Hash dos números de balanceamento (não do visual): identifica a versão das regras nos registros."""
+    """Hash of the balance numbers (not the visuals): identifies the rules version in the records."""
     its = {k: {f: v.get(f) for f in ("fx", "consume", "rarities", "req")} for k, v in sorted(ITEMS.items())}
-    mons = [(m[0],) + tuple(m[2:]) for m in MONSTERS]  # sem o nome de exibição
+    mons = [(m[0],) + tuple(m[2:]) for m in MONSTERS]  # without the display name
     blob = [RULES_REV, its, mons, ROOM_COST, ROOMS_PER_FLOOR, MAX_STORED_ROOMS, BOSS_EVERY, MON_HP, MON_ATK,
             BOSS_HP, BOSS_ATK, BOSS_RAMP, BOSS_RAMP_FROM, REGEN_PER_ROOM, FLOOR_BONUS_HP, ROOM_WEIGHTS, RAR_MULT,
             [_rarity_weights(f) for f in range(1, 41)], MAX_ENERGY_BONUS, TRAP_LIMITS, MAX_DODGE,
@@ -1126,7 +1126,7 @@ BALANCE_VERSION = _balance_version()
 
 def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: list,
                killer_kind: str = "") -> dict:
-    """Linha de registro de uma run terminada (mesmo formato no jogo e no simulador)."""
+    """Record line of a finished run (same format in the game and in the simulator)."""
     return {
         "run": run["id"], "char": run["char"], "floor": run["floor"], "room": run["room"],
         "killer": killer, "killer_kind": killer_kind, "gave_up": gave_up,

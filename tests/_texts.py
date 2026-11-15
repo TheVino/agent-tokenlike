@@ -1,16 +1,16 @@
-"""Checagem de textos numa janela Tk de verdade (reutilizável: a rodada de idioma roda de novo em inglês).
+"""Text checks on a real Tk window (reusable: the language round runs again in English).
 
-`checar(janela)` devolve uma lista de problemas (vazia = tudo certo):
-- widget com tamanho pedido maior que o que recebeu (texto ou imagem cortados);
-- widget fora do pai, ou a menos de MARGEM px da borda de um cartão (`cartao` do tokenlike: Canvas com `fundo`);
-- irmãos (pack/grid) que se sobrepõem;
-- texto com quebra automática (wraplength / width) que precisaria partir uma palavra no meio;
-- no Canvas: texto fora da largura, texto sobre texto e texto encostado na borda do cartão desenhado
-  (itens com uma tag "card:<id>", ver `retangulo_arredondado(extra=...)`).
+`check(window)` returns a list of problems (empty = all good):
+- widget whose requested size is larger than what it got (text or image cut off);
+- widget outside its parent, or less than MARGIN px from the edge of a card (tokenlike's `card_box`: Canvas with `backdrop`);
+- siblings (pack/grid) that overlap;
+- text with automatic wrapping (wraplength / width) that would have to break a word in the middle;
+- on a Canvas: text wider than the width, text over text and text touching the edge of the drawn card
+  (items with a "card:<id>" tag, see `rounded_rect(extra=...)`).
 """
 import tkinter.font as tkfont
 
-MARGIN = 3      # borda do cartão (até 2 px) + 1 px de respiro
+MARGIN = 3      # card border (up to 2 px) + 1 px of padding
 
 
 def _font(w, spec, cache={}):
@@ -76,8 +76,8 @@ def _canvas(cv, out):
 
 
 def check(window):
-    """Lista de problemas de texto/layout em `janela` e em todos os filhos visíveis."""
-    window.update()                  # mapeia a janela (winfo_ismapped/tamanhos de verdade)
+    """List of text/layout problems in `window` and in all its visible children."""
+    window.update()                  # maps the window (real winfo_ismapped/sizes)
     out = []
 
     def anda(w):
@@ -90,7 +90,7 @@ def check(window):
             x, y, cw, ch = c.winfo_x(), c.winfo_y(), c.winfo_width(), c.winfo_height()
             geo[c] = (x, y, x + cw, y + ch)
             if c.winfo_manager() not in ("pack", "grid"):
-                continue                     # place: fundo desenhado, fica por baixo de propósito
+                continue                     # place: drawn background, stays below on purpose
             if c.winfo_class() != "Canvas" and (cw < c.winfo_reqwidth() or ch < c.winfo_reqheight()):
                 out.append(f"{_name(c)}: cortado ({cw}x{ch} de {c.winfo_reqwidth()}x{c.winfo_reqheight()})")
             if x < m or y < m or x + cw > pw - m or y + ch > ph - m:

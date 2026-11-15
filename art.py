@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Pixel art da Masmorra de Tokens (tudo original). '.' = transparente."""
+"""Token Dungeon pixel art (all original). '.' = transparent."""
 
 PAL = {
     "K": "#1b1b2f", "x": "#0b0b14", "w": "#f2f0ff", "G": "#d7dde9", "g": "#8a94a8",
@@ -8,11 +8,11 @@ PAL = {
     "o": "#ff9f43", "e": "#fff27a", "n": "#e8dcc0", "c": "#6fd6ff", "v": "#4fbf5a",
     "O": "#c2410c", "V": "#2a7a3a", "i": "#9fe8ff",
 }
-# chefes: mesmas formas, cores mais sombrias
+# bosses: same shapes, darker colors
 BOSS_PAL = dict(PAL, p="#3d1f6e", P="#7a3fd1", g="#5a5f73", G="#a3a9bb", n="#cfc0a0",
                 w="#ffd9e0", b="#4a2a1a", B="#7a4a2a")
 
-# ------------------------------------------------------------------ itens
+# ------------------------------------------------------------------ items
 ITEM_ART = {
     "adaga": [
         "..K..",
@@ -190,7 +190,7 @@ ITEM_ART = {
         "KgggggggK",
         "KKKKKKKKK",
     ],
-    # leva A: elementais
+    # batch A: elementals
     "brasa": [
         "..o..",
         ".oeo.",
@@ -356,8 +356,8 @@ ITEM_ART = {
         ".w.i.w.",
         "...w...",
     ],
-    # leva B: defesa, regeneração e sangue
-    "broquel": [            # escudinho redondo de casca de árvore
+    # batch B: defense, regeneration and blood
+    "broquel": [            # small round tree-bark shield
         ".KKKK.",
         "KbBbBK",
         "KBbKbK",
@@ -365,14 +365,14 @@ ITEM_ART = {
         "KBbBbK",
         ".KKKK.",
     ],
-    "casco_tartaruga": [    # casco velho com remendos
+    "casco_tartaruga": [    # old patched shell
         "..KKKKK..",
         ".KvVvVvK.",
         "KVvKVKvVK",
         "KvVvVvVvK",
         "KKKKKKKKK",
     ],
-    "manopla_rebite": [     # luva de ferro com rebites
+    "manopla_rebite": [     # riveted iron glove
         ".KKKK.",
         "KGGGGK",
         "KgwgwK",
@@ -380,7 +380,7 @@ ITEM_ART = {
         ".KggK.",
         ".KbbK.",
     ],
-    "sino_guarda": [        # sininho que avisa o golpe
+    "sino_guarda": [        # little bell that warns of the hit
         "..K..",
         ".KyK.",
         "KyeyK",
@@ -388,7 +388,7 @@ ITEM_ART = {
         "KKKKK",
         "..Y..",
     ],
-    "muralha_viva": [       # bloco de pedra com olhinhos
+    "muralha_viva": [       # stone block with tiny eyes
         "KKKKKKK",
         "KgGgKGK",
         "KKKKKKK",
@@ -396,7 +396,7 @@ ITEM_ART = {
         "KgKgKgK",
         "KKKKKKK",
     ],
-    "ourico": [             # ouriço de castanha
+    "ourico": [             # chestnut burr
         "K.K.K.K",
         ".KbKbK.",
         "KbBbBbK",
@@ -405,7 +405,7 @@ ITEM_ART = {
         ".KbKbK.",
         "K.K.K.K",
     ],
-    "cacto_mal": [          # cacto de cara fechada
+    "cacto_mal": [          # scowling cactus
         "..KvK..",
         "K.KvK.K",
         "vKvxvKv",
@@ -414,7 +414,7 @@ ITEM_ART = {
         ".KbbbK.",
         ".KKKKK.",
     ],
-    "armadura_farpas": [    # gibão de couro com farpas douradas
+    "armadura_farpas": [    # leather doublet with golden barbs
         "Y.KKK.Y",
         "KKbbbKK",
         "YKbYbKY",
@@ -422,14 +422,14 @@ ITEM_ART = {
         "YKbYbKY",
         ".KKKKK.",
     ],
-    "colar_presas": [       # cordão com três presas
+    "colar_presas": [       # cord with three fangs
         "KKKKKKK",
         ".K...K.",
         "..KnK..",
         ".KnKnK.",
         ".KK.KK.",
     ],
-    "espelho_rachado": [    # espelho de mão rachado
+    "espelho_rachado": [    # cracked hand mirror
         ".KKKK.",
         "KcwccK",
         "KcKwcK",
@@ -439,7 +439,7 @@ ITEM_ART = {
         "..KY..",
         "..KK..",
     ],
-    "chazinho": [           # bule pequeno soltando vapor
+    "chazinho": [           # small steaming teapot
         ".w..w..",
         "..KK...",
         ".KoOK..",
@@ -447,7 +447,7 @@ ITEM_ART = {
         "KoOooK.",
         ".KKKK..",
     ],
-    "raiz_teimosa": [       # raiz com um broto verde
+    "raiz_teimosa": [       # root with a green sprout
         "...v...",
         "..vVv..",
         "...b...",
@@ -455,7 +455,7 @@ ITEM_ART = {
         ".b.B.b.",
         "b..b..b",
     ],
-    "lamparina_lar": [      # lareirinha portátil
+    "lamparina_lar": [      # portable little fireplace
         ".KKKKK.",
         "KgKKKgK",
         "Kg.o.gK",
@@ -463,7 +463,7 @@ ITEM_ART = {
         "KgOoOgK",
         "KKKKKKK",
     ],
-    "fonte_bolso": [        # gota de água presa num fio
+    "fonte_bolso": [        # water drop hanging on a thread
         "..K..",
         "..K..",
         ".KcK.",
@@ -471,7 +471,7 @@ ITEM_ART = {
         "KcccK",
         ".KKK.",
     ],
-    "seiva_antiga": [       # gota de âmbar com folha presa
+    "seiva_antiga": [       # amber drop with a trapped leaf
         "..KK..",
         ".KoeK.",
         "KoyvoK",
@@ -479,7 +479,7 @@ ITEM_ART = {
         "KOoooK",
         ".KKKK.",
     ],
-    "adaga_sangria": [      # lâmina que pinga
+    "adaga_sangria": [      # dripping blade
         "..K..",
         ".KrK.",
         ".KwK.",
@@ -488,14 +488,14 @@ ITEM_ART = {
         ".KRK.",
         "..r..",
     ],
-    "coracao_costurado": [  # coração com pontos de costura
+    "coracao_costurado": [  # heart with stitches
         ".K.K.",
         "KrKrK",
         "KwrwK",
         ".KrK.",
         "..K..",
     ],
-    "mascara_furia": [      # máscara de dentes trincados
+    "mascara_furia": [      # mask of gritted teeth
         ".KKKKK.",
         "KRrRrRK",
         "KxRrRxK",
@@ -503,7 +503,7 @@ ITEM_ART = {
         "KwKwKwK",
         ".KKKKK.",
     ],
-    "calice_rubro": [       # cálice com líquido escuro
+    "calice_rubro": [       # chalice with dark liquid
         "KKKKK",
         "KrRrK",
         ".KRK.",
@@ -511,7 +511,7 @@ ITEM_ART = {
         ".KYK.",
         "KKKKK",
     ],
-    "pacto_carmesim": [     # pergaminho selado com gota de sangue
+    "pacto_carmesim": [     # scroll sealed with a drop of blood
         "KKKKKK.",
         "KnnnnK.",
         "KnKKnK.",
@@ -519,8 +519,8 @@ ITEM_ART = {
         "KnnKrRK",
         "KKKKrK.",
     ],
-    # leva C: golpes, área, ajudantes e crítico
-    "luvinha_ligeira": [    # luvinha de couro com riscos de pressa
+    # batch C: blows, area, helpers and crit
+    "luvinha_ligeira": [    # small leather glove with speed streaks
         ".KKK...",
         "KnKnK..",
         "KnnnKK.",
@@ -529,7 +529,7 @@ ITEM_ART = {
         ".KbbK.w",
         ".KKKK..",
     ],
-    "ferrao_gemeo": [       # dois ferrões no mesmo cabo
+    "ferrao_gemeo": [       # two stingers on the same handle
         ".K.K.",
         "KyKyK",
         "KyKyK",
@@ -538,7 +538,7 @@ ITEM_ART = {
         ".KbK.",
         "..K..",
     ],
-    "rabicho": [            # rabinho enrolado com tufo na ponta
+    "rabicho": [            # curled little tail with a tuft at the tip
         ".KKKK..",
         "KbbbbK.",
         "Kb..KbK",
@@ -547,7 +547,7 @@ ITEM_ART = {
         "..KbbKw",
         "...KKK.",
     ],
-    "pulseira_eco": [       # aro dourado com uma pedrinha que ressoa
+    "pulseira_eco": [       # golden hoop with a resonating pebble
         "..KKK..",
         ".KYyYK.",
         "KY...YK",
@@ -556,7 +556,7 @@ ITEM_ART = {
         ".KYyYK.",
         "..KKK..",
     ],
-    "garras_gemeas": [      # duas garras prateadas presas num aro
+    "garras_gemeas": [      # two silver claws on a hoop
         "w..w..",
         "GK.GK.",
         "GwKGwK",
@@ -565,7 +565,7 @@ ITEM_ART = {
         "..KPPK",
         "..KKKK",
     ],
-    "piao_laminas": [       # pião com lâminas na cintura
+    "piao_laminas": [       # spinning top with blades at the waist
         "...K...",
         "..KbK..",
         "wKbbbKw",
@@ -574,7 +574,7 @@ ITEM_ART = {
         "..KgK..",
         "...K...",
     ],
-    "corrente_torta": [     # elos de ferro meio tortos
+    "corrente_torta": [     # slightly bent iron links
         ".KK....",
         "KgGK...",
         "KG.KK..",
@@ -583,7 +583,7 @@ ITEM_ART = {
         "...KKgK",
         ".....KK",
     ],
-    "uivo_garrafa": [       # garrafinha com um uivo preso dentro
+    "uivo_garrafa": [       # little bottle with a howl trapped inside
         "..KK..",
         "..bb..",
         ".KKKK.",
@@ -592,7 +592,7 @@ ITEM_ART = {
         "KcwxwK",
         ".KKKK.",
     ],
-    "leque_penas": [        # leque de penas escuras
+    "leque_penas": [        # fan of dark feathers
         "P.P.P.P",
         "KPKPKPK",
         ".KxxxK.",
@@ -600,7 +600,7 @@ ITEM_ART = {
         "...K...",
         "...b...",
     ],
-    "redemoinho": [         # redemoinho preso, girando
+    "redemoinho": [         # trapped whirlwind, spinning
         ".KKKKK.",
         "KiiiiiK",
         ".KcccK.",
@@ -608,7 +608,7 @@ ITEM_ART = {
         ".KcK...",
         "..K....",
     ],
-    "besourinho": [         # besouro de casco verde
+    "besourinho": [         # green-shelled beetle
         "K...K",
         ".KKK.",
         "KvKvK",
@@ -616,7 +616,7 @@ ITEM_ART = {
         "KvKvK",
         ".KKK.",
     ],
-    "morceguinho": [        # morcego de pano costurado
+    "morceguinho": [        # stitched cloth bat
         "K.....K",
         "KK.K.KK",
         "KgKgKgK",
@@ -624,7 +624,7 @@ ITEM_ART = {
         ".KgggK.",
         "..KKK..",
     ],
-    "caveirinha": [         # caveirinha que pula
+    "caveirinha": [         # hopping little skull
         ".KKK.",
         "KnnnK",
         "KxnxK",
@@ -632,7 +632,7 @@ ITEM_ART = {
         ".KnK.",
         ".KKK.",
     ],
-    "fantoche": [           # fantoche de meia com olho de botão
+    "fantoche": [           # sock puppet with a button eye
         ".KKKK.",
         "KoowoK",
         "KooxoK",
@@ -641,7 +641,7 @@ ITEM_ART = {
         "KoooK.",
         ".KKK..",
     ],
-    "corvo_cinza": [        # corvo cinzento de olho vermelho
+    "corvo_cinza": [        # grey crow with a red eye
         "..KKK..",
         ".KgrgKy",
         ".KgggK.",
@@ -650,21 +650,21 @@ ITEM_ART = {
         ".KKKK..",
         ".K..K..",
     ],
-    "monoculo": [           # lente rachada com corrente
+    "monoculo": [           # cracked lens on a chain
         ".KK.",
         "KwcK",
         "KccK",
         ".KK.",
         "...Y",
     ],
-    "pedra_amolar": [       # pedra de amolar soltando faísca
+    "pedra_amolar": [       # sparking whetstone
         "....w.",
         ".KKKKw",
         "KgGgK.",
         "KgggGK",
         ".KKKKK",
     ],
-    "trevo_murcho": [       # trevo de folhas caídas
+    "trevo_murcho": [       # clover with fallen leaves
         ".KK.KK.",
         "KVvKvVK",
         ".KvVvK.",
@@ -673,7 +673,7 @@ ITEM_ART = {
         "....b..",
         "...b...",
     ],
-    "presa_lobo": [         # presa curva com sombra roxa
+    "presa_lobo": [         # curved fang with a purple shadow
         ".KKK.",
         "KnnnK",
         "KnnPK",
@@ -681,7 +681,7 @@ ITEM_ART = {
         "..KnK",
         "...K.",
     ],
-    "olho_gato": [          # gema de olho de gato
+    "olho_gato": [          # cat's-eye gem
         ".KKKKK.",
         "KxyyyxK",
         "KyyKyyK",
@@ -689,15 +689,15 @@ ITEM_ART = {
         "KxyyyxK",
         ".KKKKK.",
     ],
-    # leva D: crescimento, sorte e ouro
-    "dente_leite": [        # dentinho de leite com ponta afiada
+    # batch D: growth, luck and gold
+    "dente_leite": [        # sharp little milk tooth
         ".KKK.",
         "KwwwK",
         "KwwwK",
         "KwKwK",
         ".K.K.",
     ],
-    "casulo": [             # casulo enrolado com um olho espiando
+    "casulo": [             # curled cocoon with a peeking eye
         "..K..",
         ".KnK.",
         "KnGnK",
@@ -707,14 +707,14 @@ ITEM_ART = {
         ".KnK.",
         "..K..",
     ],
-    "coleira_trofeus": [    # coleira de couro com dentinhos pendurados
+    "coleira_trofeus": [    # leather collar with little teeth hanging
         "KKKKKKK",
         "KbnbnbK",
         ".KKKKK.",
         "..KyK..",
         "...K...",
     ],
-    "semente_faminta": [    # semente de boca aberta com broto
+    "semente_faminta": [    # open-mouthed seed with a sprout
         "...v...",
         "..vV...",
         ".KKKKK.",
@@ -723,7 +723,7 @@ ITEM_ART = {
         "KbbbbbK",
         ".KKKKK.",
     ],
-    "chifre_aneis": [       # chifre curvo com anéis dourados
+    "chifre_aneis": [       # curved horn with golden rings
         "....KK",
         "...KnK",
         "..KyK.",
@@ -732,14 +732,14 @@ ITEM_ART = {
         "KnK...",
         "KKK...",
     ],
-    "fivela_cacador": [     # fivela de cinto
+    "fivela_cacador": [     # belt buckle
         "KKKKKKK",
         "KgGGGgK",
         "KG.K.GK",
         "KgGGGgK",
         "KKKKKKK",
     ],
-    "moedor_ossos": [       # moedor com um osso na boca
+    "moedor_ossos": [       # grinder with a bone in its mouth
         "..KK...",
         ".KnnK..",
         "KnnnnKK",
@@ -748,21 +748,21 @@ ITEM_ART = {
         "KgggggK",
         ".KKKKK.",
     ],
-    "dado_osso": [          # dado de osso com pintas
+    "dado_osso": [          # spotted bone die
         "KKKKK",
         "KnnxK",
         "KnxnK",
         "KxnnK",
         "KKKKK",
     ],
-    "moeda_coroas": [       # moeda dourada gasta
+    "moeda_coroas": [       # worn golden coin
         ".KKK.",
         "KyeyK",
         "KYyYK",
         "KyeyK",
         ".KKK.",
     ],
-    "ferradura": [          # ferradura enferrujada
+    "ferradura": [          # rusty horseshoe
         "KK...KK",
         "KBK.KBK",
         "KbK.KbK",
@@ -770,7 +770,7 @@ ITEM_ART = {
         ".KbbbK.",
         "..KKK..",
     ],
-    "mapa_rabiscado": [     # mapa velho com trilha vermelha
+    "mapa_rabiscado": [     # old map with a red trail
         "KKKKKK",
         "KnnrnK",
         "KnrnnK",
@@ -778,7 +778,7 @@ ITEM_ART = {
         "KbnnnK",
         "KKKKKK",
     ],
-    "talisma_fios": [       # talismã preso por três fios coloridos
+    "talisma_fios": [       # talisman tied with three colored threads
         ".K.K.K.",
         ".r.c.v.",
         ".r.c.v.",
@@ -787,7 +787,7 @@ ITEM_ART = {
         ".KPPPK.",
         "..KKK..",
     ],
-    "estrela_cadente": [    # caco de estrela com rastro
+    "estrela_cadente": [    # star shard with a trail
         "..K....",
         ".KeK...",
         "KeyeK..",
@@ -795,14 +795,14 @@ ITEM_ART = {
         "..K.oo.",
         "......o",
     ],
-    "bigode_gato": [        # bigodes brancos
+    "bigode_gato": [        # white whiskers
         "w...w",
         ".w.w.",
         "..K..",
         ".w.w.",
         "w...w",
     ],
-    "bolsa_sapo": [         # bolsinha verde amarrada
+    "bolsa_sapo": [         # tied little green pouch
         "..K..",
         ".KyK.",
         "KvVvK",
@@ -810,14 +810,14 @@ ITEM_ART = {
         "KvVvK",
         ".KKK.",
     ],
-    "cupom": [              # papelzinho amassado
+    "cupom": [              # crumpled scrap of paper
         "KKKKK.",
         "KnrnnK",
         "KnnnrK",
         "KnrnnK",
         ".KKKKK",
     ],
-    "balanca": [            # balança de pratos torta
+    "balanca": [            # crooked pan scale
         "...K...",
         ".KKKKK.",
         "K..K..K",
@@ -825,14 +825,14 @@ ITEM_ART = {
         "...K...",
         "..KKK..",
     ],
-    "dente_ouro": [         # dente dourado brilhando
+    "dente_ouro": [         # shiny golden tooth
         ".KKK.",
         "KyyyK",
         "KyeyK",
         "KyKyK",
         ".K.K.",
     ],
-    "cofrinho": [           # pote de barro com fenda de moeda
+    "cofrinho": [           # clay pot with a coin slot
         "..KyK..",
         ".KKKKK.",
         "KOoOoOK",
@@ -840,7 +840,7 @@ ITEM_ART = {
         "KOoOoOK",
         ".KKKKK.",
     ],
-    "sanguessuga": [        # sanguessuga gordinha
+    "sanguessuga": [        # chubby leech
         ".KKK...",
         "KrRrK..",
         "KRrRrK.",
@@ -849,7 +849,7 @@ ITEM_ART = {
     ],
 }
 
-# --------------------------------------------------------------- monstros
+# --------------------------------------------------------------- monsters
 FOE_ART = {
     "morcego": [
         "K........K",
@@ -943,7 +943,7 @@ MENU_ART = {
     ],
 }
 
-# ----------------------------------------------------------------- salas
+# ----------------------------------------------------------------- rooms
 ROOM_ART = {
     "bau": [
         ".KKKKKK.",
@@ -1021,7 +1021,7 @@ ROOM_ART = {
 }
 
 
-# ------------------------------------------------------ status (janela de Status: um por campo de stats())
+# ------------------------------------------------------ status (Status window: one per stats() field)
 STAT_ART = {
     "maxhp": [".KK.KK.", "KrrKrrK", "KrwrrrK", "KrrrrrK", ".KrrrK.", "..KrK..", "...K..."],
     "atk": [".....KK", "....KnK", "...KnK.", "KKKnK..", ".KbK...", "KbKKK..", "KK....."],
@@ -1054,11 +1054,11 @@ STAT_ART = {
 
 
 def _stairs(n, c):
-    """Escada de n degraus (2x2 px cada) subindo para a direita."""
+    """Staircase of n steps (2x2 px each) going up to the right."""
     return ["".join(c if 2 * n - 1 - y < 2 * (x // 2 + 1) else "." for x in range(2 * n)) for y in range(2 * n)]
 
 
-# --------------------------------------------------- conquistas (uma por chave de masmorra.ACHIEVEMENTS)
+# --------------------------------------------------- achievements (one per dungeon.ACHIEVEMENTS key)
 ACH_ART = {
     "andar5": _stairs(2, "G"),
     "chefe1": ["y...x...y", "yy.yxy.yy", "yyyyyxyyy", "yryyxyyry", "yyyyyxyyy", "KKKKxKKKK"],

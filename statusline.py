@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Statusline OPCIONAL do Claude Code para o Agent Tokenlike.
+OPTIONAL Claude Code statusline for Agent Tokenlike.
 
-O Claude Code roda este script e manda um JSON pelo stdin. Daqui só se aproveita
-`rate_limits` (porcentagem oficial da sessão de 5h e da semana, com o horário de reset),
-gravado em %USERPROFILE%\\.tokenlike\\limites.json para o pet desenhar as barras.
-Nada mais do JSON (pasta, modelo, transcript...) é guardado. Sem rede.
+Claude Code runs this script and sends a JSON on stdin. Only `rate_limits` is used
+(official percentage of the 5h session and of the week, with the reset time),
+written to %USERPROFILE%\\.tokenlike\\limits.json so the pet can draw the bars.
+Nothing else from the JSON (folder, model, transcript...) is kept. No network.
 
-Você liga no seu ~/.claude/settings.json (o pet nunca mexe nisso):
-  "statusLine": {"type": "command", "command": "python \"C:/caminho/para/statusline.py\""}
+You turn it on in your ~/.claude/settings.json (the pet never touches it):
+  "statusLine": {"type": "command", "command": "python \"C:/path/to/statusline.py\""}
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ WINDOW_ATTRS = ("five_hour", "seven_day")
 
 
 def _epoch(v) -> float | None:
-    """resets_at vem em segundos (número) ou ISO-8601; devolve segundos UTC."""
+    """resets_at comes in seconds (number) or ISO-8601; returns UTC seconds."""
     if isinstance(v, (int, float)) and not isinstance(v, bool):
         return float(v)
     if isinstance(v, str):
@@ -37,7 +37,7 @@ def _epoch(v) -> float | None:
 
 
 def extract(payload: dict) -> dict | None:
-    """Só os limites. None se o Claude Code ainda não mandou (antes da 1ª resposta)."""
+    """Only the limits. None if Claude Code has not sent them yet (before the 1st response)."""
     rl = payload.get("rate_limits") if isinstance(payload, dict) else None
     if not isinstance(rl, dict):
         return None
@@ -78,12 +78,12 @@ def main(stdin=sys.stdin, stdout=sys.stdout, data_dir: Path = DATA_DIR) -> None:
             tmp.write_text(json.dumps(lim), encoding="utf-8")
             os.replace(tmp, data_dir / "limites.json")
         except OSError:
-            pass                      # a statusline nunca pode quebrar o Claude Code
+            pass                      # the statusline must never break Claude Code
     stdout.write(format_line(lim) + "\n")
 
 
 if __name__ == "__main__":
-    # no Windows o pipe usaria cp1252; o Claude Code fala UTF-8
+    # on Windows the pipe would use cp1252; Claude Code speaks UTF-8
     sys.stdin.reconfigure(encoding="utf-8")
     sys.stdout.reconfigure(encoding="utf-8")
     main()

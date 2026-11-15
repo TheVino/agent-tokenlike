@@ -1,7 +1,7 @@
-"""Ícone na bandeja do Windows (área de notificação), só ctypes da biblioteca padrão.
+"""Windows tray icon (notification area), using only ctypes from the standard library.
 
-Roda numa thread com janela oculta própria; o Tk não é thread-safe, então os cliques viram itens numa
-`queue.Queue` que o PetApp esvazia no tick. Clique esquerdo = item 0; botão direito abre um menu com `itens()`.
+Runs in a thread with its own hidden window; Tk is not thread-safe, so clicks become items in a
+`queue.Queue` that PetApp drains. Left click = item 0; right click opens a menu with `items()`.
 """
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ class WNDCLASSW(ctypes.Structure):
 
 
 def ico(png: bytes, side: int) -> bytes:
-    """Arquivo .ico com um PNG dentro (Windows Vista+ lê direto)."""
+    """.ico file with a PNG inside (Windows Vista+ reads it directly)."""
     return struct.pack("<HHH", 0, 1, 1) + struct.pack("<BBBBHHII", side % 256, side % 256, 0, 0, 1, 32,
                                                       len(png), 22) + png
 
@@ -51,7 +51,7 @@ class Bandeja:
         self.thread.start()
 
     def shutdown(self):
-        """Tira o ícone (sem isso fica um ícone fantasma até passar o mouse)."""
+        """Removes the icon (without this a ghost icon stays until the mouse passes over it)."""
         if self.hwnd:
             ctypes.windll.user32.PostMessageW(self.hwnd, WM_CLOSE, 0, 0)
             self.thread.join(1)
@@ -72,7 +72,7 @@ class Bandeja:
         u.PostMessageW.argtypes = (W.HWND, W.UINT, W.WPARAM, W.LPARAM)
         sh.Shell_NotifyIconW.argtypes = (W.DWORD, ctypes.POINTER(NOTIFYICONDATAW))
         k.GetModuleHandleW.restype = W.HMODULE
-        recreated = u.RegisterWindowMessageW("TaskbarCreated")   # o Explorer reiniciou: pôr o ícone de novo
+        recreated = u.RegisterWindowMessageW("TaskbarCreated")   # Explorer restarted: add the icon again
 
         nid = NOTIFYICONDATAW(cbSize=ctypes.sizeof(NOTIFYICONDATAW), uID=1,
                               uFlags=NIF_MESSAGE | NIF_ICON | NIF_TIP, uCallbackMessage=CALLBACK)
@@ -85,7 +85,7 @@ class Bandeja:
                 u.AppendMenuW(m, 0, i + 1, txt)
             pt = W.POINT()
             u.GetCursorPos(ctypes.byref(pt))
-            u.SetForegroundWindow(self.hwnd)                   # sem isso o menu não fecha ao clicar fora
+            u.SetForegroundWindow(self.hwnd)                   # without this the menu does not close when clicking outside
             esc = u.TrackPopupMenu(m, 0x0100 | 0x0080, pt.x, pt.y, 0, self.hwnd, None)  # RETURNCMD|NONOTIFY
             u.PostMessageW(self.hwnd, WM_NULL, 0, 0)
             u.DestroyMenu(m)
@@ -107,7 +107,7 @@ class Bandeja:
                 return 0
             return u.DefWindowProcW(hwnd, msg, wp, lp)
 
-        self._proc = WNDPROC(proc)                              # referência viva, senão o GC solta o callback
+        self._proc = WNDPROC(proc)                              # keep a live reference, otherwise the GC frees the callback
         inst = k.GetModuleHandleW(None)
         u.RegisterClassW(ctypes.byref(WNDCLASSW(lpfnWndProc=self._proc, hInstance=inst,
                                                 lpszClassName="AgentTokenlikeBandeja")))

@@ -1,4 +1,4 @@
-"""Converte WebP (OpenPets) em PNG RGBA ao lado do original: python tools/converter_webp.py <pasta ou .webp>"""
+"""Converts WebP (OpenPets) to RGBA PNG next to the original: python tools/convert_webp.py <folder or .webp>"""
 import sys
 from pathlib import Path
 

@@ -1,6 +1,6 @@
-"""Slime embutido, 32 px. Cada quadro sai de partes: corpo (domo paramétrico com contorno, sombra e brilho),
-rosto (olhos, boca, bochechas) e sobreposições (gotinha, bracinho, "z", "?", poça).
-Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Built-in Slime, 32 px. Each frame is made of parts: body (parametric dome with outline, shade and shine),
+face (eyes, mouth, cheeks) and overlays (droplet, little arm, "z", "?", puddle).
+Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, mirror, stamp
 
 PAL = {
@@ -9,14 +9,14 @@ PAL = {
     "S": "#d7dde9", "s": "#8a94a8", "Y": "#ffd23f", "y": "#c99a00", "T": "#8fd8ff",
 }
 
-# ---- partes do rosto (olho esquerdo; o direito é o espelho, menos onde o brilho tem de ficar do mesmo lado)
+# ---- face parts (left eye; the right one is the mirror, except where the shine must stay on the same side)
 EYE = ["WB", "BB", "BB", "BB"]
 EYE_CLOSED = ["...", "...", "BBB"]
 EYE_HAPPY = [".B.", "B.B"]
 EYE_X = ["B.B", ".B.", "B.B"]
 EYE_UP = ["WB", "BB", ".."]
-BROW_ANGRY = ["BB..", "..BB"]          # esquerda: desce para dentro
-BROW_SAD = ["..BB", "BB.."]         # esquerda: desce para fora
+BROW_ANGRY = ["BB..", "..BB"]          # left: slopes down inward
+BROW_SAD = ["..BB", "BB.."]         # left: slopes down outward
 MOUTH = {
     "sorriso": ["B..B", ".BB."],
     "aberta": ["BBBBB", "BRRRB", "BRPRB", ".BBB."],
@@ -28,7 +28,7 @@ MOUTH = {
 
 DROP = [".K.", "KGK", "KDK", ".K."]
 DROP_S = ["K", "K"]
-# bracinho de gosma (raiz embaixo à esquerda): baixo, horizontal, diagonal, para cima = arco do aceno
+# little goo arm (root at the bottom left): down, horizontal, diagonal, up = the wave arc
 ARM_DOWN = ["KKK......", "KGGKK....", "KGGGGKK..", ".KKGGGGK.", "...KKGGLK", ".....KKK."]
 ARM_HOR = ["......KKK.", "KKKKKKGGLK", "KGGGGGGGGK", "KGGGGGGGDK", "KKKKKKKKK."]
 ARM_DIAG = [".....KKK", "....KGLK", "...KGGGK", "..KGGGK.", ".KGGGK..", "KGGGK...", "KGGK....", "KKK....."]
@@ -38,10 +38,10 @@ ARM_UP = [".KKK.", "KGLGK", "KGGGK", "KGGGK", "KGGK.", "KGGK.", "KGGK.", "KKK.."
 
 
 def _body(w, h, cx, base, lean):
-    """Domo: largo embaixo, redondo em cima; `lean` desloca o topo (inclinar para frente ou pender)."""
+    """Dome: wide at the bottom, round at the top; `lean` shifts the top (lean forward or tilt)."""
     pts = set()
     for y in range(base - h + 1, base + 1):
-        u = (base - y) / h                      # 0 na base, ~1 no topo
+        u = (base - y) / h                      # 0 at the base, ~1 at the top
         half = w / 2 * (1 - u ** 2.4) ** 0.5
         c = cx + lean * u
         for x in range(round(c - half), round(c + half)):
@@ -51,7 +51,7 @@ def _body(w, h, cx, base, lean):
 
 
 def frame(w, h, cx=16, base=30, lean=0, eyes="normal", look=0, mouth="sorriso", cheek=True, por=()):
-    """Um quadro 32x32 e a âncora (topo do corpo) para o acréscimo do estágio."""
+    """One 32x32 frame and the anchor (top of the body) for the stage's add-on."""
     g = [["."] * N for _ in range(N)]
     pts = _body(w, h, cx, base, lean)
     top = min(y for _, y in pts)
@@ -59,16 +59,16 @@ def frame(w, h, cx=16, base=30, lean=0, eyes="normal", look=0, mouth="sorriso", 
     for x, y in pts:
         dir_ = (x + 1, y) not in pts or (x + 2, y) not in pts
         g[y][x] = "D" if (y >= base - 1 or dir_) else "G"
-    for x, y in pts:                              # contorno de 4 vizinhos
+    for x, y in pts:                              # 4-neighbor outline
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
             if (nx, ny) not in pts and 0 <= nx < N and 0 <= ny < N:
                 g[ny][nx] = "K"
-    # brilho no alto à esquerda
+    # shine at the top left
     bx, by = round(cx + lean * 0.75 - w * 0.28), top + max(1, h // 6)
     for x, y in ((bx, by), (bx + 1, by), (bx, by + 1), (bx + 2, by - 1)):
         if (x, y) in pts and g[y][x] == "G":
             g[y][x] = "L"
-    # rosto
+    # face
     ey = top + max(1, int(h * 0.38))
     fx = round(cx + lean * (base - ey) / h) + look
     lx, rx = fx - 5, fx + 3
@@ -105,41 +105,41 @@ def _state(specs):
 
 
 _SPECS = {
-    # respira (estica e encolhe) e pisca no 3º quadro
+    # breathes (stretches and squashes) and blinks on the 3rd frame
     "idle": [dict(w=24, h=18), dict(w=25, h=17), dict(w=25, h=17, eyes="fechado"), dict(w=23, h=19)],
-    # estica para frente, olhos na direção, gotinha ficando para trás
+    # stretches forward, eyes facing the way, a droplet left behind
     "run_r": [dict(w=24, h=16, cx=18, lean=4, look=2, por=((DROP, 2, 25),)),
               dict(w=23, h=18, cx=18, lean=3, look=2, por=((DROP, 0, 26), (DROP_S, 4, 29))),
               dict(w=25, h=15, cx=17, lean=5, look=3, por=((DROP_S, 2, 29),)),
               dict(w=24, h=17, cx=18, lean=4, look=2, por=((DROP, 3, 26),))],
-    # bracinho de gosma sai do lado direito e balança
+    # little goo arm comes out on the right and waves
     "waving": [dict(w=24, h=18, cx=13, eyes="feliz", mouth="aberta", por=((ARM_DOWN, 22, 18),)),
                dict(w=24, h=18, cx=13, eyes="feliz", mouth="aberta", por=((ARM_HOR, 22, 16),)),
                dict(w=24, h=18, cx=13, eyes="feliz", mouth="aberta", por=((ARM_DIAG, 22, 11),)),
                dict(w=24, h=18, cx=13, eyes="feliz", mouth="aberta", por=((ARM_UP, 22, 9),))],
-    # agacha, estica no ar, alto, cai, achata ao cair
+    # crouches, stretches in the air, high, falls, flattens on landing
     "jumping": [dict(w=28, h=12, eyes="fechado", mouth="reta"),
                 dict(w=18, h=23, base=27, mouth="o"),
                 dict(w=22, h=19, base=22, eyes="feliz", mouth="aberta"),
                 dict(w=20, h=21, base=29, mouth="o"),
                 dict(w=28, h=11, eyes="feliz")],
-    # derrete numa poça; olhos em X no último
+    # melts into a puddle; X eyes on the last one
     "failed": [dict(w=24, h=18, eyes="triste", mouth="triste", por=((TEAR, 9, 21),)),
                dict(w=26, h=14, eyes="triste", mouth="triste", por=((DROP, 1, 27), (DROP, 28, 27))),
                dict(w=28, h=10, eyes="triste", mouth="reta", por=((DROP_S, 0, 29), (DROP_S, 31, 29))),
                dict(w=30, h=7, eyes="fechado", mouth=None, cheek=False),
                dict(w=30, h=7, eyes="x", mouth=None)],
-    # cabeça pende de lado, olhos fechados, "z" subindo
+    # head tilts sideways, eyes closed, "z" rising
     "waiting": [dict(w=25, h=17, cx=14, lean=-2, eyes="fechado", mouth=None),
                 dict(w=26, h=16, cx=14, lean=-4, eyes="fechado", mouth=None, por=((Z_S, 21, 7),)),
                 dict(w=26, h=16, cx=14, lean=-4, eyes="fechado", mouth="o", por=((Z_S, 21, 7), (Z_L, 25, 1))),
                 dict(w=25, h=17, cx=14, lean=-3, eyes="fechado", mouth=None, por=((Z_L, 25, 0),))],
-    # investe e morde: recua, avança de boca aberta, fecha os dentes
+    # lunges and bites: pulls back, charges with an open mouth, snaps its teeth
     "running": [dict(w=25, h=16, cx=15, lean=-3, eyes="bravo", mouth="reta"),
                 dict(w=26, h=16, cx=16, lean=5, look=3, eyes="bravo", mouth="aberta"),
                 dict(w=26, h=17, cx=16, lean=4, look=3, eyes="bravo", mouth="dentes"),
                 dict(w=24, h=18, cx=15, lean=1, look=1, eyes="bravo", mouth="aberta")],
-    # olha para cima e o "?" aparece
+    # looks up and the "?" appears
     "review": [dict(w=24, h=18, cx=14, eyes="cima", mouth="reta"),
                dict(w=24, h=18, cx=14, eyes="cima", mouth="o", por=((QMARK_S, 24, 7),)),
                dict(w=23, h=19, cx=14, eyes="cima", mouth="o", por=((QMARK, 24, 3),)),
@@ -150,7 +150,7 @@ FRAMES, ANCHOR = {}, {}
 for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
-BLINK = FRAMES["idle"][2]     # quadro do idle com os olhos fechados
+BLINK = FRAMES["idle"][2]     # idle frame with the eyes closed
 
 HELM = [
     "...KKKK...",

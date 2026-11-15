@@ -1,13 +1,13 @@
-"""Polvo do Poço, 32 px, olhando para a frente. Um polvinho coral de cabeça (manto) grande e redonda, com brilho
-no alto, pintinhas mais escuras, olhões pretos com brilho e quatro tentáculos curtos enrolando na ponta embaixo.
-Os dois tentáculos de cima (um de cada lado) são os "braços" e fazem os gestos; têm ventosas creme.
-Mora num poço e o seu objeto é um balde velho de madeira com aros de ferro.
-O símbolo do `running` é a chicotada de tentáculo: arma o tentáculo atrás da cabeça, chicoteia para a frente e o
-golpe estoura em respingos de água gelada. No `failed` ele volta para dentro do balde: fica triste, entra no balde,
-afunda até sobrar só o alto da cabeça e um tentáculo pendurado na borda.
-Os gestos são sempre do tentáculo da direita; a âncora do 3º estágio fica pendurada do lado esquerdo.
-O manto anda inteiro (só tentáculos mudam), para o balde e a corrente dos acréscimos ficarem sempre no lugar.
-Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Well Octopus, 32 px, facing forward. A little coral octopus with a big round head (mantle), a shine
+on top, darker speckles, big black shiny eyes and four short tentacles curling at the tips below.
+The two upper tentacles (one on each side) are the "arms" and make the gestures; they have cream suckers.
+It lives in a well and its object is an old wooden bucket with iron hoops.
+The `running` symbol is the tentacle whip: winds the tentacle behind the head, whips forward and the
+hit bursts into splashes of icy water. In `failed` it goes back into the bucket: gets sad, gets into the bucket,
+sinks until only the top of the head and a tentacle hanging over the rim are left.
+Gestures always use the right tentacle; the 3rd stage anchor hangs on the left side.
+The whole mantle moves together (only tentacles change), so the add-ons' bucket and chain always stay in place.
+Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, outline_cells, line, trait
 
 PAL = {
@@ -16,18 +16,18 @@ PAL = {
     "O": "#c0652a", "T": "#8fd8ff", "t": "#3f8fc8", "Y": "#ffd23f",
 }
 
-MANTLE = (3, 5, 6, 7, 8, 8, 9, 9, 9, 9, 9, 8, 8, 7)     # meia-largura da cabeça (manto) por linha (14 linhas)
+MANTLE = (3, 5, 6, 7, 8, 8, 9, 9, 9, 9, 9, 8, 8, 7)     # head (mantle) half-width per row (14 rows)
 
-# tentáculos de baixo: pontos (dx a partir do centro, dy a partir do fim do manto, escala de 0 a 8)
+# lower tentacles: points (dx from the center, dy from the end of the mantle, scale from 0 to 8)
 SKIRTS = (
     (((-6, 0), (-7, 5), (-9, 8), (-11, 7)), ((-2, 0), (-3, 6), (-4, 8), (-6, 8)),
-     ((2, 0), (2, 6), (3, 8), (5, 8)), ((6, 0), (7, 5), (9, 8), (11, 7))),           # parado
+     ((2, 0), (2, 6), (3, 8), (5, 8)), ((6, 0), (7, 5), (9, 8), (11, 7))),           # standing
     (((-6, 0), (-8, 4), (-10, 8), (-12, 6)), ((-2, 0), (-2, 6), (-3, 8), (-5, 7)),
-     ((2, 0), (3, 6), (4, 8), (6, 7)), ((6, 0), (6, 5), (8, 8), (10, 8))),            # mexendo
+     ((2, 0), (3, 6), (4, 8), (6, 7)), ((6, 0), (6, 5), (8, 8), (10, 8))),            # moving
     (((-6, 0), (-10, 6), (-13, 8), (-14, 6)), ((-2, 0), (-4, 8), (-6, 8)),
-     ((2, 0), (4, 8), (6, 8)), ((6, 0), (10, 6), (13, 8), (14, 6))),                  # espalhado (sono, agacha)
+     ((2, 0), (4, 8), (6, 8)), ((6, 0), (10, 6), (13, 8), (14, 6))),                  # spread out (sleep, crouch)
     (((-6, 0), (-6, 5), (-7, 8)), ((-2, 0), (-1, 5), (-2, 8)),
-     ((2, 0), (1, 5), (2, 8)), ((6, 0), (6, 5), (7, 8))),                            # pendurado (no ar)
+     ((2, 0), (1, 5), (2, 8)), ((6, 0), (6, 5), (7, 8))),                            # hanging (in the air)
 )
 
 EYES = {"n": ["KKK", "KWK", "KKK", "KKK"], "cima": ["KWK", "KKK", "KKK", ".K."],
@@ -41,22 +41,22 @@ ICE = ["..K..", ".KTK.", "KTWTK", ".KTK.", "..K.."]
 
 
 def _drawing(pts, larg, alt):
-    """Sprite `larg` x `alt` com os pixels `pts` ({(x, y): cor}) e contorno escuro."""
+    """`width` x `alt` sprite with the pixels `pts` ({(x, y): color}) and a dark outline."""
     g = [["."] * N for _ in range(N)]
     outline_cells(g, pts)
     return ["".join(l[:larg]) for l in g[:alt]]
 
 
-# respingo de água gelada do golpe (9x8): gotas subindo em leque sobre uma poça
+# splash of icy water from the attack (9x8): drops rising in a fan over a puddle
 SPLASH = _drawing({**{(x, 6): "T" for x in range(2, 7)}, **{(x, 5): "t" if x % 2 else "T" for x in range(3, 6)},
                      (4, 4): "W", (4, 3): "T", (1, 3): "T", (7, 3): "T", (2, 1): "W", (6, 1): "W", (4, 1): "T"},
                     9, 8)
-# risco do chicote no ar (7x9)
+# whip streak in the air (7x9)
 BUZZ = _drawing({p: "W" for p in line(1, 1, 4, 2) + line(4, 2, 5, 5) + line(5, 5, 5, 7)}, 7, 9)
 
 
 def _tent(px, pts, color="P"):
-    """Tentáculo de 2 px pelos pontos `pts` (da base à ponta), afinando na ponta, com ventosas creme."""
+    """2 px tentacle through the points `pts` (from the base to the tip), tapering at the tip, with cream suckers."""
     seg = []
     for p, q in zip(pts, pts[1:]):
         seg += line(*p, *q)[(1 if seg else 0):]
@@ -85,7 +85,7 @@ def _move(pts, dx, dy):
 
 
 def _bucket_floor(g, cx=16, top=17):
-    """Balde de madeira de pé no chão: boca escura atrás (topo) e a frente com tábuas e aros de ferro."""
+    """Wooden bucket standing on the ground: dark mouth behind (top) and the front with planks and iron hoops."""
     mouth = {}
     for x in range(cx - 8, cx + 9):
         mouth[(x, top)] = "k"
@@ -105,15 +105,15 @@ def _bucket_front(g, cx=16, top=17):
             if (x, y) in px:
                 px[(x, y)] = "g"
     for x, y in ((cx - 4, top + 3), (cx + 6, 28), (cx + 2, top + 6)):
-        px[(x, y)] = "O"                            # ferrugem e uma mancha velha
+        px[(x, y)] = "O"                            # rust and an old stain
     outline_cells(g, px)
 
 
 def frame(cx=16, h0=8, base=30, eye="n", skirt=0, arms=(), por=(), bucket=False, back=()):
-    """Um quadro 32x32 e a âncora do acréscimo (15 à esquerda do centro e 6 acima do topo do manto).
-    `bracos`: listas de pontos dos tentáculos-braço escritas para a pose padrão (cx=16, h0=8: ombros em (8, 19)
-    e (24, 19)) e deslocadas junto com o manto; `balde`: o polvo está dentro do balde (corta tudo abaixo da boca);
-    `tras`: sprites carimbados antes do corpo; `por`: sprites carimbados por último, sem deslocar."""
+    """One 32x32 frame and the add-on anchor (15 to the left of the center and 6 above the mantle top).
+    `arms`: point lists of the arm-tentacles written for the default pose (cx=16, h0=8: shoulders at (8, 19)
+    and (24, 19)) and shifted along with the mantle; `bucket`: the octopus is inside the bucket (cuts everything below the mouth);
+    `back`: sprites stamped before the body; `por`: sprites stamped last, without shifting."""
     g = [["."] * N for _ in range(N)]
     dx, dy = cx - 16, h0 - 8
     for s, x, y in back:
@@ -134,7 +134,7 @@ def frame(cx=16, h0=8, base=30, eye="n", skirt=0, arms=(), por=(), bucket=False,
     for x, y in ((cx - 4, h0 + 1), (cx - 5, h0 + 2), (cx - 4, h0 + 2), (cx - 6, h0 + 3), (cx - 5, h0 + 3)):
         mantle[(x, y)] = "H"
     for x, y in ((cx + 2, h0 + 2), (cx + 4, h0 + 3), (cx + 5, h0 + 4), (cx + 1, h0 + 4)):
-        mantle[(x, y)] = "p"                         # pintinhas
+        mantle[(x, y)] = "p"                         # speckles
     px.update(mantle)
     if bucket:
         _bucket_floor(g)
@@ -147,7 +147,7 @@ def frame(cx=16, h0=8, base=30, eye="n", skirt=0, arms=(), por=(), bucket=False,
         stamp(g, TEAR, cx - 5, h0 + 10)
     for x, y in ((cx - 1, h0 + 10), (cx + 1, h0 + 10), (cx, h0 + 11)):
         if y <= (18 if bucket else 31):
-            g[y][x] = "K"                           # boquinha
+            g[y][x] = "K"                           # little mouth
     if bucket:
         _bucket_front(g)
     for b in arms:
@@ -162,29 +162,29 @@ def _state(specs):
     return [q for q, _ in qs], [a for _, a in qs]
 
 
-# pose padrão: manto 8-21 (cx=16), olhos 14-17, ombros dos tentáculos-braço em (8, 19) e (24, 19)
-_E = [(8, 19), (5, 22), (4, 25), (6, 26)]            # braço esquerdo enrolado no chão
-_D = [(24, 19), (27, 22), (28, 25), (26, 26)]        # braço direito enrolado no chão
+# default pose: mantle 8-21 (cx=16), eyes 14-17, arm-tentacle shoulders at (8, 19) and (24, 19)
+_E = [(8, 19), (5, 22), (4, 25), (6, 26)]            # left arm curled on the ground
+_D = [(24, 19), (27, 22), (28, 25), (26, 26)]        # right arm curled on the ground
 _E2 = [(8, 19), (5, 21), (3, 24), (4, 26)]
 _D2 = [(24, 19), (27, 21), (29, 24), (28, 26)]
 _SPECS = {
-    # parado: respira (o manto desce 1 px), os tentáculos mexem, pisca, solta uma bolha
+    # standing: breathes (the mantle goes down 1 px), the tentacles move, blinks, lets out a bubble
     "idle": [dict(arms=(_E, _D)),
              dict(h0=9, skirt=1, arms=(_E2, _D2), por=((BUBBLE_S, 26, 11),)),
              dict(h0=9, skirt=1, arms=(_E2, _D2), por=((BUBBLE, 26, 7),)),
              dict(eye="fechado", arms=(_E, _D), por=((BUBBLE, 27, 3),)),
              dict(arms=(_E, _D))],
-    # anda: o manto sobe e desce, os tentáculos alternam
+    # walks: the mantle bobs, the tentacles alternate
     "run_r": [dict(cx=16, h0=8, skirt=0, arms=([(8, 19), (4, 21), (2, 23)], [(24, 19), (28, 21), (30, 24)])),
               dict(cx=16, h0=7, skirt=1, base=29, arms=([(8, 19), (5, 23), (5, 26)], [(24, 19), (27, 23), (26, 26)])),
               dict(cx=16, h0=8, skirt=2, arms=([(8, 19), (4, 22), (3, 25)], [(24, 19), (29, 20), (30, 22)])),
               dict(cx=16, h0=7, skirt=1, base=29, arms=([(8, 19), (6, 23), (6, 26)], [(24, 19), (27, 23), (28, 26)]))],
-    # acena bem alto com o tentáculo da direita, feliz
+    # waves very high with the right tentacle, happy
     "waving": [dict(eye="feliz", arms=(_E, [(24, 19), (27, 14), (28, 9), (26, 7)])),
                dict(eye="feliz", skirt=1, arms=(_E, [(24, 19), (29, 15), (31, 10), (30, 8)])),
                dict(eye="feliz", arms=(_E, [(24, 19), (27, 14), (28, 9), (26, 7)])),
                dict(eye="feliz", skirt=1, arms=(_E, [(24, 19), (29, 15), (31, 10), (30, 8)]))],
-    # agacha, pula com o tentáculo para cima, desce, pousa
+    # crouches, jumps with the tentacle up, comes down, lands
     "jumping": [dict(h0=11, skirt=2, eye="fechado", arms=(_E2, _D2)),
                 dict(h0=7, base=27, skirt=3, eye="cima", arms=([(8, 19), (4, 21), (2, 24)],
                                                                 [(24, 19), (27, 13), (28, 8), (26, 6)])),
@@ -193,7 +193,7 @@ _SPECS = {
                      por=((BUBBLE_S, 3, 28), (BUBBLE_S, 27, 27))),
                 dict(h0=8, skirt=1, arms=([(8, 19), (4, 21), (3, 24)], [(24, 19), (28, 21), (29, 24)])),
                 dict(h0=10, skirt=2, eye="feliz", arms=(_E2, _D2))],
-    # volta para dentro do balde: fica triste, entra, afunda e só sobra um tentáculo pendurado na borda
+    # goes back into the bucket: gets sad, gets in, sinks and only one tentacle is left hanging over the rim
     "failed": [dict(eye="triste", skirt=3, arms=([(8, 19), (7, 23), (7, 27)], [(24, 19), (25, 23), (25, 27)])),
                dict(h0=8, eye="triste", bucket=True,
                     arms=([(9, 17), (6, 19), (5, 22)], [(23, 17), (26, 19), (27, 22)])),
@@ -203,7 +203,7 @@ _SPECS = {
                     arms=([(22, 18), (26, 18), (28, 21), (27, 24)],)),
                dict(h0=16, eye="fechado", bucket=True,
                     arms=([(22, 18), (26, 18), (27, 21), (26, 24)],))],
-    # cochila esparramado, olhos fechados, "z" subindo
+    # naps sprawled out, eyes closed, "z" rising
     "waiting": [dict(h0=10, skirt=2, eye="fechado", arms=([(8, 19), (4, 23), (2, 26)], [(24, 19), (28, 23), (30, 26)])),
                 dict(h0=10, skirt=2, eye="fechado", arms=([(8, 19), (4, 23), (2, 26)], [(24, 19), (28, 23), (30, 26)]),
                      por=((Z_S, 26, 6),)),
@@ -211,7 +211,7 @@ _SPECS = {
                      por=((Z_S, 25, 7), (Z_L, 26, 0))),
                 dict(h0=10, skirt=2, eye="fechado", arms=([(8, 19), (4, 23), (2, 26)], [(24, 19), (28, 23), (30, 26)]),
                      por=((Z_L, 26, 0),))],
-    # chicotada: arma o tentáculo atrás da cabeça, chicoteia para a frente, estoura em água gelada, recolhe
+    # whip: winds the tentacle behind the head, whips forward, bursts into icy water, pulls back
     "running": [dict(eye="bravo", skirt=1, arms=(_E, [(24, 19), (28, 15), (29, 10), (27, 7), (25, 8)])),
                 dict(eye="bravo", skirt=0, arms=(_E, [(24, 19), (28, 16), (31, 12)]),
                      por=((BUZZ, 25, 1),)),
@@ -219,7 +219,7 @@ _SPECS = {
                      por=((SPLASH, 24, 8), (ICE, 27, 1))),
                 dict(eye="feliz", skirt=1, arms=(_E, [(24, 19), (28, 22), (28, 26), (26, 27)]),
                      por=((BUBBLE_S, 28, 14), (BUBBLE_S, 25, 11)))],
-    # tentáculo no queixo, olhando para cima, "?" aparece
+    # tentacle on the chin, looking up, "?" appears
     "review": [dict(eye="cima", arms=(_E, [(24, 19), (27, 17), (26, 14), (23, 15)])),
                dict(eye="cima", skirt=1, arms=(_E, [(24, 19), (27, 17), (26, 14), (23, 15)]),
                     por=((QMARK_S, 26, 1),)),
@@ -233,9 +233,9 @@ for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
 
-# grade 25x17 colada 15 à esquerda do centro e 6 acima do topo do manto (centro na coluna 15, topo do manto na
-# linha 6): balde velho de cabeça para baixo como chapéu; no 3º estágio, uma corrente enrolada no balde e uma
-# ancorazinha pendurada do lado esquerdo (longe do tentáculo que gesticula)
+# 25x17 grid attached 15 to the left of the center and 6 above the mantle top (center on column 15, mantle top on
+# row 6): old bucket upside down as a hat; on the 3rd stage, a chain wrapped around the bucket and a
+# little anchor hanging on the left side (away from the gesturing tentacle)
 def _extra(ancora):
     g = [["."] * N for _ in range(N)]
     px = {}
@@ -250,7 +250,7 @@ def _extra(ancora):
     for x, y in ((13, 2), (20, 7), (17, 5)):
         px[(x, y)] = "O"
     if ancora:
-        for i, x in enumerate(range(10, 22)):       # corrente enrolada no balde
+        for i, x in enumerate(range(10, 22)):       # chain wrapped around the bucket
             px[(x, 4 + (x - 10) // 6)] = "A" if i % 2 else "a"
         for i, (x, y) in enumerate(((9, 6), (8, 7), (7, 8), (6, 9))):
             px[(x, y)] = "A" if i % 2 else "a"

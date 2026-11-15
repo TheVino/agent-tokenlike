@@ -1,7 +1,7 @@
-"""Ceifeirinho, 32 px, olhando para a direita. Capuz redondo e escuro com dois olhos que brilham na sombra, manto
-comprido de barra rasgada, mãozinhas de osso e uma foice pequena (cabo de pau, lâmina curva de prata). No `running`
-ele dá um golpe largo com rastro em arco; no `failed` o manto desaba vazio no chão com a foice caída por cima.
-Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Little Reaper, 32 px, facing right. Round dark hood with two eyes glowing in the shadow, a long
+cloak with a torn hem, little bone hands and a small scythe (wooden handle, curved silver blade). In `running`
+he swings wide with an arc trail; in `failed` the cloak collapses empty on the ground with the scythe on top.
+Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 import math
 
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, line, outline_cells, trait
@@ -13,11 +13,11 @@ PAL = {
 }
 
 HAND = ["KKK", "KGK", "KKK"]
-SOUL = [".A.", "AWA", ".A.", "..A"]          # fiapo de alma subindo
+SOUL = [".A.", "AWA", ".A.", "..A"]          # wisp of soul rising
 
 
 def _scythe(g, handle, tip, side=1):
-    """Foice: cabo de `cabo` até `ponta` e lâmina curva saindo da ponta para o `lado` (+1 direita do cabo)."""
+    """Scythe: handle from `handle` to `tip` and a curved blade leaving the tip toward `side` (+1 = right of the handle)."""
     px = {p: ("n" if i % 3 == 2 else "N") for i, p in enumerate(line(*handle, *tip))}
     ux, uy = tip[0] - handle[0], tip[1] - handle[1]
     d = math.hypot(ux, uy) or 1
@@ -34,7 +34,7 @@ def _scythe(g, handle, tip, side=1):
 
 
 def _arc(g, cx, cy, r, a0, a1, color="A"):
-    """Rastro do golpe: arco de círculo (graus, 0 = direita, 90 = baixo) em duas camadas, sem contorno."""
+    """Attack trail: circle arc (degrees, 0 = right, 90 = down) in two layers, no outline."""
     n = max(int(abs(a1 - a0) / 4), 2)
     for i in range(n + 1):
         a = math.radians(a0 + (a1 - a0) * i / n)
@@ -64,13 +64,13 @@ def _eyes(g, hx, hy, eyes):
 
 
 def _hood(g, hx, hy, ry=5.5, empty=False):
-    """Capuz redondo (bico curto para trás) e a abertura escura do rosto voltada para a direita."""
+    """Round hood (short tip backward) and the dark face opening facing right."""
     px = {}
     for x in range(hx - 7, hx + 7):
         for y in range(hy - 7, hy + 7):
             if ((x - hx) / 5.6) ** 2 + ((y - hy) / ry) ** 2 <= 1:
                 px[(x, y)] = "h" if x < hx - 3 or y > hy + ry - 1.5 else "H"
-    px[(hx - 5, round(hy - ry + 2))] = "H"                    # bico do capuz caindo para trás
+    px[(hx - 5, round(hy - ry + 2))] = "H"                    # hood tip falling backward
     px[(hx - 6, round(hy - ry + 3))] = "h"
     for x in range(hx - 3, hx + 6):
         for y in range(hy - 4, hy + 5):
@@ -87,7 +87,7 @@ def _mantle(g, cx, base, ch, lean):
         half = 3 + t * 3.5
         c = cx + lean * (1 - t) * 0.6
         for x in range(round(c - half), round(c + half) + 1):
-            if y == base - 1 and (x - cx) % 3 == 0:          # barra rasgada
+            if y == base - 1 and (x - cx) % 3 == 0:          # torn hem
                 continue
             edge = x >= round(c + half) - 1 or y >= base - 2
             px[(x, y)] = "m" if edge else "M"
@@ -95,7 +95,7 @@ def _mantle(g, cx, base, ch, lean):
 
 
 def _mound(g, cx, y):
-    """Manto vazio desabado: montinho de pano com o capuz vazio caído na frente."""
+    """Collapsed empty cloak: a little pile of cloth with the empty hood fallen in front."""
     px = {}
     for dy, half in ((0, 4), (1, 7), (2, 9), (3, 10), (4, 10)):
         for x in range(cx - half, cx + half + 1):
@@ -107,8 +107,8 @@ def _mound(g, cx, y):
 
 def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", arms=(), scythes=(), por=(), arcs=(), ry=5.5,
            mound=None):
-    """Um quadro 32x32 e a âncora do acréscimo (capuz - 12). `foices`: (cabo, ponta, lado); `arcos`: rastros
-    (cx, cy, r, a0, a1) desenhados atrás de tudo; `monte` (cx, y) desenha só o manto vazio caído."""
+    """One 32x32 frame and the add-on anchor (hood - 12). `scythes`: (handle, tip, side); `arcs`: trails
+    (cx, cy, r, a0, a1) drawn behind everything; `mound` (cx, y) draws only the fallen empty cloak."""
     g = [["."] * N for _ in range(N)]
     for a in arcs:
         _arc(g, *a)
@@ -141,36 +141,36 @@ def _state(specs):
     return [q for q, _ in qs], [a for _, a in qs]
 
 
-# base=30, ch=9 -> ctop=20, capuz hy=16 (topo ~10); ombro ~(cx + 2, 22)
+# base=30, ch=9 -> ctop=20, hood hy=16 (top ~10); shoulder ~(cx + 2, 22)
 _SPECS = {
-    # parado com a foice em pé ao lado; a lâmina balança e ele pisca
+    # standing with the scythe upright beside him; the blade sways and he blinks
     "idle": [dict(arms=(((16, 23), (20, 23)),), scythes=(((21, 29), (21, 9), 1),)),
              dict(arms=(((16, 23), (20, 23)),), scythes=(((21, 29), (22, 9), 1),)),
              dict(eyes="fechado", arms=(((16, 23), (20, 23)),), scythes=(((21, 29), (22, 9), 1),)),
              dict(arms=(((16, 23), (20, 22)),), scythes=(((21, 29), (20, 9), 1),))],
-    # corre de lado (manto inclinado, sobe e desce) com a foice no ombro, lâmina atrás
+    # runs sideways (leaning cloak, bobbing) with the scythe on the shoulder, blade behind
     "run_r": [dict(cx=15, lean=1, arms=(((15, 22), (18, 21)),), scythes=(((20, 22), (8, 12), -1),)),
               dict(cx=15, lean=2, base=29, arms=(((15, 21), (18, 20)),), scythes=(((20, 21), (8, 10), -1),)),
               dict(cx=15, lean=1, arms=(((15, 22), (18, 21)),), scythes=(((20, 22), (8, 13), -1),)),
               dict(cx=15, lean=2, base=29, arms=(((15, 21), (18, 20)),), scythes=(((20, 21), (8, 11), -1),))],
-    # acena com a mãozinha de osso, foice fincada atrás
+    # waves with the little bone hand, scythe stuck behind
     "waving": [dict(eyes="feliz", scythes=(((8, 29), (8, 10), -1),), arms=(((16, 22), (21, 19)),)),
                dict(eyes="feliz", scythes=(((8, 29), (8, 10), -1),), arms=(((16, 22), (21, 15)),)),
                dict(eyes="feliz", scythes=(((8, 29), (8, 10), -1),), arms=(((16, 22), (24, 16)),)),
                dict(eyes="feliz", scythes=(((8, 29), (8, 10), -1),), arms=(((16, 22), (21, 15)),))],
-    # agacha, salta com a foice erguida, cai, pousa
+    # crouches, jumps with the scythe raised, falls, lands
     "jumping": [dict(ch=7, eyes="fechado", arms=(((16, 25), (20, 25)),), scythes=(((21, 30), (21, 13), 1),)),
                 dict(ch=10, base=28, arms=(((16, 19), (21, 17)),), scythes=(((22, 24), (24, 6), 1),)),
                 dict(ch=9, base=26, eyes="feliz", arms=(((16, 17), (21, 15)),), scythes=(((22, 22), (24, 4), 1),)),
                 dict(ch=10, base=28, arms=(((16, 20), (21, 19)),), scythes=(((22, 26), (24, 8), 1),)),
                 dict(ch=7, eyes="feliz", arms=(((16, 25), (20, 25)),), scythes=(((21, 30), (22, 13), 1),))],
-    # triste, solta a foice, o manto desaba vazio; a foice fica caída sobre o pano e um fiapo de alma sobe
+    # sad, drops the scythe, the cloak collapses empty; the scythe lies on the cloth and a wisp of soul rises
     "failed": [dict(eyes="triste", scythes=(((19, 29), (25, 13), 1),), por=((TEAR, 18, 18),)),
                dict(ch=6, ry=4.8, eyes="triste", scythes=(((17, 30), (28, 22), 1),), por=((TEAR, 18, 22),)),
                dict(ch=3, ry=4.0, eyes="x", scythes=(((14, 30), (29, 27), -1),)),
                dict(mound=(14, 26), scythes=(((4, 29), (24, 29), -1),)),
                dict(mound=(14, 26), scythes=(((4, 29), (24, 29), -1),), por=((SOUL, 18, 9),))],
-    # cochila apoiado na foice, capuz pende, "z" subindo
+    # naps leaning on the scythe, hood tilting, "z" rising
     "waiting": [dict(ch=8, lean=-1, eyes="fechado", arms=(((15, 23), (19, 23)),), scythes=(((20, 29), (20, 10), 1),)),
                 dict(ch=8, lean=-2, eyes="fechado", arms=(((15, 23), (19, 23)),), scythes=(((20, 29), (20, 10), 1),),
                      por=((Z_S, 24, 2),)),
@@ -178,7 +178,7 @@ _SPECS = {
                      por=((Z_S, 23, 3), (Z_L, 26, 0))),
                 dict(ch=8, lean=-1, eyes="fechado", arms=(((15, 23), (19, 23)),), scythes=(((20, 29), (20, 10), 1),),
                      por=((Z_L, 26, 0),))],
-    # golpe: foice atrás da cabeça, passa por cima e corta para a frente num arco largo
+    # attack: scythe behind the head, swings over and cuts forward in a wide arc
     "running": [dict(cx=13, lean=-2, eyes="bravo", arms=(((12, 22), (9, 19)),), scythes=(((10, 24), (4, 8), -1),)),
                 dict(cx=14, eyes="bravo", arms=(((15, 21), (17, 16)),), scythes=(((17, 21), (17, 3), 1),),
                      arcs=((14, 18, 13, 200, 270),)),
@@ -186,7 +186,7 @@ _SPECS = {
                      arcs=((14, 20, 14, 230, 340),)),
                 dict(cx=14, lean=2, eyes="bravo", arms=(((16, 23), (21, 24)),), scythes=(((17, 23), (29, 24), 1),),
                      arcs=((14, 18, 13, 270, 400),))],
-    # mão no queixo, olhando para cima, "?" aparece
+    # hand on the chin, looking up, "?" appears
     "review": [dict(cx=12, eyes="cima", arms=(((14, 23), (17, 21)),), scythes=(((6, 29), (6, 10), -1),)),
                dict(cx=12, eyes="cima", arms=(((14, 23), (17, 21)),), scythes=(((6, 29), (6, 10), -1),),
                     por=((QMARK_S, 24, 2),)),
@@ -200,7 +200,7 @@ FRAMES, ANCHOR = {}, {}
 for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
-# capuz maior: ponta comprida caindo para trás por cima do capuz; âncora = capuz - 12
+# bigger hood: long tip falling backward over the hood; anchor = hood - 12
 _EMPTY = "." * 25
 HOOD = [_EMPTY] * 3 + [
     "..........KKKKK..........",
@@ -210,7 +210,7 @@ HOOD = [_EMPTY] * 3 + [
     "...KhK...................",
     "...KK....................",
 ]
-# Ancião: capuz maior e lanterna de almas flutuando atrás (à esquerda)
+# Elder: bigger hood and a soul lantern floating behind (on the left)
 LANTERN = [_EMPTY] * 12 + [
     "..KK.....................",
     ".K..K....................",

@@ -1,5 +1,5 @@
-"""Textos sem cortar/sobrepor em todas as janelas, com Tk de verdade e dados de pior caso.
-Sem tela (TclError ao abrir o Tk), pula com aviso."""
+"""Texts without clipping/overlap in every window, with a real Tk and worst-case data.
+Without a screen (TclError when opening Tk), skips with a warning."""
 import os, sys, tempfile, time, types
 from pathlib import Path
 home = tempfile.mkdtemp(); os.environ["HOME"] = home; os.environ["USERPROFILE"] = home
@@ -11,7 +11,7 @@ try:
 except tkinter.TclError as e:
     print("AVISO: sem tela, test_textos pulado:", e)
     sys.exit(0)
-import tkinter.font  # noqa: F401  (tokenlike mede texto com tk.font)
+import tkinter.font  # noqa: F401  (tokenlike measures text with tk.font)
 import tokenlike as tp, dungeon as M, i18n
 from _texts import check
 tp.tk = tkinter
@@ -23,7 +23,7 @@ problems = []
 
 
 def looks(name, w):
-    w.unbind("<FocusOut>")      # a checagem processa eventos: perder o foco aqui não pode fechar a janela
+    w.unbind("<FocusOut>")      # the check processes events: losing focus here must not close the window
     for p in check(w):
         problems.append(f"[{i18n.LANG}/{name}] {p}")
 
@@ -31,7 +31,7 @@ def looks(name, w):
 def round_(lang):
     app.lang_var.set(lang); app.change_lang(); app.state["mode"] = "auto"; app.run["pending"] = None
     now = time.time()
-    longo = lambda names: max(names, key=lambda n: len(tp._t(n)))      # pior caso no idioma da rodada
+    longo = lambda names: max(names, key=lambda n: len(tp._t(n)))      # worst case in the round's language
     hero = max((k for k in app.chars if tp.own_hero(k)),
                 key=lambda k: len(tp._t(app.chars[k].name)) + len(tp._t(app.chars[k].stages[-1]["title"])))
     app.meta["next_char"] = hero; app.new_run(announce=False)
@@ -58,7 +58,7 @@ def round_(lang):
             fn(); looks(attr, getattr(app, attr)); app.close_win(getattr(app, attr))
         for filter_by in ("todos", "bloqueados"):
             app.items_filter = filter_by; app.show_items(); looks(f"itens/{filter_by}", app.items_win); app.close_win(app.items_win)
-    lim, app.limits, app.state["calib"] = app.limits, None, {}   # sem % oficial nem fator: barra do seu pico
+    lim, app.limits, app.state["calib"] = app.limits, None, {}   # no official % and no factor: bar of your peak
     app.update_panel(); looks("hud/pico", app.root)
     app.show_perfil(); looks("perfil/pico", app.profile_win); app.close_win(app.profile_win)
     app.limits = lim
@@ -74,7 +74,7 @@ def round_(lang):
 
 for lang in ("pt", "en"):
     round_(lang)
-# a checagem pega o que deve pegar: texto cortado, encostado na borda do cartão, palavra partida, texto sobre texto
+# the check catches what it should: cut text, text touching the card border, broken word, text over text
 w, f = app.pixel_box(0, 0, closes=False)
 card = app.card_box(f, larg=80, alto=40); card.pack()
 tk_lbl = tkinter.Label(card, text="Um nome comprido demais", bg=tp.CARD_BG, font=app.font); tk_lbl.pack()

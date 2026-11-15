@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Agent Tokenlike - Masmorra de Tokens
+Agent Tokenlike - Token Dungeon
 
-Um bichinho de pixel que fica na sua tela e desce uma masmorra usando como
-energia os tokens que você gasta no Claude Code. Salas aleatórias, itens que
-aparecem no visual, chefes, desbloqueios e permadeath.
+A little pixel pet that lives on your screen and descends a dungeon using the
+tokens you spend in Claude Code as energy. Random rooms, items that show up
+on its look, bosses, unlocks and permadeath.
 
-Privacidade:
-  * Lê os arquivos de log que o Claude Code já salva no seu PC
-    (%USERPROFILE%\\.claude\\projects\\*.jsonl) e usa SÓ os números de tokens.
-  * Não guarda nem mostra prompts/respostas, não usa internet, não instala
-    hooks e não mexe em nenhuma configuração do Claude Code.
-  * O progresso fica em %USERPROFILE%\\.tokenlike\\
+Privacy:
+  * Reads the log files Claude Code already saves on your PC
+    (%USERPROFILE%\\.claude\\projects\\*.jsonl) and uses ONLY the token counts.
+  * Does not store or show prompts/responses, does not use the internet, does not
+    install hooks and does not touch any Claude Code setting.
+  * Progress is kept in %USERPROFILE%\\.tokenlike\\
 
-Uso:
-  python tokenlike.py                   abre o pet
-  python tokenlike.py --demo            modo teste (tokens falsos, progresso separado)
-  python tokenlike.py --import-history  no 1º uso, já começa com a energia do histórico
-  python tokenlike.py --reset           apaga todo o progresso (runs, cemitério, conquistas)
+Usage:
+  python tokenlike.py                   opens the pet
+  python tokenlike.py --demo            test mode (fake tokens, separate progress)
+  python tokenlike.py --import-history  on first use, starts with the energy from your history
+  python tokenlike.py --reset           erases all progress (runs, graveyard, achievements)
 """
 from __future__ import annotations
 
@@ -47,29 +47,29 @@ from heroes import assemble as _assemble, slime as _slime  # noqa: E402
 import sheet  # noqa: E402
 import dungeon as M  # noqa: E402
 import i18n  # noqa: E402
-_t = i18n.t   # texto no idioma atual (todo texto visível passa por aqui)
+_t = i18n.t   # text in the current language (every visible text goes through here)
 import visual  # noqa: E402
 
-tk = None  # o tkinter é importado só quando a janela abre (run_gui)
+tk = None  # tkinter is imported only when the window opens (run_gui)
 
 APP_NAME = "Agent Tokenlike"
 DATA_DIR = Path.home() / ".tokenlike"
-OLD_DATA_DIR = Path.home() / ".tokenpet"  # nome antigo (TokenPet)
+OLD_DATA_DIR = Path.home() / ".tokenpet"  # old name (TokenPet)
 CHARACTERS_DIR = SCRIPT_DIR / "characters"
 LOG_FILE = DATA_DIR / "tokenlike.log"
 
-# ----------------------------------------------------------------- ajustes
-CACHE_READ_WEIGHT = 0.1     # tokens lidos do cache valem 10% (são baratos e muitos)
-POLL_MS = 2500              # de quanto em quanto tempo olha os logs
-REST_AFTER_S = 5 * 60       # parado há 5 min -> descansa e recupera 1 HP a cada 2 min
-SLEEP_AFTER_S = 10 * 60     # parado há 10 min -> dorme (Zzz). Nunca morre por ficar parado.
-HIDE_S = 5 * 60         # "Aparecer só com uso": some depois disso sem tokens novos (continua rodando escondido)
+# ----------------------------------------------------------------- settings
+CACHE_READ_WEIGHT = 0.1     # tokens read from cache count 10% (they are cheap and plentiful)
+POLL_MS = 2500              # how often the logs are checked
+REST_AFTER_S = 5 * 60       # idle for 5 min -> rests and recovers 1 HP every 2 min
+SLEEP_AFTER_S = 10 * 60     # idle for 10 min -> sleeps (Zzz). Never dies from being idle.
+HIDE_S = 5 * 60         # "Show only when in use": hides after this long without new tokens (keeps running hidden)
 SAVE_EVERY_S = 30
-RESPAWN_S = 12              # tempo mostrando a lápide antes da run nova
-SIZES = {"Pequeno": 4, "Médio": 6, "Grande": 8}  # px de tela por pixel da arte
+RESPAWN_S = 12              # how long the tombstone shows before the new run
+SIZES = {"Pequeno": 4, "Médio": 6, "Grande": 8}  # screen px per art pixel
 MODES = {"auto": "Auto", "interativo": "Interativo"}
-CHOICE_BAR_W = 150          # largura da barrinha de tempo do painel de escolha
-TRANSPARENT = "#ff00fe"     # cor "chave" que o Windows deixa invisível
+CHOICE_BAR_W = 150          # width of the timer bar in the choice panel
+TRANSPARENT = "#ff00fe"     # "key" color that Windows makes invisible
 
 PANEL_BG = "#1d1b2b"
 PANEL_EDGE = "#4b4680"
@@ -77,29 +77,29 @@ TEXT = "#f2f0ff"
 MUTED = "#a9a4d6"
 BAR_BG = "#35315a"
 ENERGY = "#5fd3c6"
-ENERGY_SHIMMER = "#c8f5ef"     # brilho que corre pela barra de energia
-SHIMMER_S = 2.4                # segundos por passada do brilho
-PEAK_COLOR = "#8f88d6"          # barra de limite sem % oficial: uso da janela / seu pico (neutra, não é alerta)
+ENERGY_SHIMMER = "#c8f5ef"     # shimmer that runs along the energy bar
+SHIMMER_S = 2.4                # seconds per shimmer pass
+PEAK_COLOR = "#8f88d6"          # limit bar without an official %: window usage / your peak (neutral, not a warning)
 GOOD = "#7ee081"
 HURT = "#ff6b81"
 GOLD = "#ffd23f"
 CYAN = "#6fd6ff"
 STATUS_COLOR = {"queimadura": "#ff9f43", "eletricidade": "#fff27a", "veneno": "#4fbf5a", "congelamento": "#9fe8ff"}
-MENU_HOVER = "#2e2a48"      # fundo da linha do menu com o mouse em cima
-GOLD_HOVER = "#fff27a"      # polegar da barra de rolagem com o mouse em cima
-CARD_BG = "#262338"         # miolo dos cartões (um pouco mais claro que o painel)
-WINDOW_R, CARD_R = 8, 4   # raio dos cantos em degraus: janelas/painel e cartões/chips
-CARD_PAD = 6              # respiro mínimo entre a borda do cartão e o que vai dentro
-HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 160   # grade de heróis (cards de tamanho fixo)
-ACH_COLS, ACH_CARD_W, ACH_CARD_H = 4, 150, 118   # grade de conquistas
-GRAVE_W, GRAVE_H, GRAVE_TOMB = 470, 420, 92           # cemitério: largura, altura visível, altura de cada lápide
-ITEMS_COLS, ITEMS_CARD_W, ITEMS_H = 2, 280, 440      # página de itens: colunas, largura do card, altura visível
+MENU_HOVER = "#2e2a48"      # menu row background on mouse hover
+GOLD_HOVER = "#fff27a"      # scrollbar thumb on mouse hover
+CARD_BG = "#262338"         # card inner color (a bit lighter than the panel)
+WINDOW_R, CARD_R = 8, 4   # stepped corner radius: windows/panel and cards/chips
+CARD_PAD = 6              # minimum padding between the card border and its content
+HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 160   # hero grid (fixed-size cards)
+ACH_COLS, ACH_CARD_W, ACH_CARD_H = 4, 150, 118   # achievements grid
+GRAVE_W, GRAVE_H, GRAVE_TOMB = 470, 420, 92           # graveyard: width, visible height, height of each tombstone
+ITEMS_COLS, ITEMS_CARD_W, ITEMS_H = 2, 280, 440      # items page: columns, card width, visible height
 WINDOW_ATTRS = ("menu_win", "heroes_win", "stats_win", "ach_win", "grave_win", "items_win", "profile_win")
 REOPEN = {"heroes_win": "show_heroes", "stats_win": "show_stats", "ach_win": "show_achievements",
-          "grave_win": "show_graveyard", "items_win": "show_items", "profile_win": "show_perfil"}   # troca de idioma
+          "grave_win": "show_graveyard", "items_win": "show_items", "profile_win": "show_perfil"}   # language switch
 
-PROFILE_W, PROFILE_MEDALS, PROFILE_MEDAL, PROFILE_BAR = 312, 13, 24, "#8a5a2b"   # perfil: largura, medalhas/linha, célula, cor
-FX_MS = 200   # ms por fase da animação dos looks elementais (relógio próprio, separado do frame_ms do herói)
+PROFILE_W, PROFILE_MEDALS, PROFILE_MEDAL, PROFILE_BAR = 312, 13, 24, "#8a5a2b"   # profile: width, medals per row, cell, color
+FX_MS = 200   # ms per phase of the elemental look animation (own clock, separate from the hero's frame_ms)
 
 
 def fmt(n: float) -> str:
@@ -121,7 +121,7 @@ def log(msg: str) -> None:
 
 
 def append_run_record(rec: dict, demo: bool) -> None:
-    """Acrescenta uma run terminada em runs.jsonl (só dados do jogo; falha só loga)."""
+    """Appends a finished run to runs.jsonl (game data only; a failure is only logged)."""
     try:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         path = DATA_DIR / ("runs-demo.jsonl" if demo else "runs.jsonl")
@@ -131,7 +131,7 @@ def append_run_record(rec: dict, demo: bool) -> None:
         log(f"não gravou runs.jsonl: {e}")
 
 
-# ------------------------------------------------------- leitura de tokens
+# ------------------------------------------------------- token reading
 def claude_project_dirs() -> list[Path]:
     cands: list[Path] = []
     for part in os.environ.get("CLAUDE_CONFIG_DIR", "").split(","):
@@ -152,7 +152,7 @@ def claude_project_dirs() -> list[Path]:
 
 
 class TokenReader:
-    """Lê só as linhas novas dos .jsonl do Claude Code e soma o uso de tokens."""
+    """Reads only the new lines of Claude Code's .jsonl files and adds up the token usage."""
 
     FILE_LIST_REFRESH_S = 10
 
@@ -178,7 +178,7 @@ class TokenReader:
         return self._files
 
     def skip_existing(self) -> None:
-        """Marca tudo que já existe como lido (o pet nasce do zero)."""
+        """Marks everything that already exists as read (the pet starts from scratch)."""
         self._files_at = 0
         for f in self.files():
             try:
@@ -187,7 +187,7 @@ class TokenReader:
                 pass
 
     def poll(self) -> tuple[float, int]:
-        """Retorna (xp_ganho, tokens_brutos) desde a última leitura."""
+        """Returns (xp_gained, raw_tokens) since the last read."""
         xp, raw = 0.0, 0
         for f in self.files():
             key = str(f)
@@ -196,7 +196,7 @@ class TokenReader:
             except OSError:
                 continue
             off = self.offsets.get(key, 0)
-            if size < off:          # arquivo foi recriado/encurtado
+            if size < off:          # file was recreated/truncated
                 off = 0
             if size == off:
                 continue
@@ -207,7 +207,7 @@ class TokenReader:
             except OSError:
                 continue
             end = data.rfind(b"\n")
-            if end < 0:             # linha ainda sendo escrita
+            if end < 0:             # line still being written
                 continue
             self.offsets[key] = off + end + 1
             for line in data[:end].splitlines():
@@ -215,14 +215,14 @@ class TokenReader:
                 if got:
                     xp += got[0]
                     raw += got[1]
-                    if got[2] is not None:      # sem horário: conta como energia, mas não nas barras
+                    if got[2] is not None:      # no timestamp: counts as energy, but not in the bars
                         add_usage(self.state, got[2], got[0])
         prune_usage(self.state, time.time())
         return xp, raw
 
     def backfill(self) -> None:
-        """Uma vez: preenche o histórico por horário com o que já foi lido (até o offset de cada arquivo,
-        dos últimos 8 dias). Não dá energia nem mexe no `seen`."""
+        """Once: fills the per-time history with what was already read (up to each file's offset,
+        from the last 8 days). Gives no energy and does not touch `seen`."""
         hist = self.state.setdefault("usage_hist", {})
         seen = set()
         self._files_at = 0
@@ -241,7 +241,7 @@ class TokenReader:
                 if got and got[2] is not None:
                     add_usage(self.state, got[2], got[0])
         self.state["usage_hist"] = hist
-        self.state["usage_hist_desde"] = cutoff         # o histórico cobre os últimos 8 dias
+        self.state["usage_hist_desde"] = cutoff         # the history covers the last 8 days
         prune_usage(self.state, time.time())
 
     def parse_line(self, line: bytes, seen: set | None = None):
@@ -256,8 +256,8 @@ class TokenReader:
         msg = obj.get("message")
         if not isinstance(msg, dict) or not isinstance(msg.get("usage"), dict):
             return None
-        # o Claude Code grava a mesma resposta em várias linhas: conta só uma vez
-        if msg.get("id") and seen is not None:      # backfill: dedup local, sem tocar no `seen`
+        # Claude Code writes the same response on several lines: count it once
+        if msg.get("id") and seen is not None:      # backfill: local dedup, without touching `seen`
             key = f'{msg.get("id")}:{obj.get("requestId")}'
             if key in seen:
                 return None
@@ -288,7 +288,7 @@ class TokenReader:
 
 
 def parse_ts(v) -> float | None:
-    """Horário ISO (UTC) da resposta -> epoch. Só o horário, nada de conteúdo."""
+    """ISO (UTC) timestamp of the response -> epoch. Only the time, no content."""
     if not isinstance(v, str):
         return None
     try:
@@ -300,12 +300,12 @@ def parse_ts(v) -> float | None:
     return t.timestamp()
 
 
-# ------------------------------------------------- histórico e estimativa dos limites
-BUCKET_S = 300                      # baldes de 5 min com o XP ponderado
-HIST_KEEP_S = 8 * 86400             # guarda só os últimos 8 dias
+# ------------------------------------------------- history and limit estimate
+BUCKET_S = 300                      # 5-min buckets with the weighted XP
+HIST_KEEP_S = 8 * 86400             # keeps only the last 8 days
 WINDOWS = {"sessao": 5 * 3600, "semana": 7 * 86400}
-OFFICIAL_FRESH_S = 600              # leitura oficial vale por ~10 min sem "~"
-MIN_CALIB_XP = 1000                 # com quase nada de tokens locais, o fator não presta
+OFFICIAL_FRESH_S = 600              # an official reading is valid for ~10 min without "~"
+MIN_CALIB_XP = 1000                 # with almost no local tokens, the factor is useless
 
 
 def add_usage(state: dict, ts: float, xp: float) -> None:
@@ -327,7 +327,7 @@ def usage_between(state: dict, start: float, end: float) -> float:
 
 
 def calibrate(state: dict, limits: dict | None, now: float) -> None:
-    """Leitura oficial nova -> fator = % oficial / tokens locais na janela, por janela."""
+    """New official reading -> factor = official % / local tokens in the window, per window."""
     upd = (limits or {}).get("updated")
     cal = state.setdefault("calib", {})
     if not upd or upd == cal.get("updated"):
@@ -338,14 +338,14 @@ def calibrate(state: dict, limits: dict | None, now: float) -> None:
         if pct is None or not reset:
             continue
         if state.get("usage_hist_desde", math.inf) > reset - win:
-            continue                        # histórico não cobre a janela toda: mantém o fator anterior
+            continue                        # history does not cover the whole window: keep the previous factor
         tok = usage_between(state, reset - win, now)
         if tok >= MIN_CALIB_XP:
             cal[key] = {"f": pct / tok, "reset": reset}
 
 
 def sessions(state: dict) -> list[list[float]]:
-    """Janelas de 5h refeitas do histórico, [início, tokens]: uma começa no 1º uso depois que a anterior acabou."""
+    """5h windows rebuilt from the history, [start, tokens]: one starts at the 1st use after the previous one ended."""
     out = []
     for k, v in sorted((int(k), v) for k, v in (state.get("usage_hist") or {}).items() if v > 0):
         if not out or k >= out[-1][0] + WINDOWS["sessao"]:
@@ -355,8 +355,8 @@ def sessions(state: dict) -> list[list[float]]:
 
 
 def peak(state: dict, key: str, tok: float) -> float:
-    """Maior uso já visto numa janela `key` (guardado em state["pico"], vale além dos 8 dias do histórico).
-    É a régua da barra quando não há % oficial nem fator: "quanto do seu pico", não do limite real."""
+    """Largest usage ever seen in window `key` (kept in state["peak"], survives the 8-day history).
+    It is the bar's yardstick when there is no official % or factor: "how much of your peak", not of the real limit."""
     p = state.setdefault("pico", {})
     hist = max((t for _, t in sessions(state)), default=0) if key == "sessao" else 0
     p[key] = max(p.get(key, 0), hist, tok or 0)
@@ -364,21 +364,21 @@ def peak(state: dict, key: str, tok: float) -> float:
 
 
 def limit_view(key: str, limits: dict | None, state: dict, now: float):
-    """(pct|None, reset|None, estimado, tokens|None) para a linha da janela `key`."""
+    """(pct|None, reset|None, estimated, tokens|None) for the line of window `key`."""
     win = WINDOWS[key]
     pct, reset = (limits or {}).get(key, (None, None))
     upd = (limits or {}).get("updated") or 0
     if pct is not None and now - upd < OFFICIAL_FRESH_S:
         return pct, reset, False, None
     cal = (state.get("calib") or {}).get(key)
-    if not cal and key == "sessao":         # sem fator: a sessão vem do histórico (começa no 1º uso)
+    if not cal and key == "sessao":         # no factor: the session comes from the history (starts at the 1st use)
         s = sessions(state)
         if s and now < s[-1][0] + win:
             return None, s[-1][0] + win, False, s[-1][1]
         return None, None, False, 0.0
     if cal:
         reset = cal["reset"]
-    if reset and reset <= now:              # o reset passou: avança a janela em múltiplos dela
+    if reset and reset <= now:              # the reset passed: move the window forward by multiples of its length
         reset += ((now - reset) // win + 1) * win
     start = reset - win if reset else now - win
     tok = usage_between(state, start, now)
@@ -387,19 +387,19 @@ def limit_view(key: str, limits: dict | None, state: dict, now: float):
     return None, reset, False, tok
 
 
-# ------------------------------------------------------------- perfil (funções puras)
-LEVEL_XP = 1_000_000                # nível de domador = floor(sqrt(energia na vida (xp_total) / 1M))
+# ------------------------------------------------------------- profile (pure functions)
+LEVEL_XP = 1_000_000                # tamer level = floor(sqrt(lifetime energy (xp_total) / 1M))
 
 
 def level(total: float) -> tuple[int, float, float]:
-    """(nível, fração até o próximo, energia que falta). Nível n começa em n² milhões de energia."""
+    """(level, fraction to the next one, energy still needed). Level n starts at n² million energy."""
     n = math.isqrt(int(total // LEVEL_XP))
     base, next_ = n * n * LEVEL_XP, (n + 1) ** 2 * LEVEL_XP
     return n, (total - base) / (next_ - base), next_ - total
 
 
 def usage_per_day(state: dict, now: float, dias: int = 7) -> list[tuple[date, float]]:
-    """XP de `usage_hist` somado por dia local, do mais antigo até hoje."""
+    """XP from `usage_hist` summed per local day, from the oldest to today."""
     today = datetime.fromtimestamp(now).date()
     out = {today - timedelta(days=i): 0.0 for i in range(dias)}
     for k, v in (state.get("usage_hist") or {}).items():
@@ -410,8 +410,8 @@ def usage_per_day(state: dict, now: float, dias: int = 7) -> list[tuple[date, fl
 
 
 def streak_days(state: dict, now: float) -> int:
-    """Dias seguidos com uso até hoje (hoje ainda sem uso não quebra a sequência).
-    Usa `usage_hist` (8 dias, por horário) e `daily` (60 dias, contado com o app aberto)."""
+    """Consecutive days with usage up to today (today without usage yet does not break the streak).
+    Uses `usage_hist` (8 days, by time) and `daily` (60 days, counted while the app is open)."""
     used = {datetime.fromtimestamp(int(k)).date() for k, v in (state.get("usage_hist") or {}).items() if v > 0}
     used |= {date.fromisoformat(k) for k, v in (state.get("daily") or {}).items() if v > 0}
     d = datetime.fromtimestamp(now).date()
@@ -424,7 +424,7 @@ def streak_days(state: dict, now: float) -> int:
 
 
 def last_use(state: dict) -> float | None:
-    """Fim do último balde de 5 min com tokens."""
+    """End of the last 5-min bucket with tokens."""
     ks = [int(k) for k, v in (state.get("usage_hist") or {}).items() if v > 0]
     return max(ks) + BUCKET_S if ks else None
 
@@ -439,17 +439,17 @@ def fmt_ago(dt: float) -> str:
     return _t("há {n} d", n=int(dt // 86400))
 
 
-# ------------------------------------------------------------- progresso
+# ------------------------------------------------------------- progress
 DEFAULT_STATE = {
     "tokens_total": 0,
     "xp_total": 0.0,
     "daily": {},
     "size": "Médio",
-    "mode": "auto",              # "auto" ou "interativo" (o jogador escolhe pegar/consumir)
-    "lang": "pt",                # idioma da interface: "pt" ou "en" (idioma.py)
+    "mode": "auto",              # "auto" or "interactive" (the player chooses take/consume)
+    "lang": "pt",                # interface language: "pt" or "en" (i18n.py)
     "pos": None,
     "topmost": True,
-    "so_com_uso": False,         # some depois de ESCONDER_S sem tokens e volta quando houver uso
+    "so_com_uso": False,         # hides after HIDE_S without tokens and comes back when there is usage
     "last_fed": 0.0,
     "run": None,
     "meta": None,
@@ -477,7 +477,7 @@ DAYS = ("seg", "ter", "qua", "qui", "sex", "sáb", "dom")
 
 
 def read_limits(path: Path, now: float) -> dict | None:
-    """{"sessao": (pct|None, resets_at), "semana": ...}; pct None = dado velho (reset já passou)."""
+    """{"session": (pct|None, resets_at), "week": ...}; pct None = stale data (the reset already passed)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -502,7 +502,7 @@ def limit_color(pct: float) -> str:
 
 
 def fmt_reset(reset: float, now: float) -> str:
-    """Horário do reset no fuso do PC: "14:30" se for hoje, senão "sex 09:00"."""
+    """Reset time in the PC's time zone: "14:30" if it is today, otherwise "Fri 09:00"."""
     t = datetime.fromtimestamp(reset)
     if t.date() == datetime.fromtimestamp(now).date():
         return t.strftime("%H:%M")
@@ -519,15 +519,15 @@ def save_state(path: Path, state: dict) -> None:
     os.replace(tmp, path)
 
 
-# ----------------------------------------------------------- personagens
+# ----------------------------------------------------------- characters
 class CharacterDef:
     def __init__(self, key, name, stages, frame_ms=600, stats=None, unlock=None, community=False, trait=None):
         self.key, self.name, self.frame_ms = key, name, frame_ms
         self.stats = stats or {"hp": 20, "atk": 3, "def": 0, "dodge": 0}
         self.unlock, self.community = unlock, community
         self.trait = trait or {}
-        # cada estágio: {"floor", "title", "frames": [spec], "blink": spec|None, "sleep": spec|None}
-        # e, se vier de spritesheet, "estados": {estado: [spec]} (spec ("sheet", path, box, N))
+        # each stage: {"floor", "title", "frames": [spec], "blink": spec|None, "sleep": spec|None}
+        # and, if it comes from a spritesheet, "states": {state: [spec]} (spec ("sheet", path, box, N))
         self.stages = sorted(stages, key=lambda s: s["floor"])
 
     @property
@@ -547,12 +547,12 @@ def builtin_characters() -> list[CharacterDef]:
 
 
 DEFAULT_STATS = {"hp": 20, "atk": 3, "def": 0, "dodge": 0, "spd": 10.0}
-_LEAVES = {}  # (caminho, mtime) -> (linhas de caixas, N, {caixa: PixelMap reduzido}); o PNG decodificado é descartado
+_LEAVES = {}  # (path, mtime) -> (box rows, N, {box: reduced PixelMap}); the decoded PNG is discarded
 
 
 def read_sheet(path: Path):
-    """Linhas de caixas da folha, o fator N de redução e o mapa reduzido de cada caixa. Puro (roda na thread).
-    Opaco = alfa > 128; a máscara é amostrada (1 a cada `a` px) e perde as ilhas de até 2 px."""
+    """Box rows of the sheet, the reduction factor N and the reduced map of each box. Pure (runs in the thread).
+    Opaque = alpha > 128; the mask is sampled (1 every `a` px) and loses islands of up to 2 px."""
     ck = (str(path), path.stat().st_mtime)
     if ck not in _LEAVES:
         w, h, rgba = sheet.read_png(path)
@@ -567,7 +567,7 @@ def read_sheet(path: Path):
         ws, hs = -(-w // a), -(-h // a)
         m = sheet._mask(ws, hs, lambda x, y: op[y * a * w + x * a])
         if grid:
-            occupied = {}   # célula -> pontos opacos (offset dentro da célula)
+            occupied = {}   # cell -> opaque points (offset inside the cell)
             for ys, lin in enumerate(m):
                 for xs in range(ws):
                     if lin[xs]:
@@ -576,15 +576,15 @@ def read_sheet(path: Path):
             pts = [p for cel in occupied.values() for p in cel]
             if not pts:
                 raise ValueError(f"folha sem quadros: {path.name}")
-            # uma caixa só (união do opaco de todas as células) para os quadros não tremerem
+            # a single box (union of the opaque pixels of all cells) so the frames do not jitter
             ox0, oy0 = min(x for x, _ in pts), min(y for _, y in pts)
             ox1, oy1 = min(cw, max(x for x, _ in pts) + a), min(ch, max(y for _, y in pts) + a)
-            # célula sem pixel opaco (linha com menos de 8 quadros) fica de fora: nunca vira quadro piscando
+            # cell without opaque pixels (row with fewer than 8 frames) is left out: never becomes a blinking frame
             lines = [[(c * cw + ox0, r * ch + oy0, c * cw + ox1, r * ch + oy1) for c in range(cols) if (r, c) in occupied]
                       for r in range(lins)]
             n = sheet.reduction_factor(oy1 - oy0)
         else:
-            # ponytail: caixas com precisão de `a` px (amostra); corte exato custa ~5 s em folha grande
+            # ponytail: boxes accurate to `a` px (sampled); an exact cut costs ~5 s on a big sheet
             lines = [[(x0 * a, y0 * a, min(w, x1 * a), min(h, y1 * a)) for x0, y0, x1, y1 in lin]
                       for lin in sheet.cut(ws, hs, lambda x, y: m[y][x])]
             n = sheet.reduction_factor(max((c[3] - c[1] for lin in lines for c in lin), default=1))
@@ -601,38 +601,38 @@ def read_sheet(path: Path):
 
 
 def stage_of_sheet(path: Path, floor: int, title: str) -> dict:
-    """Estágio de spritesheet ainda não cortado: a descoberta só lê o cabeçalho do PNG (barato).
-    `completar_estagio` (na thread, ao ativar o herói) preenche "frames" e "estados"."""
+    """Spritesheet stage not cut yet: discovery only reads the PNG header (cheap).
+    `complete_stage` (in the thread, when the hero becomes active) fills "frames" and "states"."""
     with open(path, "rb") as f:
         sheet.info_png(f.read(29))
     return {"floor": floor, "title": title, "sheet": path, "frames": None, "blink": None, "sleep": None}
 
 
 def complete_stage(stage: dict) -> dict:
-    """Corta a folha do estágio: estados na ordem das linhas; linha vazia ou ausente usa o Idle.
-    Erro vira stage["erro"] (a GUI volta para o Slime). Puro: pode rodar fora da thread do Tk."""
+    """Cuts the stage's sheet: states in row order; an empty or missing row uses Idle.
+    An error becomes stage["error"] (the GUI falls back to the Slime). Pure: may run outside the Tk thread."""
     try:
         lines, n, _ = read_sheet(stage["sheet"])
         specs = [[("sheet", stage["sheet"], c, n) for c in lin] for lin in lines]
         idle = next(l for l in specs if l)
         states = {e: (specs[i] if i < len(specs) and specs[i] else idle) for i, e in enumerate(sheet.STATES)}
         stage["frames"] = states["idle"]
-        stage["estados"] = states      # por último: quem vê "estados" já vê "frames"
+        stage["estados"] = states      # last: whoever sees "states" already sees "frames"
     except Exception as e:
         stage["erro"] = str(e)
     return stage
 
 
 def pet_openpets(d: Path):
-    """Formato OpenPets (pet.json): (png, nome) da pasta. `spritesheetPath` .webp usa o .png de mesmo nome;
-    sem pet.json: spritesheet.png ou o 1º .png. png None = nada usável (webp-only loga o aviso)."""
+    """OpenPets format (pet.json): (png, name) of the folder. A .webp `spritesheetPath` uses the .png with the same name;
+    without pet.json: spritesheet.png or the 1st .png. png None = nothing usable (webp-only logs a warning)."""
     name, rel = d.name, None
     try:
         j = json.loads((d / "pet.json").read_text(encoding="utf-8"))
         name = str(j.get("displayName") or j.get("name") or d.name)
         rel = j.get("spritesheetPath")
     except (OSError, ValueError, AttributeError):
-        pass   # pet.json ausente ou inválido: fica o nome da pasta
+        pass   # pet.json missing or invalid: the folder name is used
     cands = []
     if isinstance(rel, str) and rel:
         p = d / rel
@@ -652,7 +652,7 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
     for d in sorted(folder.iterdir()):
         cfg = d / "character.json"
         if not cfg.is_file():
-            png, name = pet_openpets(d)   # folha sem character.json: um estágio, stats padrão
+            png, name = pet_openpets(d)   # sheet without character.json: one stage, default stats
             if png:
                 try:
                     out.append(CharacterDef(d.name, name, [stage_of_sheet(png, 1, name)], stats=dict(DEFAULT_STATS)))
@@ -689,7 +689,7 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
                 raise ValueError("nenhum estágio em 'stages'")
             stats = {"hp": 20, "atk": 3, "def": 0, "dodge": 0}
             stats.update(data.get("stats") or {})
-            for k in ("hp", "atk", "def"):          # tipo errado: herói ignorado aqui, não erro a cada tick
+            for k in ("hp", "atk", "def"):          # wrong type: hero ignored here, not an error on every tick
                 stats[k] = int(stats[k])
             for k in ("dodge", "spd", "crit", "critdmg"):
                 if k in stats:
@@ -706,18 +706,18 @@ def load_png_characters(folder: Path = CHARACTERS_DIR) -> list[CharacterDef]:
                     raise ValueError(f"'traço' inválido: {k}")
             out.append(CharacterDef(d.name, data.get("name", d.name), stages,
                                     int(data.get("frame_ms", 600)), stats, unlock, trait=trait))
-        except Exception as e:  # personagem com defeito não derruba o app
+        except Exception as e:  # a broken character does not bring the app down
             log(f"personagem '{d.name}' ignorado: {e}")
     return out
 
 
 def petdex_dirs() -> list[Path]:
-    """Pastas de pets do Petdex (só lidas, nunca escritas). Lidas na hora para o teste trocar o HOME."""
+    """Petdex pet folders (read only, never written). Read on each call so the test can swap HOME."""
     return [Path.home() / ".petdex" / "pets", Path.home() / ".codex" / "pets"]
 
 
 def load_petdex_characters() -> list[CharacterDef]:
-    """Pets da comunidade: via `pet_openpets` (só leitura)."""
+    """Community pets: via `pet_openpets` (read only)."""
     out = []
     for base in petdex_dirs():
         if not base.is_dir():
@@ -743,7 +743,7 @@ def all_characters() -> dict[str, CharacterDef]:
 
 # ------------------------------------------------------------------- GUI
 class _StatesFx(dict):
-    """estado -> imagens [quadro][fase]; compõe na primeira leitura e guarda em app.fx_cache."""
+    """state -> images [frame][phase]; composed on first read and kept in app.fx_cache."""
     def __init__(self, app, names):
         super().__init__((e, None) for e in names)
         self.app = app
@@ -751,7 +751,7 @@ class _StatesFx(dict):
     def __getitem__(self, e):
         ck = (e, self.app.fx_sig)
         if ck not in self.app.fx_cache:
-            dict.__getitem__(self, e)           # KeyError para estado que a folha não tem
+            dict.__getitem__(self, e)           # KeyError for a state the sheet does not have
             self.app.fx_cache[ck] = self.app.fx_compose(e)
         return self.app.fx_cache[ck]
 
@@ -768,16 +768,16 @@ def render_grid(grid, pal, s):
 
 
 def _hex(v):
-    """Cor de PhotoImage.get: tupla (r, g, b) no Tk 8.6, texto "r g b" em alguns builds."""
+    """Color from PhotoImage.get: tuple (r, g, b) in Tk 8.6, text "r g b" in some builds."""
     if isinstance(v, str):
         v = v.split()
     return "#%02x%02x%02x" % tuple(int(c) for c in v[:3])
 
 
 def spec_to_map(spec, k: int = None):
-    """Spec do herói -> PixelMap com o quadro em (0..16, 0..16), centrado na horizontal e base em y = 16.
-    Folha: quadro de 16k (k do estágio, igual para todos os estados), base da caixa aparada na base do quadro,
-    então um quadro de pulo sai do chão."""
+    """Hero spec -> PixelMap with the frame in (0..16, 0..16), centered horizontally and base at y = 16.
+    Sheet: 16k frame (the stage's k, the same for every state), base of the trimmed box at the frame's base,
+    so a jump frame leaves the ground."""
     if spec[0] == "sheet":
         _, path, box, n = spec
         pm = read_sheet(path)[2][box]
@@ -791,30 +791,30 @@ def spec_to_map(spec, k: int = None):
     else:
         src = tk.PhotoImage(file=str(spec[1]))
         sw, sh = src.width(), src.height()
-        # ponytail: PNG grande só é amostrado (1 a cada `step` px); a escala de verdade fica para a parte 3
+        # ponytail: a big PNG is only sampled (1 every `step` px); proper scaling is left for part 3
         step = math.ceil(max(sw, sh) / 16) if max(sw, sh) > 24 else 1
         pm = {(x // step, y // step): _hex(src.get(x, y))
               for y in range(0, sh, step) for x in range(0, sw, step) if not src.transparency_get(x, y)}
         w, h = math.ceil(sw / step), math.ceil(sh / step)
-    side = 16 * (k or max(1, -(-h // 16)))      # grade 32 px: quadro de 32 (k = 2)
+    side = 16 * (k or max(1, -(-h // 16)))      # 32 px grid: 32 px frame (k = 2)
     dx, dy = (side - w) // 2, side - h
     return {(x + dx, y + dy): c for (x, y), c in pm.items()}
 
 
 def spec_height(spec) -> int:
-    """Altura final (já reduzida) do quadro; grid = altura da grade; PNG solto fica em 16."""
+    """Final (already reduced) frame height; grid = grid height; a loose PNG stays at 16."""
     if spec[0] == "sheet":
         return -(-(spec[2][3] - spec[2][1]) // spec[3])
     return len(spec[1]) if spec[0] == "grid" else 16
 
 
 def spec_k(spec) -> int:
-    return max(1, -(-spec_height(spec) // 16))   # para cima: o quadro nunca corta o herói
+    return max(1, -(-spec_height(spec) // 16))   # round up: the frame never cuts the hero
 
 
 def render_map(pm, s: int, k: int = 1):
-    """Imagem com origem em look_box(k) (tamanho sempre fixo) e quantos px de tela ela desce abaixo da base.
-    `s` = px de tela por pixel do mapa (herói de altura H: s = px_heroi); k = H/16 arredondado (escala dos looks)."""
+    """Image with origin at look_box(k) (always the same size) and how many screen px it hangs below the base.
+    `s` = screen px per map pixel (hero of height H: s = hero_pixels); k = H/16 rounded (scale of the looks)."""
     box = visual.look_box(k)
     x0, y0, x1, y1 = box
     img = tk.PhotoImage(width=(x1 - x0) * s, height=(y1 - y0) * s)
@@ -824,7 +824,7 @@ def render_map(pm, s: int, k: int = 1):
 
 
 def steps(r: int) -> list[int]:
-    """Recuo de cada uma das r linhas de um canto de raio r, de fora para dentro (degraus de 1 px, sem antialias)."""
+    """Inset of each of the r rows of a corner of radius r, from the outside in (1 px steps, no antialias)."""
     return [r - round(math.sqrt(r * r - (r - i - 0.5) ** 2)) for i in range(r)]
 
 
@@ -833,7 +833,7 @@ def _shape(cv, x0, y0, x1, y1, r, color, tags):
     if x1 <= x0 or y1 <= y0:
         return
     ins, kw, i = steps(r), dict(fill=color, outline="", width=0, tags=tags), 0
-    while i < len(ins):                     # linhas de mesmo recuo viram um retângulo só
+    while i < len(ins):                     # rows with the same inset become a single rectangle
         j = i
         while j < len(ins) and ins[j] == ins[i]:
             j += 1
@@ -845,8 +845,8 @@ def _shape(cv, x0, y0, x1, y1, r, color, tags):
 
 
 def rounded_rect(cv, x0, y0, x1, y1, r, fill, outline=None, larg=1, tag="arred", extra=()):
-    """Retângulo de cantos em degraus de pixel no Canvas `cv`, só com retângulos retos (sem antialias: a cor-chave
-    #ff00fe não ganha contorno rosa). Tags: `tag` em tudo, `tag`_f no miolo (troca de cor no hover), mais `extra`."""
+    """Rectangle with stepped pixel corners on Canvas `cv`, using only straight rectangles (no antialias: the key
+    color #ff00fe gets no pink fringe). Tags: `tag` on everything, `tag`_f on the inner area (color change on hover), plus `extra`."""
     if outline:
         _shape(cv, x0, y0, x1, y1, r, outline, (tag, tag + "_b", *extra))
         x0, y0, x1, y1, r = x0 + larg, y0 + larg, x1 - larg, y1 - larg, max(0, r - larg)
@@ -854,8 +854,8 @@ def rounded_rect(cv, x0, y0, x1, y1, r, fill, outline=None, larg=1, tag="arred",
 
 
 def png_bytes(pm, side, square=False):
-    """PNG do mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px -> (png, w, h).
-    `quadrado`: centraliza numa tela lado x lado (ícone da bandeja)."""
+    """PNG of the pixel map, trimmed and scaled by an integer to fit in `side` px -> (png, w, h).
+    `square`: centers it on a side x side canvas (tray icon)."""
     x0, y0, x1, y1 = visual.bbox(pm)
     s = max(1, side // max(1, x1 - x0, y1 - y0))
     if square:
@@ -874,16 +874,16 @@ def png_bytes(pm, side, square=False):
 
 
 def map_img(pm, side):
-    """Mapa de pixels aparado e ampliado por um inteiro até caber em `lado` px."""
+    """Pixel map trimmed and scaled by an integer to fit in `side` px."""
     if not pm:
         return tk.PhotoImage(width=1, height=1)
-    # um PNG montado aqui e lido numa chamada só (um put por pixel levava ~0,4 s para abrir o cemitério)
+    # a PNG built here and loaded in one call (one put per pixel took ~0.4 s to open the graveyard)
     png, w, h = png_bytes(pm, side)
     return tk.PhotoImage(data=base64.b64encode(png).decode(), format="png", width=w, height=h)
 
 
 def start_tray():
-    """Ícone na bandeja (só Windows): o Slime em .ico em DATA_DIR. Falhou? Segue sem (o menu tem "Sair")."""
+    """Tray icon (Windows only): the Slime as an .ico in DATA_DIR. Failed? Carry on without it (the menu has "Quit")."""
     if os.name != "nt":
         return None
     try:
@@ -898,8 +898,8 @@ def start_tray():
 
 
 def hero_idle(key):
-    """1º quadro idle do 1º estágio direto do módulo herois/<key>.py (sem cortar a folha PNG, que leva segundos).
-    None se não houver módulo (herói externo/Petdex: a grade espera a thread de corte)."""
+    """1st idle frame of the 1st stage straight from the heroes/<key>.py module (without cutting the PNG sheet, which takes seconds).
+    None if there is no module (external/Petdex hero: the grid waits for the cutting thread)."""
     import importlib
     try:
         mod = importlib.import_module(f"heroes.{key}")
@@ -909,7 +909,7 @@ def hero_idle(key):
 
 
 def own_hero(key):
-    """Herói feito aqui (tem módulo herois/<key>.py); os outros (pasta em characters/, Petdex/Codex) são importados."""
+    """Hero made here (has a heroes/<key>.py module); the others (folder in characters/, Petdex/Codex) are imported."""
     import importlib.util
     try:
         return importlib.util.find_spec(f"heroes.{key}") is not None
@@ -924,7 +924,7 @@ ELEMENT_LOOK = {"queimar": "chamas", "eletrizar": "faiscas", "envenenar": "gotas
 
 
 def pet_looks(run):
-    """Looks dos itens [(look, brilho)] + um look animado por elemento que o pet aplica e ainda não aparece."""
+    """Item looks [(look, glow)] + one animated look per element the pet applies that does not show yet."""
     looks = [(M.ITEMS[it["key"]]["look"], M.RAR_COLOR.get(it["rar"]))
              for it in run["items"] if it["key"] in M.ITEMS]
     kinds = {l["type"] for l, _ in looks}
@@ -933,7 +933,7 @@ def pet_looks(run):
 
 
 def depth(run):
-    """"Andar 3-2" no idioma atual."""
+    """"Floor 3-2" in the current language."""
     return _t("Andar {n}", n=f"{run['floor']}-{run['room']}")
 
 
@@ -942,7 +942,7 @@ def _pct(v):
     return f"{round(v * 100)}%"
 
 
-# janela de Status: (campo de stats(), nome, formato, teto ou None, mostra mesmo zerado)
+# Status window: (stats() field, name, format, cap or None, show even when zero)
 STAT_LINES = (
     ("maxhp", "HP máx", str, None, True),
     ("atk", "Ataque", str, None, True),
@@ -975,7 +975,7 @@ STAT_LINES = (
 
 
 def stat_lines(run, st):
-    """[(campo, nome, valor)] da janela de Status: os fixos sempre, os outros só quando mudam algo."""
+    """[(field, name, value)] for the Status window: the fixed ones always, the others only when they change something."""
     st = dict(st, crescer=min([M.item_fx(i["key"], i["rar"]).get("crescer", 0) for i in run["items"]
                                if "crescer" in M.ITEMS.get(i["key"], {}).get("fx", {})] or [0]))
     out = []
@@ -986,7 +986,7 @@ def stat_lines(run, st):
     return out
 
 
-# página de itens: família pelo 1º campo de fx que aparece nesta ordem (sem nenhum: "Básico")
+# items page: family from the 1st fx field found in this order (none: "Basic")
 FAMILIES = (("Elemental", ("queimar", "eletrizar", "envenenar", "congelar")), ("Ajudante", ("ajudante",)),
             ("Crescimento", ("crescer",)), ("Área", ("area",)), ("Sangue", ("custo_ataque", "furia")),
             ("Golpes", ("crit", "critdmg", "duplo")), ("Defesa", ("bloqueio", "espinhos", "dodge")),
@@ -1000,7 +1000,7 @@ def item_family(key):
 
 @lru_cache(maxsize=None)
 def boss_grid(sprite):
-    """Monstro com a coroa de chefe em cima (grade única por sprite: o cache de ícones usa o id)."""
+    """Monster with the boss crown on top (one grid per sprite: the icon cache uses the id)."""
     foe = art.FOE_ART[sprite]
     w = max(len(foe[0]), len(art.CROWN[0]))
     pad = lambda r: r.center(w, ".")
@@ -1008,7 +1008,7 @@ def boss_grid(sprite):
 
 
 def item_arts():
-    """Arte dos itens como PixelMap (em cache: nunca muda)."""
+    """Item art as a PixelMap (cached: it never changes)."""
     if not _ITEM_ARTS:
         _ITEM_ARTS.update({k: visual.grid_to_map(g, art.PAL) for k, g in art.ITEM_ART.items()})
     return _ITEM_ARTS
@@ -1030,7 +1030,7 @@ class PetApp:
                 self.reader.skip_existing()
         if not self.demo and "usage_hist" not in self.state:
             self.reader.backfill()
-        self.state.setdefault("usage_hist_desde", time.time())   # sem backfill: cobre só daqui em diante
+        self.state.setdefault("usage_hist_desde", time.time())   # no backfill: covers only from now on
         self.chars = all_characters()
         if self.state["size"] not in SIZES:
             self.state["size"] = "Médio"
@@ -1050,7 +1050,7 @@ class PetApp:
         try:
             self.root.attributes("-transparentcolor", TRANSPARENT)
             bg = TRANSPARENT
-        except tk.TclError:          # fora do Windows: fundo escuro em vez de transparente
+        except tk.TclError:          # outside Windows: dark background instead of transparent
             bg = PANEL_BG
         self.canvas = tk.Canvas(self.root, bg=bg, highlightthickness=0, bd=0)
         self.canvas.pack(fill="both", expand=True)
@@ -1063,26 +1063,26 @@ class PetApp:
         self.hop: list[int] = []
         self.lunge: list[int] = []
         self.foe_lunge: list[int] = []
-        self.lunge_foe = 0            # qual inimigo está dando o bote
-        self.foe_xy: list = []        # posição de cada inimigo na tela
-        self.pet_status = None        # status do pet visto na animação da luta (só para o painel)
+        self.lunge_foe = 0            # which enemy is lunging
+        self.foe_xy: list = []        # on-screen position of each enemy
+        self.pet_status = None        # pet status seen in the fight animation (panel only)
         self.blink_until = 0.0
         self.next_blink = time.time() + 3
         self.next_zzz = 0.0
         self.last_rest_heal = time.time()
-        self.opened_at = time.time()        # aberto à mão: aparece por ESCONDER_S mesmo sem uso
+        self.opened_at = time.time()        # opened by hand: shows for HIDE_S even without usage
         self.escondido = False
-        self.tray = None                 # ícone na bandeja (run_gui liga; os testes não)
+        self.tray = None                 # tray icon (run_gui turns it on; tests do not)
         self.last_save = time.time()
         self.busy_until = time.time() + 1.5
         self.respawn_at = None
         self.popup_win = None
         self.choice_win = None
-        self.pending_since = None     # quando a janela de escolha começou (só em memória)
+        self.pending_since = None     # when the choice window started (memory only)
         self._drag = None
         self._moved = False
 
-        self.limits = read_limits(DATA_DIR / "limites.json", time.time())   # statusline opcional
+        self.limits = read_limits(DATA_DIR / "limites.json", time.time())   # optional statusline
         self.build(first=True)
         self.build_menu()
         self.canvas.bind("<ButtonPress-1>", self.on_press)
@@ -1114,14 +1114,14 @@ class PetApp:
         return self.chars.get(self.run["char"]) or self.chars["slime"]
 
     def is_unlocked(self, c: CharacterDef) -> bool:
-        return self.demo or not c.unlock or c.unlock in self.meta["achievements"]   # demo: todos liberados para testar
+        return self.demo or not c.unlock or c.unlock in self.meta["achievements"]   # demo: everything unlocked for testing
 
     def new_run(self, announce=True):
         key = self.meta.get("next_char", "slime")
         c = self.chars.get(key)
         if c is None or not self.is_unlocked(c):
             key, c = "slime", self.chars["slime"]
-        # a energia que sobrou passa para a run nova (tokens não se perdem)
+        # leftover energy carries over to the new run (tokens are never lost)
         energy = self.state["run"]["energy"] if self.state.get("run") else 0.0
         self.state["run"] = M.new_run(key, c.stats, self.meta["runs"] + 1, c.trait)
         self.state["run"]["energy"] = energy
@@ -1140,18 +1140,18 @@ class PetApp:
         self.bpx = round(px * 1.5)
         self.T = 16 * px
         bx0, by0, bx1, by1 = visual.LOOK_BOX
-        left = 6 - bx0 * px                 # margem para os itens que saem à esquerda do quadro
+        left = 6 - bx0 * px                 # margin for items that stick out to the left of the frame
         self.pcx = left + self.T // 2
-        # à direita: 1 inimigo grande ou um grid 2x2 de inimigos pequenos (colunas de 11 px + 1 de folga)
+        # on the right: 1 big enemy or a 2x2 grid of small enemies (11 px columns + 1 px gap)
         fx0 = left + self.T + (bx1 - 16) * px
         self.foe_area = max(11 * self.bpx, 23 * px)
         self.fcx = fx0 + self.foe_area // 2
         self.foe_cols = (fx0 + 11 * px // 2, fx0 + 12 * px + 11 * px // 2)
         self.W = fx0 + self.foe_area + 10
-        self.top = 52 - by0 * px            # espaço para o que sai acima do quadro
+        self.top = 52 - by0 * px            # room for what sticks out above the frame
         self.base_y = self.top + self.T
-        self.below = (by1 - 16) * px        # o que pode descer abaixo da base (gotas)
-        # barras de sessão/semana: oficial (statusline), estimada (~) ou só tokens
+        self.below = (by1 - 16) * px        # what can hang below the base (drops)
+        # session/week bars: official (statusline), estimated (~) or tokens only
         self.limit_h = 30
         self.H = self.base_y + self.below + 64 + self.limit_h
 
@@ -1178,7 +1178,7 @@ class PetApp:
                            c.create_image(self.fcx, self.base_y, anchor="s", state="hidden"))
                           for _ in range(4)]
         self.foe_xy = []
-        self.foe_on = set()           # inimigos visíveis
+        self.foe_on = set()           # visible enemies
         self.foe_look = []
 
         py = self.base_y + self.below + 6
@@ -1192,9 +1192,9 @@ class PetApp:
         self.info_txt = c.create_text(14, py + 26, anchor="w", fill=MUTED, font=self.font_small)
         self.bar_x0, self.bar_x1, self.bar_y = 14, self.W - 14, py + 38
         rounded_rect(c, self.bar_x0, self.bar_y, self.bar_x1, self.bar_y + 6, 3, BAR_BG, tag="barra_t")
-        self.bar = "barra_e"            # tag do preenchimento (redesenhado em update_panel)
+        self.bar = "barra_e"            # fill tag (redrawn in update_panel)
         self.limit_rows = {}
-        # colunas fixas medidas com o texto mais largo: rótulo | barra | reset
+        # fixed columns measured with the widest text: label | bar | reset
         y = py + 56
         probe = c.create_text(14, y, anchor="w", text=max((_t("Sessão"), _t("Semana")), key=len) + "  ~100%",
                               font=self.font_small)
@@ -1205,7 +1205,7 @@ class PetApp:
         c.delete(probe)
         for i, (key, label) in enumerate((("sessao", _t("Sessão")), ("semana", _t("Semana")))):
             y = py + 52 + 4 + i * 13
-            back = f"lim_t_{key}"       # tags: trilha e preenchimento (redesenhado em update_limits)
+            back = f"lim_t_{key}"       # tags: track and fill (redrawn in update_limits)
             rounded_rect(c, lx0, y - 3, lx1, y + 3, 3, BAR_BG, tag=back)
             self.limit_rows[key] = (
                 label,
@@ -1217,11 +1217,11 @@ class PetApp:
         self.update_panel()
 
     def art_img(self, key, boss=False, status=None):
-        """Imagem (em cache) de um desenho do arte.py; com status, tingida na cor dele."""
+        """Image (cached) of a drawing from art.py; with a status, tinted in its color."""
         ck = (key, boss, status)
         if ck not in self.art:
             pal = art.BOSS_PAL if boss else art.PAL
-            if status:      # tingir a paleta = tingir cada pixel (o contorno escuro fica intacto)
+            if status:      # tinting the palette = tinting each pixel (the dark outline stays intact)
                 pal = visual.tint(pal, STATUS_COLOR[status], 0.5)
             self.art[ck] = render_grid(art.all_art()[key], pal, self.bpx if boss else self.px)
         return self.art[ck]
@@ -1229,18 +1229,18 @@ class PetApp:
     def load_images(self):
         stage = self.char.stages[min(self.run["stage"], len(self.char.stages) - 1)]
         if stage.get("sheet") and "estados" not in stage and "erro" not in stage:
-            self.prepare_sheet(stage)          # na thread; até lá fica o visual anterior (ou o do Slime)
+            self.prepare_sheet(stage)          # in the thread; until then the previous look stays (or the Slime's)
             if getattr(self, "frame_maps", None) is not None:
                 return
             stage = builtin_characters()[0].stages[0]
         try:
             if stage.get("erro"):
                 raise ValueError(stage["erro"])
-            # herói de spritesheet: um k só no estágio (mesma escala e mesmo pivô em todos os estados)
+            # spritesheet hero: a single k per stage (same scale and same pivot in every state)
             all_ = [sp for specs in stage.get("estados", {}).values() for sp in specs] or stage["frames"]
             h = max(spec_height(sp) for sp in all_)
             k = max(1, -(-h // 16))
-            # só os mapas de pixels; as imagens saem de refresh_look (com os itens por cima)
+            # pixel maps only; the images come from refresh_look (with the items on top)
             self.frame_maps = [spec_to_map(s, k) for s in stage["frames"]]
             self.blink_map = spec_to_map(stage["blink"]) if stage["blink"] else None
             self.sleep_map = spec_to_map(stage["sleep"]) if stage["sleep"] else None
@@ -1251,13 +1251,13 @@ class PetApp:
             self.run["char"] = "slime"
             return self.load_images()
         self.hero_k, self.hero_px = k, max(1, round(self.px * 16 / h))
-        self.state_maps = {e: [spec_to_map(sp, k) for sp in specs]   # os heróis antigos não têm "estados"
+        self.state_maps = {e: [spec_to_map(sp, k) for sp in specs]   # old heroes have no "states"
                             for e, specs in stage.get("estados", {}).items()}
-        self.fx_cache = {}         # estados compostos: (estado, assinatura) -> [quadro][fase]
+        self.fx_cache = {}         # composed states: (state, signature) -> [frame][phase]
         self.stage_title = stage["title"]
 
     def prepare_sheet(self, stage):
-        """Decodifica e corta a folha numa thread (só Python puro); o Tk volta na thread principal pelo after."""
+        """Decodes and cuts the sheet in a thread (pure Python only); Tk comes back on the main thread via after."""
         if stage.get("thread") is None:
             stage["thread"] = threading.Thread(target=complete_stage, args=(stage,), daemon=True)
             stage["thread"].start()
@@ -1273,8 +1273,8 @@ class PetApp:
             self.refresh_look()
 
     def refresh_look(self, k: int = None, hero_pixels: int = None):
-        """Recompõe as imagens do pet com os looks dos itens. Só quando a lista muda, nunca no tick.
-        Herói de altura H: k = H/16 e px_heroi = max(1, round(px*16/H)) (padrão: 16 px, k=1, px)."""
+        """Recomposes the pet images with the item looks. Only when the list changes, never in the tick.
+        Hero of height H: k = H/16 and hero_pixels = max(1, round(px*16/H)) (default: 16 px, k=1, px)."""
         k = k or getattr(self, "hero_k", 1)
         hero_pixels = hero_pixels or getattr(self, "hero_px", None) or self.px
         looks = pet_looks(self.run)
@@ -1284,27 +1284,27 @@ class PetApp:
         if hasattr(self, "flip_var"):
             self.flip_var.set(flip)
 
-        # looks elementais animam em FASES quadros; sem eles, uma fase só (nenhuma imagem a mais)
+        # elemental looks animate over PHASES frames; without them, a single phase (no extra images)
         phases = range(visual.PHASES if visual.has_anim(looks) else 1)
 
         def pmap(pm, phase):
             m = visual.compose(pm, looks, arts, phase, k)
             m = visual.tint(m, color, 0.5) if color else m
-            return {(16 * k - 1 - x, y): c for (x, y), c in m.items()} if flip else m   # espelha o mapa final   # com status, o pet fica na cor dele (todas as fases)
+            return {(16 * k - 1 - x, y): c for (x, y), c in m.items()} if flip else m   # mirror the final map   # with a status, the pet takes its color (all phases)
 
         def img(m):
             im, self.below = render_map(m, hero_pixels, k)
             return im
 
         maps = [[pmap(pm, j) for j in phases] for pm in self.frame_maps]
-        self.look_maps = [q[0] for q in maps]                    # fase 0 de cada quadro
-        # imagens indexadas [quadro_do_heroi][fase]; o tick só escolhe qual mostrar
+        self.look_maps = [q[0] for q in maps]                    # phase 0 of each frame
+        # images indexed [hero_frame][phase]; the tick only picks which one to show
         self.frames_fx = [[img(m) for m in q] for q in maps]
         self.blink_fx = [img(pmap(self.blink_map, j)) for j in phases] if self.blink_map else None
         self.sleep_fx = ([img(pmap(self.sleep_map, j)) for j in phases] if self.sleep_map
                          else (self.blink_fx or self.frames_fx[0]))
-        # estados da folha: [quadro][fase], compostos na 1ª vez que aparecem (só idle e o atual saem aqui);
-        # cache por (estado, itens, status, escala), então tirar e pôr o mesmo status não recompõe
+        # sheet states: [frame][phase], composed the 1st time they appear (only idle and the current one here);
+        # cache keyed by (state, items, status, scale), so removing and re-adding the same status does not recompose
         sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, hero_pixels, flip)
         self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0] and ck[1][4] == flip}
         self.fx_cache[("idle", sig)] = self.frames_fx
@@ -1327,7 +1327,7 @@ class PetApp:
         self.save()
 
     def set_pet_status(self, s):
-        """Status do pet no painel e na tinta; só recompõe as imagens quando muda (nunca no tick)."""
+        """Pet status in the panel and in the tint; only recomposes the images when it changes (never in the tick)."""
         if s != self.pet_status:
             self.pet_status = s
             self.refresh_look()
@@ -1350,19 +1350,19 @@ class PetApp:
             text=f"{depth(run)}   ATK {st['atk']}  DEF {st['def']}   $ {run['gold']}")
         cost = M.room_cost(run)
         self.bar_target = min(1.0, run["energy"] / cost) if cost else 0
-        if getattr(self, "bar_frac", None) is None:     # 1º desenho: já no valor, sem deslizar
+        if getattr(self, "bar_frac", None) is None:     # 1st draw: already at the value, no sliding
             self.bar_frac = self.bar_target
         self.draw_energy(time.time())
         self.update_limits()
 
     def draw_energy(self, now):
-        """Barra de energia: o preenchimento desliza até o alvo (tick) e um brilho corre pela parte cheia."""
+        """Energy bar: the fill slides to the target (tick) and a shimmer runs along the filled part."""
         c = self.canvas
         x0, y = self.bar_x0, self.bar_y
         x1 = round(x0 + (self.bar_x1 - x0) * self.bar_frac)
         c.delete(self.bar)
         rounded_rect(c, x0, y, x1, y + 6, 3, ENERGY, tag=self.bar)
-        if x1 - x0 > 14:                                 # brilho de 4 px, uma passada a cada BRILHO_S
+        if x1 - x0 > 14:                                 # 4 px shimmer, one pass every SHIMMER_S
             bx = x0 + 3 + (now % SHIMMER_S) / SHIMMER_S * (x1 - x0 - 10)
             c.create_rectangle(round(bx), y + 1, round(bx) + 4, y + 5, fill=ENERGY_SHIMMER, width=0, tags=self.bar)
 
@@ -1372,7 +1372,7 @@ class PetApp:
             pct, reset, est, tok = limit_view(key, self.limits, self.state, now)
             self.canvas.itemconfigure(rtxt, text=_t("reseta {h}", h=fmt_reset(reset, now)) if reset else "")
             self.canvas.delete(fill)
-            if pct is None:                 # sem fator: tokens da janela, barra = fração do seu pico
+            if pct is None:                 # no factor: window tokens, bar = fraction of your peak
                 self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
                 p = peak(self.state, key, tok)
                 if tok and p:
@@ -1385,14 +1385,14 @@ class PetApp:
                                   tag=fill)
 
     def refresh_limits(self):
-        """Relê limites.json (opcional), calibra a estimativa com leitura oficial nova e redesenha."""
+        """Rereads limites.json (optional), calibrates the estimate with a new official reading and redraws."""
         now = time.time()
         self.limits = read_limits(DATA_DIR / "limites.json", now)
         calibrate(self.state, self.limits, now)
         self.update_limits()
 
     def build_menu(self):
-        """Só as variáveis; o menu (pixel art, `on_menu`) e a grade de heróis (`show_heroes`) nascem ao abrir."""
+        """Only the variables; the menu (pixel art, `on_menu`) and the hero grid (`show_heroes`) are built when opened."""
         self.char_var = tk.StringVar(value=self.meta.get("next_char", "slime"))
         self.size_var = tk.StringVar(value=self.state["size"])
         self.mode_var = tk.StringVar(value=self.state["mode"])
@@ -1407,14 +1407,14 @@ class PetApp:
         self.hero_cards, self.hero_thumb_lbl, self.thumbs, self.icons, self.fonts = {}, {}, {}, {}, {}
 
     def fill_char_menu(self):
-        """Conquista nova ou personagens recarregados: refaz a grade de heróis se estiver aberta."""
+        """New achievement or reloaded characters: rebuilds the hero grid if it is open."""
         if self.heroes_win is not None:
             self.show_heroes()
 
-    # ------------------------------------------------------- menu em pixel art
+    # ------------------------------------------------------- pixel art menu
     def pixel_box(self, x, y, closes=True):
-        """Janela sem borda, moldura dourada de 2 px com cantos arredondados em degraus; devolve (janela, miolo).
-        Com `fecha`, fecha com Esc ou ao perder o foco (clique fora). Quem chama posiciona de novo se crescer."""
+        """Borderless window, 2 px golden frame with stepped rounded corners; returns (window, inner).
+        With `closes`, closes on Esc or when it loses focus (click outside). The caller repositions it if it grows."""
         w = tk.Toplevel(self.root)
         w.overrideredirect(True)
         w.attributes("-topmost", True)
@@ -1422,10 +1422,10 @@ class PetApp:
             w.attributes("-transparentcolor", TRANSPARENT)
             corte = TRANSPARENT
         except tk.TclError:
-            corte = PANEL_BG                # fora do Windows: cantos no fundo escuro
+            corte = PANEL_BG                # outside Windows: corners on the dark background
         w.configure(bg=corte)
         backdrop = tk.Canvas(w, bg=corte, highlightthickness=0, bd=0)
-        backdrop.place(x=0, y=0, relwidth=1, relheight=1)      # criado antes do miolo: fica por baixo dele
+        backdrop.place(x=0, y=0, relwidth=1, relheight=1)      # created before the inner area: stays below it
 
         def draw(e):
             backdrop.delete("all")
@@ -1433,7 +1433,7 @@ class PetApp:
             rounded_rect(backdrop, 3, 3, e.width - 3, e.height - 3, WINDOW_R - 3, PANEL_BG)
         backdrop.bind("<Configure>", draw)
         inner = tk.Frame(w, bg=PANEL_BG, padx=4, pady=4)
-        inner.pack(padx=5, pady=5)          # fora da área dos cantos
+        inner.pack(padx=5, pady=5)          # outside the corner area
         if closes:
             w.bind("<Escape>", lambda e: self.close_win(w))
             w.bind("<FocusOut>", lambda e: self.close_win(w) if e.widget is w else None)
@@ -1441,7 +1441,7 @@ class PetApp:
         return w, inner
 
     def place_win(self, w, x, y):
-        """Põe a janela em (x, y) sem sair da tela (sem espaço embaixo, abre para cima) e pega o foco."""
+        """Places the window at (x, y) without leaving the screen (no room below: opens upward) and takes focus."""
         w.update_idletasks()
         vx0, vy0, vx1, vy1 = self.screen()
         ww, wh = w.winfo_width(), w.winfo_height()
@@ -1451,7 +1451,7 @@ class PetApp:
         w.focus_force()
 
     def screen(self):
-        """Retângulo da tela virtual (todos os monitores; x negativo = monitor à esquerda do principal)."""
+        """Rectangle of the virtual screen (all monitors; negative x = monitor to the left of the primary)."""
         r = self.root
         x, y = r.winfo_vrootx(), r.winfo_vrooty()
         return x, y, x + r.winfo_vrootwidth(), y + r.winfo_vrootheight()
@@ -1476,7 +1476,7 @@ class PetApp:
         return self.art[ck]
 
     def hover(self, widgets, text, fg, on_click):
-        """Hover: fundo mais claro e texto dourado; clique em qualquer parte. Cartão (`cartao`) troca só o miolo."""
+        """Hover: lighter background and golden text; click anywhere. A card (`card_box`) changes only its inner area."""
         base = {wd: None if hasattr(wd, "backdrop") else wd.cget("bg") for wd in widgets}
 
         def paint(on):
@@ -1502,7 +1502,7 @@ class PetApp:
         self.hover((row, ico, t), t, fg, lambda: self.menu_do(cmd))
 
     def menu_chips(self, parent, label, options, var, cmd):
-        """Botões segmentados no próprio menu (sem submenu); o escolhido fica dourado."""
+        """Segmented buttons inside the menu (no submenu); the selected one is golden."""
         row = tk.Frame(parent, bg=PANEL_BG)
         row.pack(fill="x", pady=2)
         tk.Label(row, text=_t(label), bg=PANEL_BG, fg=MUTED, font=self.font_small, width=8, anchor="w").pack(side="left")
@@ -1511,7 +1511,7 @@ class PetApp:
                 side="left", padx=(0, 3))
 
     def chip(self, parent, text, sel=False, cmd=None):
-        """Botão pílula arredondado (Canvas): dourado se escolhido, hover mais claro. `cv.pintar(sel)` troca o estado."""
+        """Rounded pill button (Canvas): golden if selected, lighter on hover. `cv.paint(sel)` changes the state."""
         cv = tk.Canvas(parent, bg=PANEL_BG, highlightthickness=0, bd=0, cursor="hand2" if cmd else "")
         t = cv.create_text(0, 0, anchor="nw", text=text, font=self.font_small)
         x0, y0, x1, y1 = cv.bbox(t)
@@ -1537,8 +1537,8 @@ class PetApp:
         return cv
 
     def card_box(self, parent, edge=PANEL_EDGE, larg=None, alto=None, thickness=2):
-        """Cartão arredondado: Canvas com o fundo desenhado (CARD_BG). Os filhos usam bg=CARD_BG e ficam a
-        CARTAO_PAD da borda. Com larg/alto, tamanho fixo. `cv.fundo(cor)` troca a cor do miolo (hover)."""
+        """Rounded card: Canvas with the background drawn (CARD_BG). Children use bg=CARD_BG and sit
+        CARD_PAD from the border. With width/height, fixed size. `cv.backdrop(color)` changes the inner color (hover)."""
         cv = tk.Canvas(parent, bg=PANEL_BG, highlightthickness=0, bd=0, width=larg or 1, height=alto or 1)
         if larg:
             cv.pack_propagate(False)
@@ -1557,7 +1557,7 @@ class PetApp:
         return cv
 
     def text_width(self, text, font):
-        """Largura do texto em px (tkinter falso dos testes: 6 px por letra)."""
+        """Text width in px (fake tkinter in the tests: 6 px per letter)."""
         tkf = getattr(tk, "font", None)
         if tkf is None:
             return 6 * len(text)
@@ -1566,7 +1566,7 @@ class PetApp:
         return self.fonts[font].measure(text)
 
     def shorten(self, text, font, larg):
-        """O texto se couber em `larg` px; senão cortado com "…" (mostre o inteiro com `dica`)."""
+        """The text if it fits in `lw` px; otherwise cut with "…" (show the full text with `tooltip`)."""
         if self.text_width(text, font) <= larg:
             return text
         while text and self.text_width(text + "…", font) > larg:
@@ -1574,7 +1574,7 @@ class PetApp:
         return text.rstrip() + "…"
 
     def tooltip(self, wd, text):
-        """Balão pixel com o texto inteiro enquanto o mouse está em cima de `wd` (para o que foi encurtado)."""
+        """Pixel bubble with the full text while the mouse is over `wd` (for what was shortened)."""
         st = {}
 
         def opens(e):
@@ -1590,7 +1590,7 @@ class PetApp:
         wd.bind("<Leave>", closes, add="+")
 
     def progress_bar(self, parent, larg, alto, frac=0.0, color=GOLD):
-        """Barra de progresso arredondada (Canvas); `cv.set(frac, cor)` redesenha o preenchimento."""
+        """Rounded progress bar (Canvas); `cv.set(frac, color)` redraws the fill."""
         cv = tk.Canvas(parent, width=larg, height=alto, bg=PANEL_BG, highlightthickness=0, bd=0)
         rounded_rect(cv, 0, 0, larg, alto, alto // 2, BAR_BG, tag="trilha")
 
@@ -1611,7 +1611,7 @@ class PetApp:
         run, st = self.run, M.stats(self.run)
         head = tk.Frame(f, bg=PANEL_BG)
         head.pack(fill="x")
-        self.menu_thumb = map_img(self.look_maps[0], 36)     # referência: o tk não guarda a imagem sozinho
+        self.menu_thumb = map_img(self.look_maps[0], 36)     # keep a reference: tk does not hold the image by itself
         tk.Label(head, image=self.menu_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 6))
         tk.Label(head, text=f"{_t(self.char.name)}  ·  {_t(self.stage_title)}", bg=PANEL_BG, fg=GOLD,
                  font=self.font, anchor="w").pack(fill="x")
@@ -1649,9 +1649,9 @@ class PetApp:
         self.close_win(self.menu_win)
         cmd()
 
-    # ------------------------------------------------------- grade de heróis
+    # ------------------------------------------------------- hero grid
     def hero_thumb(self, c, ok, side=64):
-        """Idle do 1º estágio ampliado (bloqueado: silhueta). None enquanto a folha ainda é cortada na thread."""
+        """Idle of the 1st stage, scaled up (locked: silhouette). None while the sheet is still being cut in the thread."""
         stage = c.stages[0]
         ck = (id(stage), ok) if side == 64 else (id(stage), ok, side)
         if ck not in self.thumbs:
@@ -1662,7 +1662,7 @@ class PetApp:
         return self.thumbs[ck]
 
     def cut_sheets(self):
-        """Corta numa thread as folhas que a grade ainda não tem; depois só troca as miniaturas."""
+        """Cuts in a thread the sheets the grid does not have yet; then only swaps the thumbnails."""
         pend = [c.stages[0] for c in self.chars.values()
                 if not c.stages[0].get("frames") and "erro" not in c.stages[0]
                 and (id(c.stages[0]), True) not in self.thumbs and (id(c.stages[0]), False) not in self.thumbs]
@@ -1684,7 +1684,7 @@ class PetApp:
         self.root.after(150, wait)
 
     def window(self, attr, title):
-        """Janela pixel (fecha a anterior do mesmo tipo) com título dourado e um x; devolve (janela, miolo)."""
+        """Pixel window (closes the previous one of the same kind) with a golden title and an x; returns (window, inner)."""
         self.close_win(getattr(self, attr))
         w, f = self.pixel_box(self.root.winfo_x(), self.root.winfo_y())
         setattr(self, attr, w)
@@ -1699,7 +1699,7 @@ class PetApp:
         return w, f
 
     def make_draggable(self, w, attr, *straps):
-        """Arrasta a janela segurando a barra de título (`alcas`) e lembra a posição em state["janelas"][attr]."""
+        """Drags the window by its title bar (`straps`) and remembers the position in state["windows"][attr]."""
         takes = {}
 
         def squeeze(e):
@@ -1714,16 +1714,16 @@ class PetApp:
             a.configure(cursor="fleur")
             a.bind("<Button-1>", squeeze)
             a.bind("<B1-Motion>", move)
-        w.progress_bar = straps[0]          # para os testes
+        w.progress_bar = straps[0]          # for the tests
 
     def beside(self, w):
-        """Na posição lembrada (arrastada antes), se ainda estiver na tela; senão ao lado do pet:
-        à esquerda, ou à direita se não couber."""
+        """At the remembered position (dragged before), if it is still on screen; otherwise beside the pet:
+        on the left, or on the right if it does not fit."""
         w.update_idletasks()
         attr = next((a for a in WINDOW_ATTRS if getattr(self, a) is w), None)
         pos = (self.state.get("janelas") or {}).get(attr)
         vx0, vy0, vx1, vy1 = self.screen()
-        if pos and vx0 <= pos[0] < vx1 and vy0 <= pos[1] < vy1:   # ponytail: retângulo da tela virtual, não por monitor
+        if pos and vx0 <= pos[0] < vx1 and vy0 <= pos[1] < vy1:   # ponytail: rectangle of the virtual screen, not per monitor
             self.place_win(w, pos[0], min(pos[1], max(vy0, vy1 - w.winfo_height())))
             return
         x, y = self.root.winfo_x(), self.root.winfo_y()
@@ -1731,8 +1731,8 @@ class PetApp:
         self.place_win(w, left if left >= vx0 else x + self.W + 6, y)
 
     def icon(self, grid, s=2, pal=None, glow=None, dark=False, dim=False, side=None):
-        """Grade de arte em escala s (cache): brilho de raridade, silhueta (bloqueado) ou esmaecida (consumido).
-        Com `lado`, a escala é a maior inteira que cabe num quadrado de `lado` px (ícones do mesmo tamanho)."""
+        """Art grid at scale s (cached): rarity glow, silhouette (locked) or faded (consumed).
+        With `side`, the scale is the largest integer that fits a `side` px square (icons of the same size)."""
         ck = (id(grid), s, id(pal), glow, dark, dim, side)
         if ck not in self.icons:
             pm = visual.grid_to_map(grid, pal or art.PAL)
@@ -1786,13 +1786,13 @@ class PetApp:
             if short != name_:
                 self.tooltip(name, name_)
         else:
-            pick = None             # bloqueado: nada clicável
+            pick = None             # locked: nothing clickable
             tk.Label(card, text=_t(M.ACHIEVEMENTS[c.unlock]), image=self.menu_icon("cadeado"), compound="left",
                      bg=CARD_BG, fg=MUTED, font=self.font_small, wraplength=HERO_CARD_W - 24 - 2 * CARD_PAD).pack()
         self.hero_cards[key] = pick
         return card
 
-    # -------------------------------------------------------------- eventos
+    # -------------------------------------------------------------- events
     def on_press(self, e):
         self._drag = (e.x_root - self.root.winfo_x(), e.y_root - self.root.winfo_y())
         self._moved = False
@@ -1818,7 +1818,7 @@ class PetApp:
         name = _t(self.chars[key].name)
         run = self.run
         if run["floor"] == 1 and run["room"] == 0 and not run["dead"]:
-            self.new_run()      # run nem começou: troca na hora
+            self.new_run()      # run has not started yet: switch right away
         else:
             self.popup([_t("{nome} entra na próxima run.", nome=name)], 4000)
 
@@ -1835,7 +1835,7 @@ class PetApp:
         self.save()
 
     def change_lang(self):
-        """Troca o idioma: redesenha o HUD e reabre as janelas que estavam abertas (o menu fecha)."""
+        """Switches the language: redraws the HUD and reopens the windows that were open (the menu closes)."""
         self.state["lang"] = self.lang_var.get()
         i18n.set_lang(self.state["lang"])
         opened = [a for a in WINDOW_ATTRS if a != "menu_win" and getattr(self, a) is not None]
@@ -1857,7 +1857,7 @@ class PetApp:
 
     def toggle_usage(self):
         self.state["so_com_uso"] = bool(self.usage_var.get())
-        self.opened_at = time.time()            # ligou agora: não some na hora
+        self.opened_at = time.time()            # just turned on: do not hide right away
         self.save()
 
     def toggle_startup(self):
@@ -1868,8 +1868,8 @@ class PetApp:
         self.startup_var.set(startup_shortcut().exists())
 
     def adjust_visibility(self, now):
-        """"Aparecer só com uso": esconde depois de ESCONDER_S sem tokens (nunca no meio de uma sala ou com
-        escolha aberta) e mostra de novo no 1º token. Escondido o jogo continua; nada se perde."""
+        """"Show only when in use": hides after HIDE_S without tokens (never in the middle of a room or with
+        a choice open) and shows again on the 1st token. While hidden the game goes on; nothing is lost."""
         stopped = now - max(self.state["last_fed"], self.opened_at) > HIDE_S
         esconder = bool(self.state.get("so_com_uso")) and stopped and now >= self.busy_until and not self.run["pending"]
         if esconder == self.escondido:
@@ -1886,7 +1886,7 @@ class PetApp:
     def give_up(self):
         if self.run["dead"]:
             return
-        self.run["pending"] = None             # a oferta morre junto com a run
+        self.run["pending"] = None             # the offer dies with the run
         self.close_choice()
         ev = {"lines": []}
         M.die(self.run, self.meta, ev, "Desistiu", "desistiu")
@@ -1916,13 +1916,13 @@ class PetApp:
 
 
     def show(self):
-        """Pela bandeja: aparece (mesmo com "Aparecer só com uso", conta ESCONDER_S de novo) e vem para a frente."""
+        """From the tray: shows the pet (even with "Show only when in use", HIDE_S counts again) and brings it to the front."""
         self.opened_at = time.time()
         self.adjust_visibility(self.opened_at)
         self.root.lift()
 
     def listen_tray(self):
-        """Cliques da bandeja chegam por fila (a thread dela não pode mexer no Tk). 0 = mostrar, 1 = sair."""
+        """Tray clicks arrive through a queue (its thread must not touch Tk). 0 = show, 1 = quit."""
         if not self.tray:
             return
         while not self.tray.events.empty():
@@ -1941,7 +1941,7 @@ class PetApp:
     def _on_error(self, *exc):
         log("erro: " + "".join(traceback.format_exception(*exc)))
 
-    # ------------------------------------------------------- tokens/energia
+    # ------------------------------------------------------- tokens/energy
     def fake_tokens(self):
         if self.rng.random() < 0.6:
             raw = self.rng.randint(100_000, 1_500_000)
@@ -1981,7 +1981,7 @@ class PetApp:
             self.floater(f"+{fmt(raw)}", ENERGY)
         self.update_panel()
 
-    # -------------------------------------------------------------- salas
+    # -------------------------------------------------------------- rooms
     def play_room(self):
         ev = M.enter_room(self.run, self.meta, self.rng, self.char.stage_floors,
                           mode=self.state["mode"])
@@ -1991,13 +1991,13 @@ class PetApp:
         def at(ms, fn):
             steps.append((ms, fn))
 
-        self._last_kind = [ev["kind"]]               # só para o teste
+        self._last_kind = [ev["kind"]]               # for the test only
         kind = ev["kind"]
         foes = ev.get("foes") or []
         name_color = {"boss": HURT, "monster": TEXT, "horde": TEXT, "mimic": HURT, "stairs": CYAN}.get(kind, GOLD)
 
         def new_room():
-            self.set_pet_status(None)                  # status do pet não passa de uma sala para outra
+            self.set_pet_status(None)                  # pet status does not carry over from one room to the next
             self.update_panel()
         at(0, new_room)
         if foes:
@@ -2005,24 +2005,24 @@ class PetApp:
         else:
             at(0, lambda: self.show_foe(ev.get("sprite"), ev.get("boss", False)))
         at(0, lambda: self.floater(_t(ev["name"]), name_color, x=self.fcx, life=22, top=True))
-        if ev.get("cura_item"):                        # cura_sala / cura_andar dos itens
+        if ev.get("cura_item"):                        # heal_room / heal_floor from items
             at(250, lambda: self.floater(f"+{ev['cura_item']} ♥", GOOD))
         t = 500
 
         if kind in ("monster", "boss", "mimic", "horde"):
             hits = ev["hits"]
-            # quem já morreu depois de cada passo (contando a lista inteira, mesmo os passos não mostrados)
+            # who has died after each step (counting the whole list, even steps that are not shown)
             hp = [f["hp_max"] for f in foes]
             dead_until, status_until, s = [], [], None
             for h in hits:
                 if h["target"] != "pet" and not h["skip"]:
                     hp[h["target"]] -= h["dmg"]
                 if h["target"] == "pet" and h["status"] and not h["skip"]:
-                    s = h["status"]                    # último status do pet até aqui (vale p/ passos pulados)
+                    s = h["status"]                    # latest pet status so far (also covers skipped steps)
                 dead_until.append([i for i, v in enumerate(hp) if v <= 0])
                 status_until.append(s)
             idx = list(range(len(hits)))
-            if len(idx) > 12:                          # lutas longas: os 11 primeiros passos e o último
+            if len(idx) > 12:                          # long fights: the first 11 steps and the last one
                 idx = idx[:11] + [idx[-1]]
             for k in idx:
                 at(t, lambda h=hits[k], dead=dead_until[k], s=status_until[k]: self.anim_hit(h, dead, s))
@@ -2035,11 +2035,11 @@ class PetApp:
             elif ev.get("empate"):
                 at(t, lambda: (self.floater(_t("empate"), MUTED, x=self.fcx), self.hide_foe()))
                 t += 450
-            at(t, lambda: self.set_pet_status(None))  # o status do pet acaba com a luta
+            at(t, lambda: self.set_pet_status(None))  # the pet status ends with the fight
         elif kind == "trap":
             if ev.get("dodged"):
                 at(t, lambda: self.floater(_t("esquivou!"), CYAN))
-            elif ev["dmg"] == 0:                       # o escudo absorveu tudo
+            elif ev["dmg"] == 0:                       # the shield absorbed everything
                 at(t, lambda: self.floater(_t("bloqueou!"), CYAN))
             else:
                 at(t, lambda: (self._set("hop", [-4, -8, -4, 0]),
@@ -2082,7 +2082,7 @@ class PetApp:
         self.fight_until = self.busy_until if kind in ("monster", "boss", "mimic", "horde") else 0
 
     def _offer_steps(self, ev, at, t):
-        """Animação das linhas e da oferta resolvida (item pego ou consumido); devolve o novo t."""
+        """Animation of the lines and of the resolved offer (item taken or consumed); returns the new t."""
         for line in ev["lines"]:
             at(t, lambda line=line: self.floater(_t(line), TEXT, life=24))
             t += 600
@@ -2100,7 +2100,7 @@ class PetApp:
             c = ev["consumed"]
             if c.get("heal"):
                 at(t, lambda: self.floater(f"+{c['heal']} ♥", GOOD))
-            elif "heal" in c:                          # curou 0: o HP já estava cheio
+            elif "heal" in c:                          # healed 0: HP was already full
                 at(t, lambda: self.floater(_t("HP já cheio"), MUTED))
             else:
                 at(t, lambda: self.floater(_t("+{n} escudo", n=c['shield']), CYAN))
@@ -2108,7 +2108,7 @@ class PetApp:
         return t
 
     def finish_pending(self, ev):
-        """Fecha o painel e anima a oferta resolvida (escolha, janela vencida ou troca p/ auto)."""
+        """Closes the panel and animates the resolved offer (choice, expired window or switch to auto)."""
         self.close_choice()
         steps = []
         t = self._offer_steps(ev, lambda ms, fn: steps.append((ms, fn)), 0)
@@ -2128,7 +2128,7 @@ class PetApp:
         setattr(self, attr, list(value))
 
     def anim_hit(self, h, dead, status):
-        """Um passo da luta: floaters, bote, tinta de status e some com quem morreu até aqui."""
+        """One fight step: floaters, lunge, status tint and removing whoever died so far."""
         tgt, who = h["target"], h["who"]
 
         def fx(i):
@@ -2144,16 +2144,16 @@ class PetApp:
         elif h.get("bloqueado"):
             self.foe_attack(who)
             self.floater(_t("bloqueou!"), CYAN, life=10)
-        elif h.get("espinhos"):                           # espinhos: o dano volta para o atacante, sem bote
+        elif h.get("espinhos"):                           # thorns: the damage goes back to the attacker, no lunge
             self.floater(f"-{h['dmg']}", GOOD, x=x, life=10)
-        elif who == "ajudante":                           # ajudante: o número sai de cima do pet, sem bote
+        elif who == "ajudante":                           # helper: the number pops from above the pet, no lunge
             self.floater(txt, GOOD, life=10)
         elif who == "pet":
             self.lunge = [5, 10, 5, 0]
             self.floater(txt, GOLD if h["crit"] else TEXT, x=x, life=10)
-            if h["status"] and tgt in self.foe_on:        # ataque elemental: clarão na cor do elemento
+            if h["status"] and tgt in self.foe_on:        # elemental attack: flash in the element's color
                 self.burst(x, self.foe_xy[tgt][1] - 4 * self.px, colors=(STATUS_COLOR[h["status"]], "#ffffff"))
-                # ponytail: a tinta fica até o inimigo morrer (a GUI não sabe quando o status acaba)
+                # ponytail: the tint stays until the enemy dies (the GUI does not know when the status ends)
                 self.draw_foe(tgt, h["status"])
         else:
             self.foe_attack(who)
@@ -2166,10 +2166,10 @@ class PetApp:
             self.hide_foe(i, burst=True)
 
     def foe_slots(self, n):
-        """(centro, base) de cada inimigo: 1 no meio; 2-4 num grid 2x2 (com 3, o 3º fica em cima, no meio)."""
+        """(center, base) of each enemy: 1 in the middle; 2-4 in a 2x2 grid (with 3, the 3rd is on top, in the middle)."""
         if n <= 1:
             return [(self.fcx, self.base_y)]
-        up = self.base_y - 9 * self.px              # a arte dos monstros tem até 8 px de altura
+        up = self.base_y - 9 * self.px              # monster art is at most 8 px tall
         xy = [(self.foe_cols[0], self.base_y), (self.foe_cols[1], self.base_y)]
         if n == 3:
             xy.append((self.fcx, up))
@@ -2206,7 +2206,7 @@ class PetApp:
         self.foe_on.add(i)
 
     def foe_attack(self, i):
-        """Bote do inimigo i (o anterior volta para o lugar se ainda estava no meio do bote)."""
+        """Lunge of enemy i (the previous one goes back to its place if it was still mid-lunge)."""
         j = self.lunge_foe
         if j != i and j < len(self.foe_xy):
             self.canvas.coords(self.foe_items[j][0], *self.foe_xy[j])
@@ -2214,7 +2214,7 @@ class PetApp:
         self.foe_lunge = [-5, -10, -5, 0]
 
     def hide_foe(self, i=None, burst=False):
-        """Esconde um inimigo (ou todos); com burst, explode quem ainda estava na tela."""
+        """Hides one enemy (or all of them); with burst, blows up whoever was still on screen."""
         for j in (range(len(self.foe_items)) if i is None else [i]):
             if burst and j in self.foe_on:
                 self.burst(self.foe_xy[j][0], self.foe_xy[j][1] - 4 * self.px)
@@ -2243,7 +2243,7 @@ class PetApp:
         g = self.meta["graveyard"][-1]
         self.log_run(g["killer"], False)
         self.save()
-        if getattr(self, "states_fx", None):       # herói de folha: quadros "failed" antes da lápide
+        if getattr(self, "states_fx", None):       # sheet hero: "failed" frames before the tombstone
             self.state_tmp = ("failed", time.time() + 1.2)
             self.root.after(1200, lambda: self.run["dead"] and self.show_tomb())
         else:
@@ -2277,10 +2277,10 @@ class PetApp:
         chars = [_t("herói {nome}", nome=_t(c.name)) for c in self.chars.values() if c.unlock == ach]
         return items + chars
 
-    # ------------------------------------------------------------- animação
+    # ------------------------------------------------------------- animation
     def floater(self, text, color=TEXT, life=16, x=None, top=False):
-        """Texto que sobe. Escolhe um lugar livre (sem cobrir floaters vivos nem o painel);
-        com top=True (nome do monstro) fica sempre por cima."""
+        """Rising text. Picks a free spot (not covering live floaters or the panel);
+        with top=True (monster name) it always goes on top."""
         c = self.canvas
         bx = (self.pcx if x is None else x) + self.rng.randint(-10, 10)
         by = self.base_y - self.T + 10
@@ -2294,7 +2294,7 @@ class PetApp:
                 x0, y0, x1, y1 = c.bbox(t)
                 shift = max(0, 4 - (x0 - 5)) - max(0, (x1 + 5) - (self.W - 4))
                 box = (x0 + shift - 5, y0 - 2, x1 + shift + 5, y1 + 2)
-                if box[1] >= 0 and box[3] < self.panel_y:      # nunca por cima do painel
+                if box[1] >= 0 and box[3] < self.panel_y:      # never on top of the panel
                     options.append((bx + dx + shift, by + dy, box))
         free = [o for o in options if not any(
             v and o[2][0] < v[2] and v[0] < o[2][2] and o[2][1] < v[3] and v[1] < o[2][3] for v in alive)]
@@ -2306,7 +2306,7 @@ class PetApp:
             box = (x0 - 5, y0 - 2, x1 + 5, y1 + 2)
         c.coords(t, fx, fy)
         self.n_floater += 1
-        r = f"flt{self.n_floater}"      # tag do balão arredondado (vários retângulos)
+        r = f"flt{self.n_floater}"      # tag of the rounded bubble (several rectangles)
         rounded_rect(c, *box, CARD_R, PANEL_BG, PANEL_EDGE, 1, tag=r, extra=tags)
         c.tag_raise(t)
         c.tag_raise("nome")
@@ -2320,8 +2320,8 @@ class PetApp:
             self.particles.append([r, math.cos(a) * 6, math.sin(a) * 6, 12])
 
     def current_state(self, now, resting):
-        """Estado da folha a mostrar (None para heróis sem estados): escolha > luta > morte > descanso > idle;
-        waving/jumping valem pelo tempo marcado."""
+        """Sheet state to show (None for heroes without states): choice > fight > death > rest > idle;
+        waving/jumping last for the scheduled time."""
         if not getattr(self, "states_fx", None):
             return None
         tmp, until = getattr(self, "state_tmp", (None, 0))
@@ -2346,14 +2346,14 @@ class PetApp:
         run = self.run
         try:
             if self.choice_win is not None and (not run["pending"] or run["dead"]):
-                self.close_choice()                # a pendência sumiu (run nova, desistiu...)
+                self.close_choice()                # the pending offer is gone (new run, gave up...)
             if run["dead"]:
                 if self.respawn_at and now >= self.respawn_at:
                     self.new_run()
             elif now >= self.busy_until and run["pending"]:
-                # nunca entra em sala com escolha aberta; os tokens continuam enchendo a energia
+                # never enters a room with an open choice; tokens keep filling the energy
                 if self.pending_since is None:
-                    self.pending_since = now       # também ao abrir o app com pendência no save
+                    self.pending_since = now       # also when the app opens with a pending offer in the save
                 if self.state["mode"] == "auto" or (
                         now - self.pending_since >= M.CHOICE_WINDOW_S and M.can_enter(run)):
                     self.finish_pending(M.resolve_pending(run, self.meta))
@@ -2370,12 +2370,12 @@ class PetApp:
                     self.canvas.itemconfigure(self.sprite, image=self.state_frame("failed", now))
             else:
                 sleeping = idle > SLEEP_AFTER_S and not busy
-                phase = int(now * 1000 / FX_MS)       # relógio dos efeitos, separado do herói
+                phase = int(now * 1000 / FX_MS)       # effects clock, separate from the hero
                 state = self.current_state(now, idle > REST_AFTER_S and not busy)
                 if state:
                     img = self.state_frame(state, now)
                     bob = 0
-                    if state == "idle" and self.blink_fx is not None:   # herói de grade ainda pisca
+                    if state == "idle" and self.blink_fx is not None:   # grid hero still blinks
                         if now > self.next_blink:
                             self.blink_until = now + 0.16
                             self.next_blink = now + self.rng.uniform(2.5, 6)
@@ -2408,7 +2408,7 @@ class PetApp:
                 x, y = self.foe_xy[self.lunge_foe]
                 self.canvas.coords(self.foe_items[self.lunge_foe][0], x + self.foe_lunge.pop(0), y)
 
-            d = self.bar_target - self.bar_frac             # barra de energia desliza até o alvo
+            d = self.bar_target - self.bar_frac             # energy bar slides to the target
             self.bar_frac = self.bar_target if abs(d) < 0.004 else self.bar_frac + d * 0.3
             self.draw_energy(now)
 
@@ -2430,7 +2430,7 @@ class PetApp:
             log("erro na animação: " + traceback.format_exc())
         self.root.after(100, self.tick)
 
-    # --------------------------------------------------------------- janelas
+    # --------------------------------------------------------------- windows
     def popup(self, lines, ms=8000):
         if self.popup_win is not None:
             try:
@@ -2459,14 +2459,14 @@ class PetApp:
             pass
 
     def show_choice(self):
-        """Painel Pegar/Consumir ao lado do pet (um só por vez)."""
+        """Take/Consume panel beside the pet (only one at a time)."""
         p = self.run["pending"]
         if self.choice_win is not None or not p:
             return
         key, rar = p["key"], p["rar"]
         it = M.ITEMS[key]
-        w, f = self.pixel_box(0, 0, closes=False)   # a escolha não fecha sozinha ao perder o foco
-        self.choice_img = self.art_img(key)       # referência: o tk não guarda a imagem sozinho
+        w, f = self.pixel_box(0, 0, closes=False)   # the choice does not close by itself when it loses focus
+        self.choice_img = self.art_img(key)       # keep a reference: tk does not hold the image by itself
         tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
         tk.Label(f, text=f"{_t(it['name'])}  ·  {_t(M.RAR_NAMES[rar])}", bg=PANEL_BG,
                  fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=6)
@@ -2486,14 +2486,14 @@ class PetApp:
         x = self.root.winfo_x() - w.winfo_width() - 6
         if x < 0:
             x = self.root.winfo_x() + self.W + 6
-        # alinhado por baixo com o pet, para não cobrir o popup (que cresce a partir do topo)
+        # aligned at the bottom with the pet, so it does not cover the popup (which grows from the top)
         y = max(0, self.root.winfo_y() + self.H - w.winfo_height())
         w.geometry(f"+{x}+{y}")
         self.choice_win = w
         self.update_choice()
 
     def update_choice(self):
-        """Só mexe na barrinha do tempo e no texto das salas esperando."""
+        """Only updates the timer bar and the text of the waiting rooms."""
         if self.choice_win is None:
             return
         since = time.time() if self.pending_since is None else self.pending_since
@@ -2518,7 +2518,7 @@ class PetApp:
         w, f = self.window("stats_win", _t("Status  ·  Run #{n}", n=run['id']))
         head = tk.Frame(f, bg=PANEL_BG)
         head.pack(fill="x", pady=(4, 0))
-        self.stats_thumb = map_img(self.look_maps[0], 56)    # referência: o tk não guarda a imagem sozinho
+        self.stats_thumb = map_img(self.look_maps[0], 56)    # keep a reference: tk does not hold the image by itself
         tk.Label(head, image=self.stats_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
         col = tk.Frame(head, bg=PANEL_BG)
         col.pack(side="left", fill="x")
@@ -2561,7 +2561,7 @@ class PetApp:
                 tk.Label(box, text=_t("nenhum ainda"), bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(anchor="w")
             for n, it in enumerate(i for i in lst if i["key"] in M.ITEMS):
                 rar = it.get("rar", "comum")
-                side, cols = s * 12, 10 if s == 3 else 14     # célula fixa: itens largos (chapéus) cabem sem cobrir o vizinho
+                side, cols = s * 12, 10 if s == 3 else 14     # fixed cell: wide items (hats) fit without covering the neighbor
                 lbl = tk.Label(box, image=self.icon(art.ITEM_ART[it["key"]], s, glow=M.RAR_COLOR.get(rar), dim=dim,
                                                     side=side), bg=PANEL_BG, width=side + 2, height=side + 2)
                 lbl.grid(row=n // cols, column=n % cols)
@@ -2585,7 +2585,7 @@ class PetApp:
         self.beside(w)
 
     def killer_icon(self, d):
-        """Ícone de quem matou: monstro, chefe com coroa, mímico, status, armadilha ou desistência."""
+        """Icon of the killer: monster, crowned boss, mimic, status, trap or giving up."""
         k = d.get("killer", "")
         boss = next((s for s, n in M.BOSS_NAMES.items() if n == k), None)
         if boss:
@@ -2598,7 +2598,7 @@ class PetApp:
         return self.icon(grid or art.ROOM_ART["lapide"], 2)
 
     def tombstone(self, cv, y, d):
-        """Uma lápide do cemitério desenhada no canvas a partir de y."""
+        """One graveyard tombstone drawn on the canvas starting at y."""
         L, f, fs = GRAVE_TOMB, self.font, self.font_small
         rounded_rect(cv, 1, y + 1, GRAVE_W - 1, y + L - 3, CARD_R, CARD_BG, PANEL_EDGE, 2, tag="cartao",
                               extra=(f"card:{y}",))
@@ -2656,13 +2656,13 @@ class PetApp:
         self.beside(w)
 
     def scrollbar(self, parent, w, cv, vis):
-        """Barra de rolagem em pixel (a nativa não pega as cores) ao lado do Canvas `cv` (com scrollregion):
-        arrastar o polegar rola junto, clicar na trilha centraliza o polegar ali, roda do mouse e setas.
-        O polegar some quando tudo cabe (ex.: depois de um filtro). Devolve a trilha."""
+        """Pixel scrollbar (the native one ignores colors) beside Canvas `cv` (with scrollregion):
+        dragging the thumb scrolls along, clicking the track centers the thumb there, mouse wheel and arrow keys.
+        The thumb hides when everything fits (e.g. after a filter). Returns the track."""
         tr = tk.Canvas(parent, width=8, height=vis, bg=PANEL_BG, highlightthickness=0, cursor="hand2")
         tr.pack(side="left", padx=(4, 0))
         rounded_rect(tr, 0, 0, 8, vis, 4, BAR_BG, tag="trilha")
-        view = {"a": 0.0, "b": 1.0, "pega": None, "cor": GOLD}   # fração visível, onde o polegar foi pego, cor
+        view = {"a": 0.0, "b": 1.0, "pega": None, "cor": GOLD}   # visible fraction, where the thumb was grabbed, color
 
         def shows(a, b):
             view["a"], view["b"] = float(a), float(b)
@@ -2677,7 +2677,7 @@ class PetApp:
 
         def squeeze(e):
             y0, y1 = view["a"] * vis, view["b"] * vis
-            view["pega"] = e.y - y0 if y0 <= e.y <= y1 else (y1 - y0) / 2   # fora do polegar: pula para lá
+            view["pega"] = e.y - y0 if y0 <= e.y <= y1 else (y1 - y0) / 2   # outside the thumb: jump there
             vai(e.y)
 
         def releases(e):
@@ -2697,12 +2697,12 @@ class PetApp:
         return tr
 
     def item_unlocked(self, key):
-        """Mesma regra do sorteio (M.unlocked_items); no demo tudo liberado, como os heróis."""
+        """Same rule as the drop roll (M.unlocked_items); in the demo everything is unlocked, like the heroes."""
         req = M.ITEMS[key].get("req")
         return self.demo or not req or req in self.meta["achievements"]
 
     def item_card(self, cv, x, y, key):
-        """Card de um item no canvas a partir de (x, y); devolve a altura. Bloqueado: silhueta, cadeado, sem valores."""
+        """Card of one item on the canvas starting at (x, y); returns its height. Locked: silhouette, padlock, no values."""
         it, ok, fs = M.ITEMS[key], self.item_unlocked(key), self.font_small
         top = next((M.RAR_COLOR[r] for r in reversed(it["rarities"]) if M.RAR_COLOR[r]), None)
         cv.create_image(x + 26, y + 26, image=self.icon(art.ITEM_ART[key], 4, glow=ok and top or None, dark=not ok))
@@ -2791,8 +2791,8 @@ class PetApp:
         self.beside(w)
 
     def show_perfil(self):
-        """Perfil (só dados que já existem: state, meta, usage_hist): herói, nível de domador, medalhas,
-        números, gráfico dos últimos 7 dias, limites e atalhos. Textos novos do perfil ficam todos aqui."""
+        """Profile (only data that already exists: state, meta, usage_hist): hero, tamer level, medals,
+        numbers, last 7 days chart, limits and shortcuts. All new profile texts live here."""
         run, meta, state, now = self.run, self.meta, self.state, time.time()
         st, fs, L = M.stats(run), self.font_small, PROFILE_W
         w, f = self.window("profile_win", _t("Perfil"))
@@ -2808,23 +2808,23 @@ class PetApp:
             fr.pack(fill="x")
             tk.Label(fr, text=left, bg=PANEL_BG, fg=GOLD if font == self.font else MUTED, font=font).pack(side="left")
             tk.Label(fr, text=dir_, bg=PANEL_BG, fg=fg_dir, font=fs).pack(side="right")
-        # cabeçalho: herói, run, HP
+        # header: hero, run, HP
         head = tk.Frame(f, bg=PANEL_BG)
         head.pack(fill="x", pady=(4, 0))
-        self.profile_thumb = map_img(self.look_maps[0], 48)    # referência: o tk não guarda a imagem sozinho
+        self.profile_thumb = map_img(self.look_maps[0], 48)    # keep a reference: tk does not hold the image by itself
         tk.Label(head, image=self.profile_thumb, bg=PANEL_BG).pack(side="left", padx=(0, 8))
         col = tk.Frame(head, bg=PANEL_BG)
         col.pack(side="left", fill="x")
         label(col, f"{_t(self.char.name)}  ·  {_t(self.stage_title)}", GOLD, self.font)
         label(col, f"Run #{run['id']}   ·   {depth(run)}   ·   ♥ {run['hp']}/{st['maxhp']}")
         progress_bar(col, run["hp"] / st["maxhp"], HURT, L - 56).pack(anchor="w", pady=(3, 0))
-        # nível de domador (energia na vida: mesma unidade do gráfico)
+        # tamer level (lifetime energy: same unit as the chart)
         n, frac, missing = level(state["xp_total"])
         self.menu_sep(f)
         top(_t("Domador  Nv {n}", n=n), f"{round(frac * 100)}%", GOLD, self.font)
         progress_bar(f, frac, GOLD).pack(anchor="w", pady=2)
         label(f, _t("faltam ~{x} de energia para o Nv {n}", x=fmt(missing), n=n + 1))
-        # medalhas
+        # medals
         have = set(meta["achievements"]) & set(M.ACHIEVEMENTS)
         self.menu_sep(f)
         top(_t("Conquistas"), f"{len(have)} / {len(M.ACHIEVEMENTS)}")
@@ -2840,7 +2840,7 @@ class PetApp:
             lb.bind("<Enter>", lambda e, t=txt: info.configure(text=t, fg=TEXT))
             lb.bind("<Leave>", lambda e: info.configure(text=tooltip, fg=MUTED))
         info.pack(fill="x")
-        # cartões de números
+        # number cards
         own = [c for k, c in self.chars.items() if own_hero(k)]
         best, dias = meta["best"], usage_per_day(state, now)
         cards = (("HOJE", fmt(dias[-1][1]), "de energia"), ("SEQUÊNCIA", str(streak_days(state, now)), "dias seguidos"),
@@ -2860,7 +2860,7 @@ class PetApp:
             for j, (txt, fg, font) in enumerate(((tit, MUTED, fs), (val, TEXT, self.font), (sub, MUTED, fs))):
                 tk.Label(card, text=txt, bg=CARD_BG, fg=fg, font=font, anchor="w", padx=0, pady=0).pack(
                     fill="x", padx=CARD_PAD, pady=(CARD_PAD if j == 0 else 0, CARD_PAD if j == 2 else 0))
-        # gráfico dos últimos 7 dias (energia por dia, de usage_hist)
+        # last 7 days chart (energy per day, from usage_hist)
         self.menu_sep(f)
         top(_t("Últimos 7 dias  (energia)"), fmt(sum(v for _, v in dias)), GOLD)
         alto, larger = 58, max(v for _, v in dias) or 1
@@ -2869,18 +2869,18 @@ class PetApp:
         bw = L // 7
         for i, (d, v) in enumerate(dias):
             x0, today_ = i * bw + 4, i == len(dias) - 1
-            h = max(2, round(alto * v / larger / 2) * 2)      # degraus de 2 px: cara de pixel
+            h = max(2, round(alto * v / larger / 2) * 2)      # 2 px steps: pixel look
             cv.create_rectangle(x0, alto - h, x0 + bw - 8, alto, width=0,
                                 fill=(GOLD if today_ else PROFILE_BAR) if v else BAR_BG)
             cv.create_text(x0 + (bw - 8) / 2, alto + 9, text=_t(DAYS[d.weekday()]), fill=GOLD if today_ else MUTED, font=fs)
-        # limites (iguais aos do painel)
+        # limits (same as in the panel)
         self.menu_sep(f)
         label(f, _t("Limites"))
         for key, name in (("sessao", "Sessão"), ("semana", "Semana")):
             pct, reset, est, tok = limit_view(key, self.limits, state, now)
             if pct is not None:
                 val = f"{'~' if est else ''}{round(pct)}%"
-            else:                       # sem % oficial nem fator: tokens e quanto isso é do seu pico
+            else:                       # no official % and no factor: tokens and how much of your peak that is
                 p = peak(state, key, tok)
                 val = _t("{n} · {p}% do seu pico", n=fmt(tok), p=round(100 * tok / p)) if tok and p else "—"
             top(f"{_t(name)}  {val}", _t("reseta {h}", h=fmt_reset(reset, now)) if reset else "", MUTED)
@@ -2888,7 +2888,7 @@ class PetApp:
                 progress_bar(f, pct / 100, limit_color(pct)).pack(anchor="w", pady=(1, 3))
             else:
                 progress_bar(f, tok / p if tok and p else 0, PEAK_COLOR).pack(anchor="w", pady=(1, 3))
-        # rodapé: último uso e atalhos
+        # footer: last use and shortcuts
         self.menu_sep(f)
         ult = last_use(state)
         label(f, _t("último uso: {x}", x=fmt_ago(now - ult) if ult else _t("nenhum ainda"))
@@ -2910,8 +2910,8 @@ class PetApp:
 
 
 def startup_shortcut(create: bool | None = None) -> Path:
-    """Atalho na pasta Inicializar do Windows que abre o pet sem console (pythonw). Só o usuário liga, pelo menu.
-    criar=True grava, False apaga, None só devolve o caminho."""
+    """Shortcut in the Windows Startup folder that opens the pet without a console (pythonw). Only the user turns it on, from the menu.
+    create=True writes it, False deletes it, None only returns the path."""
     p = Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs/Startup/Agent Tokenlike.cmd"
     if create:
         pyw = Path(sys.executable).with_name("pythonw.exe")
@@ -2940,7 +2940,7 @@ def acquire_lock(name: str):
 
 
 def migrate_old_data(old: Path = OLD_DATA_DIR, new: Path = DATA_DIR) -> bool:
-    """1ª execução após o rename: copia o progresso de ~/.tokenpet sem apagar o antigo."""
+    """1st run after the rename: copies the progress from ~/.tokenpet without deleting the old one."""
     if new.exists() or not old.is_dir():
         return False
     new.mkdir(parents=True)
@@ -2955,7 +2955,7 @@ def run_gui(args):
     global tk
     migrate_old_data()
     import tkinter as _tk
-    import tkinter.font  # noqa: F401  (tk.font: medir texto para encurtar com "…")
+    import tkinter.font  # noqa: F401  (tk.font: measure text to shorten it with "…")
     tk = _tk
     lock = acquire_lock("demo.lock" if args.demo else "tokenlike.lock")
     if lock is None:

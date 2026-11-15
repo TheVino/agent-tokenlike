@@ -1,9 +1,9 @@
-"""Gera as folhas do Fantasma (characters/fantasma/folha1..3.png) e a prévia de todos os estados dos
-heróis embutidos (tools/out/preview_heroes.png). Só biblioteca padrão.
+"""Generates the Ghost sheets (characters/fantasma/folha1..3.png) and the preview of every state of the
+built-in heroes (tools/out/preview_heroes.png). Standard library only.
 
-Folha: grade 8 x 9 (linhas na ordem de folha.ESTADOS), células de 40 px (heróis 32 px) com o quadro embaixo.
-Cada estado tem 4 a 6 quadros; as colunas sobrando ficam vazias (o leitor ignora célula vazia).
-Uso: python tools/gerar_folhas.py [--so-preview]
+Sheet: 8 x 9 grid (rows in sheet.STATES order), 40 px cells (32 px heroes) with the frame at the bottom.
+Each state has 4 to 6 frames; the leftover columns stay empty (the reader ignores empty cells).
+Usage: python tools/make_sheets.py [--preview-only]
 """
 import importlib
 import sys
@@ -24,12 +24,12 @@ def _rgba(color):
 
 
 def make_sheet(path, est, pal, cel=CELL):
-    """Grade 8 x 9, quadro 32 px centrado na célula e com a base no fundo dela."""
+    """8 x 9 grid, 32 px frame centered in the cell with its base at the bottom."""
     w, h = 8 * cel, 9 * cel
     px = [[b"\0\0\0\0"] * w for _ in range(h)]
     for r, e in enumerate(sheet.STATES):
         frames = est[e]
-        for c, g in enumerate(frames[:8]):   # só os quadros reais; as células sobrando ficam vazias
+        for c, g in enumerate(frames[:8]):   # only the real frames; the leftover cells stay empty
             n = len(g)
             ox, oy = c * cel + (cel - n) // 2, r * cel + cel - n
             for y, lin in enumerate(g):
@@ -40,7 +40,7 @@ def make_sheet(path, est, pal, cel=CELL):
 
 
 def preview(path, heroes, esc=4):
-    """Uma faixa por estágio: os 9 estados lado a lado, até 6 quadros de cada. Fundo xadrez."""
+    """One strip per stage: the 9 states side by side, up to 6 frames each. Checkered background."""
     n, slack = 32, 2
     cel = n + slack
     larg = 6 * cel + 4

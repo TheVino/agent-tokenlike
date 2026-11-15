@@ -1,7 +1,7 @@
-"""Vela Viva, 32 px, olhando para a direita. Cada quadro sai de partes: corpo de cera (com escorridos e sombra),
-pavio, chama em 3 fases (tremula), rostinho, braços de cera em linha grossa e objetos (bola de fogo, fumaça).
-No `failed` a chama encolhe, apaga e a cera escorre numa poça.
-Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Living Candle, 32 px, facing right. Each frame is made of parts: wax body (with drips and shade),
+wick, flame in 3 phases (flickers), little face, wax arms as thick lines and objects (fireball, smoke).
+In `failed` the flame shrinks, goes out and the wax runs into a puddle.
+Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, trait
 
 PAL = {
@@ -11,7 +11,7 @@ PAL = {
     "r": "#b8283a", "q": "#7e1a2a", "G": "#e8bb48", "g": "#9a7420",
 }
 
-# chama: 3 fases do tremor (7 de largura), mais a grande do salto/golpe e a pequenininha do failed
+# flame: 3 flicker phases (7 wide), plus the big one for jump/attack and the tiny one for failed
 FLAMES = [
     ["...K...", "..KFK..", "..KFK..", ".KFfFK.", ".KfRfK.", "KFfRfFK", ".KFFFK.", "..KKK.."],
     ["....K..", "...KFK.", "..KFFK.", ".KFfFK.", ".KfRfK.", "KFfRfFK", ".KFFFK.", "..KKK.."],
@@ -28,8 +28,8 @@ HAND = [".KKK.", "KCCCK", "KCCCK", ".KKK."]
 
 def frame(cx=15, base=30, h=12, lean=0, eyes="normal", flame=0, arms=(), por=(), behind=(), puddle=0,
            feet=(0, 0)):
-    """Um quadro 32x32 e a âncora (canto do colar, no topo do corpo). `chama`: 0..2 fase, "g" grande,
-    "p" pequena, "fumaca"/"fumaca2" apagada. `poca`: meia-largura extra da cera escorrida na base."""
+    """One 32x32 frame and the anchor (necklace corner, on top of the body). `flame`: 0..2 phase, "g" big,
+    "p" small, "fumaca"/"fumaca2" out. `puddle`: extra half-width of the wax that ran down at the base."""
     g = [["."] * N for _ in range(N)]
     for s, x, y in behind:
         stamp(g, s, x, y)
@@ -40,14 +40,14 @@ def frame(cx=15, base=30, h=12, lean=0, eyes="normal", flame=0, arms=(), por=(),
         c = cx + round(lean * (1 - t))
         half = 5 + (round(puddle * t * t) if puddle else 0)
         body |= {(x, y) for x in range(c - half, c + half + 1)}
-    for i, (px, dx) in enumerate(((cx - 4, feet[0]), (cx + 2, feet[1]))):   # pezinhos de cera
+    for i, (px, dx) in enumerate(((cx - 4, feet[0]), (cx + 2, feet[1]))):   # little wax feet
         body |= {(x, base) for x in range(px + dx, px + dx + 3)}
     for x, y in body:
         if 0 <= x < N and 0 <= y < N:
             shadow = (x + 1, y) not in body or y >= base - 1
             g[y][x] = "c" if shadow else "C"
     ct = cx + lean
-    for dx, L in ((-4, 3), (3, 4), (-1, 2)):      # escorridos no alto
+    for dx, L in ((-4, 3), (3, 4), (-1, 2)):      # drips at the top
         for y in range(top, top + L):
             if (ct + dx, y) in body:
                 g[y][ct + dx] = "c"
@@ -55,7 +55,7 @@ def frame(cx=15, base=30, h=12, lean=0, eyes="normal", flame=0, arms=(), por=(),
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
             if (nx, ny) not in body and 0 <= nx < N and 0 <= ny < N:
                 g[ny][nx] = "K"
-    # pavio e chama
+    # wick and flame
     g[top - 1][ct] = g[top - 2][ct] = "w"
     if flame in (0, 1, 2):
         stamp(g, FLAMES[flame], ct - 3, top - 10)
@@ -67,7 +67,7 @@ def frame(cx=15, base=30, h=12, lean=0, eyes="normal", flame=0, arms=(), por=(),
         stamp(g, SMOKE, ct - 2, top - 7)
     elif flame == "fumaca2":
         stamp(g, SMOKE2, ct - 1, top - 8)
-    # rosto
+    # face
     fy = top + 4 if h >= 9 else top + 2
     ex = ct - 3
     for x in (ex, ex + 5):
@@ -107,42 +107,42 @@ def _state(specs):
     return [q for q, _ in qs], [a for _, a in qs]
 
 
-# base=30, h=12 -> top=18; laterais do corpo em cx-5 / cx+5 (cx=15: 10 e 20)
+# base=30, h=12 -> top=18; body sides at cx-5 / cx+5 (cx=15: 10 and 20)
 _SPECS = {
-    # parado, chama tremulando, mãozinhas balançando
+    # standing, flame flickering, little hands swaying
     "idle": [dict(flame=0, arms=(((20, 23), (24, 25)), ((10, 23), (6, 25)))),
              dict(flame=1, arms=(((20, 23), (24, 24)), ((10, 23), (6, 26)))),
              dict(flame=2, eyes="fechado", arms=(((20, 23), (24, 25)), ((10, 23), (6, 25)))),
              dict(flame=1, arms=(((20, 23), (24, 26)), ((10, 23), (6, 24))))],
-    # corre inclinado, chama puxada para trás, braço balançando
+    # runs leaning, flame pulled back, arm swinging
     "run_r": [dict(lean=2, flame=2, feet=(-2, 2), arms=(((12, 23), (7, 26)),), por=((SMOKE2, 5, 6),)),
               dict(lean=3, base=29, flame=2, arms=(((12, 22), (7, 22)),)),
               dict(lean=2, flame=2, feet=(2, -2), arms=(((12, 23), (7, 25)),), por=((SMOKE2, 4, 7),)),
               dict(lean=3, base=29, flame=2, arms=(((12, 22), (8, 20)),))],
-    # acena alto com a mão direita
+    # waves high with the right hand
     "waving": [dict(eyes="feliz", flame=0, arms=(((20, 22), (25, 18)), ((10, 23), (6, 25)))),
                dict(eyes="feliz", flame=1, arms=(((20, 22), (26, 14)), ((10, 23), (6, 25)))),
                dict(eyes="feliz", flame=2, arms=(((20, 22), (28, 16)), ((10, 23), (6, 25)))),
                dict(eyes="feliz", flame=1, arms=(((20, 22), (26, 14)), ((10, 23), (6, 25))))],
-    # agacha, salta com os braços para cima e a chama grande, cai, pousa
+    # crouches, jumps with arms up and the big flame, falls, lands
     "jumping": [dict(h=9, eyes="fechado", flame=0, arms=(((20, 25), (24, 27)), ((10, 25), (6, 27)))),
                 dict(h=13, base=28, flame="g", arms=(((20, 19), (24, 15)), ((10, 19), (6, 15)))),
                 dict(h=12, base=25, eyes="feliz", flame="g", arms=(((20, 16), (25, 11)), ((10, 16), (5, 11)))),
                 dict(h=13, base=28, flame=1, arms=(((20, 20), (24, 22)), ((10, 20), (6, 22)))),
                 dict(h=10, eyes="feliz", flame=0, arms=(((20, 24), (24, 26)), ((10, 24), (6, 26))))],
-    # triste, a chama encolhe e apaga em fumaça, a cera derrete numa poça
+    # sad, the flame shrinks and goes out in smoke, the wax melts into a puddle
     "failed": [dict(eyes="triste", flame=2, arms=(((20, 23), (23, 27)), ((10, 23), (7, 27))),
                     por=((TEAR, 11, 23),)),
                dict(eyes="triste", flame="p", h=11, puddle=2, arms=(((20, 24), (23, 28)), ((10, 24), (7, 28)))),
                dict(eyes="triste", flame="fumaca", h=9, puddle=4, por=((TEAR, 11, 25),)),
                dict(eyes="x", flame="fumaca2", h=7, puddle=6),
                dict(eyes="x", flame="fumaca2", h=6, puddle=8, lean=-1)],
-    # cochila mais baixinha, chama pequena, "z" subindo
+    # naps a little lower, small flame, "z" rising
     "waiting": [dict(h=10, eyes="fechado", flame="p"),
                 dict(h=10, lean=-1, eyes="fechado", flame="p", por=((Z_S, 22, 6),)),
                 dict(h=10, lean=-1, eyes="fechado", flame="p", por=((Z_S, 21, 6), (Z_L, 25, 0))),
                 dict(h=10, eyes="fechado", flame="p", por=((Z_L, 25, 0),))],
-    # golpe: puxa a chama na mão, gira e arremessa uma bola de fogo que estoura em faíscas
+    # attack: pulls the flame into its hand, spins and throws a fireball that bursts into sparks
     "running": [dict(cx=13, lean=-2, eyes="bravo", flame="g", arms=(((9, 22), (4, 18)),),
                      por=((FLAME_S, 2, 13),)),
                 dict(cx=14, lean=2, eyes="bravo", flame="g", arms=(((19, 22), (24, 16)),),
@@ -151,7 +151,7 @@ _SPECS = {
                      por=((BALL, 24, 14),)),
                 dict(cx=14, lean=1, eyes="bravo", flame=1, arms=(((19, 22), (23, 25)),),
                      por=((SPARKS, 24, 13), (FLAME_S, 26, 9)))],
-    # mão no queixo, olhando para cima, "?" aparece
+    # hand on the chin, looking up, "?" appears
     "review": [dict(cx=13, eyes="cima", flame=0, arms=(((18, 25), (21, 23)),)),
                dict(cx=13, eyes="cima", flame=1, arms=(((18, 25), (21, 23)),), por=((QMARK_S, 24, 4),)),
                dict(cx=13, eyes="cima", flame=2, arms=(((18, 25), (21, 23)),), por=((QMARK, 24, 2),)),
@@ -162,14 +162,14 @@ FRAMES, ANCHOR = {}, {}
 for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
-# colar de cera vermelha escorrida no topo do corpo (acima dos olhos)
+# necklace of red wax dripping at the top of the body (above the eyes)
 NECKLACE = [
     ".KKKKKKKKKKK.",
     "KrrrrrrrrrrrK",
     "KrqKrrKrqKrrK",
     ".KrK..KrK.KK.",
 ]
-# círio antigo: colar com faixa dourada e argola de castiçal do lado
+# ancient taper: necklace with a golden band and a candlestick ring on the side
 TAPER = [
     ".KKKKKKKKKKK.....",
     "KGgGgGgGgGgGK....",

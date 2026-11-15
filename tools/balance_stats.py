@@ -1,16 +1,16 @@
-"""Métricas de balanceamento a partir das linhas de run (formato de masmorra.run_record)."""
+"""Balance metrics from the run lines (dungeon.run_record format)."""
 import sys, json, html, statistics, collections, itertools, base64, struct, zlib, importlib
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import dungeon as M
 import art, visual
 
-# Metas de balanceamento: (mínimo, máximo); None = sem limite.
+# Balance targets: (minimum, maximum); None = no limit.
 TARGETS = {"passou_chefe1": (0.35, 0.45), "p90": (13, 16), "max": (None, 50)}
 
 
 def check_targets(res: dict) -> dict:
-    """Para cada meta, True se o número de `res` está dentro da faixa (None sem runs)."""
+    """For each target, True if the number in `res` is inside the range (None without runs)."""
     if res.get("n") == 0:
         return {k: None for k in TARGETS}
     out = {}
@@ -21,7 +21,7 @@ def check_targets(res: dict) -> dict:
 
 
 def load_real(folder: Path, all_versions: bool = False):
-    """Lê <pasta>/runs.jsonl (nunca o runs-demo.jsonl). Devolve (linhas, info)."""
+    """Reads <folder>/runs.jsonl (never runs-demo.jsonl). Returns (lines, info)."""
     info = {"outras_versoes": 0, "ignoradas": 0, "desistencias": 0, "modos": {}}
     arq = Path(folder) / "runs.jsonl"
     if not arq.exists():
@@ -50,22 +50,22 @@ def load_real(folder: Path, all_versions: bool = False):
 
 
 def valid(recs) -> list:
-    """Tira as desistências (run cortada, não terminou)."""
+    """Removes the give-ups (run cut short, not finished)."""
     return [r for r in recs if not r.get("gave_up")]
 
 
 def _p90(xs):
-    # mesmo método do simular.py, mas sem passar do máximo em amostras pequenas
+    # same method as simulate.py, but never above the maximum on small samples
     return min(statistics.quantiles(xs, n=10)[-1], max(xs)) if len(xs) >= 2 else xs[0]
 
 
 def _line_ok(rec) -> bool:
-    """Linha com andar inteiro, char texto e itens {key texto, floor None ou de 1 até o andar da run}."""
+    """Line with an integer floor, a text char and items {text key, floor None or from 1 up to the run's floor}."""
     def whole(x):
         return isinstance(x, int) and not isinstance(x, bool)
     if not isinstance(rec, dict) or not whole(rec.get("floor")) or not isinstance(rec.get("char"), str):
         return False
-    its, cons = rec.get("items"), rec.get("consumed", [])  # consumed falta em linhas antigas
+    its, cons = rec.get("items"), rec.get("consumed", [])  # consumed is missing in old lines
     if not isinstance(its, list) or not isinstance(cons, list):
         return False
     return all(isinstance(i, dict) and isinstance(i.get("key"), str) and "floor" in i
@@ -84,13 +84,13 @@ def summary(recs) -> dict:
 
 
 def expected(recs) -> dict:
-    """Para cada andar f: média de andares restantes (final − f) das runs vivas no andar f."""
+    """For each floor f: mean of the remaining floors (final − f) of the runs alive on floor f."""
     floors = [r["floor"] for r in valid(recs)]
     return {f: statistics.mean(x - f for x in floors if x >= f) for f in range(1, max(floors, default=0) + 1)}
 
 
 def _taken(rec) -> dict:
-    """Chave -> andar em que foi pego (o primeiro), ignorando itens sem floor (saves antigos)."""
+    """Key -> floor where it was taken (the first one), ignoring items without floor (old saves)."""
     out = {}
     for i in rec["items"]:
         if i.get("floor") is not None:
@@ -105,8 +105,8 @@ def per_item(recs) -> dict:
     out = {}
     for key in M.ITEMS:
         rs = [(r["floor"], p[key]) for r, p in taken_ones if key in p]
-        # ofertas resolvidas: cada pegar ou consumir conta uma vez, por modo
-        offers = collections.defaultdict(lambda: [0, 0])  # modo -> [pegos, consumidos]
+        # resolved offers: each take or consume counts once, per mode
+        offers = collections.defaultdict(lambda: [0, 0])  # mode -> [taken, consumed]
         for r in recs:
             mode = r.get("mode", "?")
             offers[mode][0] += sum(i["key"] == key and i.get("floor") is not None for i in r["items"])
@@ -123,7 +123,7 @@ def per_item(recs) -> dict:
                      andar_final=statistics.mean(fin for fin, _ in rs),
                      mortes_rapidas=sum(fin - f <= 2 for fin, f in rs) / len(rs))
         out[key] = d
-    # vs_media: vs_esperado menos a média (ponderada por n) dos itens, porque pegar item já ajuda
+    # vs_mean: vs_expected minus the (n-weighted) mean of the items, because taking an item already helps
     com = [d for d in out.values() if d["n"]]
     mean = sum(d["n"] * d["vs_esperado"] for d in com) / sum(d["n"] for d in com) if com else 0
     for d in out.values():
@@ -132,30 +132,30 @@ def per_item(recs) -> dict:
 
 
 def pairs(recs, minimum: int = 30) -> dict:
-    """Pares de itens com pelo menos `minimo` runs juntos, contados do andar do 2º item."""
+    """Item pairs with at least `minimum` runs together, counted from the floor of the 2nd item."""
     recs = valid(recs)
     esp = expected(recs)
     vs = {k: d["vs_esperado"] for k, d in per_item(recs).items()}
     groups = collections.defaultdict(list)
-    # ponytail: O(itens² por run), ok para milhares de runs com ~5 itens cada
+    # ponytail: O(items² per run), fine for thousands of runs with ~5 items each
     for r in recs:
         for (a, fa), (b, fb) in itertools.combinations(sorted(_taken(r).items()), 2):
             f2 = max(fa, fb)
             groups[a, b].append(r["floor"] - f2 - esp[f2])
     lst = []
     for (a, b), xs in groups.items():
-        if len(xs) >= minimum and a in vs and b in vs:  # item que saiu do jogo não entra
+        if len(xs) >= minimum and a in vs and b in vs:  # an item that left the game is skipped
             m = statistics.mean(xs)
             lst.append({"a": a, "b": b, "n": len(xs), "vs_esperado": m, "ganho": m - max(vs[a], vs[b])})
     lst.sort(key=lambda p: p["ganho"], reverse=True)
-    return {"melhores": lst[:10], "piores": lst[10:][::-1][:5]}  # piores não repetem os melhores
+    return {"melhores": lst[:10], "piores": lst[10:][::-1][:5]}  # the worst ones do not repeat the best ones
 
 
 def deaths(recs) -> dict:
     recs = valid(recs)
     per_floor = collections.Counter(r["floor"] for r in recs)
     killers = collections.Counter(r["killer"] for r in recs if r.get("killer") not in (None, "—"))
-    per_kind = collections.Counter(r.get("killer_kind") or "?" for r in recs)   # linha antiga: "?"
+    per_kind = collections.Counter(r.get("killer_kind") or "?" for r in recs)   # old line: "?"
     return {"por_andar": dict(sorted(per_floor.items())), "matadores": killers.most_common(6),
             "por_tipo": dict(per_kind.most_common())}
 
@@ -167,10 +167,10 @@ def heroes(recs) -> dict:
     return {c: {"n": len(fs), "mediana": statistics.median(fs), "p90": _p90(fs)} for c, fs in groups.items()}
 
 
-# ---------- coleta, página e linha de comando ----------
+# ---------- collection, page and command line ----------
 
 def collect(n_sim: int, real_folder: Path, all_versions: bool, seed: int = 1) -> dict:
-    """Roda a calibração (só slime, igual ao simular.py), a simulação com todos os heróis e lê as runs reais."""
+    """Runs the calibration (slime only, same as simulate.py), the simulation with all heroes and reads the real runs."""
     from datetime import datetime
     import simulate as S
     hero_keys = S.all_heroes()
@@ -254,11 +254,11 @@ def _pct(x) -> str:
 
 
 def _img(pm, side=28) -> str:
-    """Mapa de pixels {(x, y): "#rrggbb"} -> <img> PNG RGBA (aparado na caixa) em data URI, ampliado por inteiro."""
+    """Pixel map {(x, y): "#rrggbb"} -> <img> RGBA PNG (trimmed to its box) as a data URI, scaled by an integer."""
     x0, y0, x1, y1 = visual.bbox(pm)
     raw = bytearray()
     for y in range(y0, y1):
-        raw.append(0)  # filtro 0 na linha
+        raw.append(0)  # filter 0 on the line
         for x in range(x0, x1):
             c = pm.get((x, y))
             raw += bytes.fromhex(c[1:]) + b"\xff" if c else b"\0\0\0\0"
@@ -272,7 +272,7 @@ def _img(pm, side=28) -> str:
 
 
 def _item_icon(key) -> str:
-    """Ícone do item, com a borda na cor da raridade mais alta que ele pode ter."""
+    """Item icon, with the border in the color of the highest rarity it can have."""
     g = art.ITEM_ART.get(key)
     if not g:
         return ""
@@ -283,7 +283,7 @@ def _item_icon(key) -> str:
 
 
 def _hero_icon(key) -> str:
-    """Quadro idle do 1º estágio (herois/<chave>.py); herói sem módulo (ex.: Petdex) fica sem ícone."""
+    """Idle frame of the 1st stage (heroes/<key>.py); a hero without a module (e.g. Petdex) has no icon."""
     try:
         mod = importlib.import_module("heroes." + key)
         from heroes import assemble
@@ -299,7 +299,7 @@ def _item_name(key, items) -> str:
 
 
 def _summary_line(name, r, metas=None) -> str:
-    """Linha da tabela Resumo; sem `metas` (ou meta None) não mostra ✓/✗."""
+    """Summary table row; without `targets` (or with a None target) it shows no ✓/✗."""
     def cel(k, txt):
         m = (metas or {}).get(k)
         sign = "" if m is None else (' <span class="badge ok">✓</span>' if m else ' <span class="badge ruim">✗</span>')
@@ -311,7 +311,7 @@ def _summary_line(name, r, metas=None) -> str:
 
 
 def _pair_sr(sim, real, fmt, vs=False, weak=False, fmt_real=None) -> str:
-    """Célula 'sim / real'. Cor pela regra vs_media; real esmaecido quando fraco."""
+    """'sim / real' cell. Color by the vs_mean rule; real is faded when weak."""
     def un(v, f, dim):
         txt = f(v)
         if vs and v is not None and abs(v) > 1:
@@ -340,11 +340,11 @@ def _items_table(items) -> str:
         for _, k in cab[1:]:
             order = "" if s[k] is None else s[k]
             modes, fr = "", None
-            if k == "pego":  # real: quantas runs e a fração
+            if k == "pego":  # real: how many runs and the fraction
                 fr = lambda v, n=r["n"]: "—" if v is None else f"{n} ({_pct(v)})"
-            if k == "vs_media":  # valor bruto, sem centrar na média
+            if k == "vs_media":  # raw value, not centered on the mean
                 modes = f'<br><small class="mu">bruto {_n(s["vs_esperado"], 2)} / {_n(r["vs_esperado"], 2)}</small>'
-            if k == "consumido" and r["consumido_por_modo"]:  # real separado por modo de jogo
+            if k == "consumido" and r["consumido_por_modo"]:  # real split by game mode
                 modes = "<br><small class=\"mu\">" + " · ".join(
                     f"{_e(m)} {_pct(v)}" for m, v in sorted(r["consumido_por_modo"].items())) + "</small>"
             out.append(f'<td data-v="{order}">{_pair_sr(s[k], r[k], fmts[k], vs=(k == "vs_media"), weak=weak, fmt_real=fr)}{modes}</td>')
@@ -371,7 +371,7 @@ def _histogram(per_floor, title) -> str:
     larg, alt, esp = 22, 120, 14
     bars = []
     for a in range(1, until + 1):
-        v = per_floor.get(a, per_floor.get(str(a), 0))  # chave int (memória) ou str (JSON)
+        v = per_floor.get(a, per_floor.get(str(a), 0))  # int key (memory) or str (JSON)
         h, x = alt * v / maxv, (a - 1) * larg
         bars.append(f'<rect x="{x + 2}" y="{alt - h:.1f}" width="{larg - 4}" height="{h:.1f}" fill="{"#ffd23f" if a % M.BOSS_EVERY == 0 else "#7a73d6"}" rx="2">'
                       f'<title>andar {a}: {v} ({v / total * 100:.0f}%)</title></rect>'
@@ -382,7 +382,7 @@ def _histogram(per_floor, title) -> str:
 
 
 def _bars(pairs) -> str:
-    """Barras horizontais em CSS: rótulo, barra proporcional ao maior e valor."""
+    """Horizontal CSS bars: label, bar proportional to the largest and value."""
     pairs = list(pairs)
     top = max(c for _, c in pairs) or 1
     return '<ul class="barras">' + "".join(
@@ -427,7 +427,7 @@ def make_html(data: dict) -> str:
     for key, name in (("sem_conquistas", "calibração (slime) sem conquistas"),
                         ("com_conquistas", "calibração (slime) com conquistas")):
         p.append(_summary_line(name, cal[key], metas[key]))
-    # todos os heróis misturados: informativo, as metas são julgadas na calibração
+    # all heroes mixed: informative only, the targets are judged in the calibration
     p.append(_summary_line("sim (todos os heróis)", data["sim"]))
     p.append(_summary_line("sim sem conquistas (todos os heróis)", data["sim_sem_conquistas"]))
     p.append(_summary_line("real", data["real"], metas["real"]))
@@ -437,7 +437,7 @@ def make_html(data: dict) -> str:
              "Embaixo, o vs esperado bruto. Real esmaecido: menos de 10 runs reais com o item.</p>")
     p.append(_items_table(items))
     for rot, key in (("Melhores pares", "melhores"), ("Piores pares", "piores")):
-        p.append(f'<h2>{rot}</h2><div>')  # empilhado: os nomes com ícone não cabem lado a lado
+        p.append(f'<h2>{rot}</h2><div>')  # stacked: names with icons do not fit side by side
         for font in ("sim", "real"):
             lst = data["pares"][font][key]
             body = '<p class="mu">sem runs reais</p>' if font == "real" and real_empty else _pairs_table(lst, items)
@@ -454,7 +454,7 @@ def make_html(data: dict) -> str:
     try:
         import tokenlike
         names = {k: c.name for k, c in tokenlike.all_characters().items()}
-    except Exception:  # só o nome bonito; a chave serve
+    except Exception:  # only the pretty name; the key will do
         names = {}
     for c in sorted(set(hs) | set(hr)):
         s, r = hs.get(c), hr.get(c)
@@ -472,7 +472,7 @@ def main(argv=None):
     ap.add_argument("--no-open", action="store_true")
     ap.add_argument("--real-dir", default=str(Path.home() / ".tokenlike"))
     ap.add_argument("--all-versions", action="store_true")
-    ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "out"))  # só para teste
+    ap.add_argument("--out", default=str(Path(__file__).resolve().parent / "out"))  # for tests only
     a = ap.parse_args(argv)
     data = collect(a.runs, Path(a.real_dir), a.all_versions)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)

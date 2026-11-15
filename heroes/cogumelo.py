@@ -1,7 +1,7 @@
-"""Cogumelo de Caverna, 32 px, olhando para a direita. Cada quadro sai de partes: talo com rostinho (e sombra),
-chapéu em cúpula com pintas que brilham (2 fases), pezinhos, braços em linha grossa e objetos (esporos, nuvem).
-No `failed` o chapéu murcha e tomba, o talo encolhe e os esporos escapam.
-Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Cave Mushroom, 32 px, facing right. Each frame is made of parts: stalk with a little face (and shade),
+dome cap with glowing spots (2 phases), little feet, arms as thick lines and objects (spores, cloud).
+In `failed` the cap wilts and tips over, the stalk shrinks and the spores escape.
+Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from math import sqrt
 
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, trait
@@ -26,14 +26,14 @@ CLOUD = [
 ]
 PUFF = ["..KKK..", ".KEEEK.", "KEELEEK", "KEEEeEK", ".KEEEK.", "..KKK.."]
 HAND = [".KKK.", "KCCCK", "KCCCK", ".KKK."]
-# pintas do chapéu: (dx do centro da linha, linha a partir do topo, largura, altura, fase em que acende)
+# cap spots: (dx from the row center, row from the top, width, height, phase in which it lights up)
 SPOTS = ((-4, 2, 2, 2, 0), (2, 1, 2, 1, 1), (4, 3, 2, 2, 0), (-1, 4, 1, 1, 1), (-7, 4, 1, 1, 1))
 
 
 def frame(cx=15, base=30, h=9, lean=0, hat=9, hc=7, tilt=0, eyes="normal", shine=0, arms=(), por=(),
            behind=(), feet=(0, 0)):
-    """Um quadro 32x32 e a âncora (canto do acréscimo, 13 px à esquerda e 6 acima do topo do chapéu).
-    `chapeu`: meia-largura do chapéu; `hc`: altura; `tilt`: quanto o topo do chapéu tomba para o lado."""
+    """One 32x32 frame and the anchor (corner of the add-on, 13 px to the left and 6 above the cap top).
+    `hat`: half-width of the cap; `hc`: height; `tilt`: how far the cap top tips to the side."""
     g = [["."] * N for _ in range(N)]
     for s, x, y in behind:
         stamp(g, s, x, y)
@@ -43,7 +43,7 @@ def frame(cx=15, base=30, h=9, lean=0, hat=9, hc=7, tilt=0, eyes="normal", shine
         t = (y - top) / max(h - 1, 1)
         c = cx + round(lean * (1 - t))
         stalk |= {(x, y) for x in range(c - 5, c + 6)}
-    for px, dx in ((cx - 4, feet[0]), (cx + 2, feet[1])):   # pezinhos
+    for px, dx in ((cx - 4, feet[0]), (cx + 2, feet[1])):   # little feet
         stalk |= {(x, base) for x in range(px + dx, px + dx + 3)}
     ct = cx + lean
     ytop = top + 2 - hc
@@ -70,7 +70,7 @@ def frame(cx=15, base=30, h=9, lean=0, hat=9, hc=7, tilt=0, eyes="normal", shine
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
             if (nx, ny) not in body and 0 <= nx < N and 0 <= ny < N:
                 g[ny][nx] = "K"
-    # rosto no talo, logo abaixo do chapéu
+    # face on the stalk, just below the cap
     fy = top + 2
     ex = ct - 3
     for x in (ex, ex + 5):
@@ -95,7 +95,7 @@ def frame(cx=15, base=30, h=9, lean=0, hat=9, hc=7, tilt=0, eyes="normal", shine
         stamp(g, ["B..B", ".BB."], ex + 2, my)
     for a, b in arms:
         x, y = a
-        while (x, y) in stalk:              # o braço sai da beirada do talo, sem riscar o rosto
+        while (x, y) in stalk:              # the arm leaves from the stalk's edge, without crossing the face
             x += 1 if x >= ct else -1
         trait(g, (x, y), b, "C")
         stamp(g, HAND, b[0] - 2, b[1] - 1)
@@ -109,32 +109,32 @@ def _state(specs):
     return [q for q, _ in qs], [a for _, a in qs]
 
 
-# base=30, h=9 -> talo de 21 a 29, chapéu de 16 a 22; laterais do talo em cx-5 / cx+5 (cx=15: 10 e 20)
+# base=30, h=9 -> stalk from 21 to 29, cap from 16 to 22; stalk sides at cx-5 / cx+5 (cx=15: 10 and 20)
 _SPECS = {
-    # parado, pintas piscando, esporinhos subindo de um lado e do outro, mãozinhas balançando
+    # standing, spots blinking, little spores rising on both sides, little hands swaying
     "idle": [dict(shine=0, arms=(((20, 25), (24, 27)), ((10, 25), (6, 27))), por=((SPORE, 26, 18),)),
              dict(shine=1, arms=(((20, 25), (24, 26)), ((10, 25), (6, 28))), por=((SPORE, 27, 13),)),
              dict(shine=0, eyes="fechado", arms=(((20, 25), (24, 27)), ((10, 25), (6, 27))),
                   por=((SPORE, 2, 17), (SPORE_S, 28, 9))),
              dict(shine=1, arms=(((20, 25), (24, 28)), ((10, 25), (6, 26))), por=((SPORE, 1, 12),))],
-    # corre inclinado, chapéu puxado para trás, esporos ficando para trás
+    # runs leaning, cap pulled back, spores left behind
     "run_r": [dict(lean=2, tilt=-2, feet=(-2, 2), arms=(((12, 25), (7, 28)),), por=((SPORE, 1, 20),)),
               dict(lean=3, base=29, tilt=-3, shine=1, arms=(((12, 24), (7, 23)),), por=((SPORE_S, 2, 17),)),
               dict(lean=2, tilt=-2, feet=(2, -2), arms=(((12, 25), (7, 27)),), por=((SPORE, 0, 19),)),
               dict(lean=3, base=29, tilt=-3, shine=1, arms=(((12, 24), (8, 21)),), por=((SPORE_S, 1, 15),))],
-    # acena alto com a mão direita, chapéu balança junto
+    # waves high with the right hand, the cap sways along
     "waving": [dict(eyes="feliz", arms=(((20, 24), (28, 21)), ((10, 25), (6, 27)))),
                dict(eyes="feliz", tilt=1, shine=1, arms=(((20, 24), (29, 16)), ((10, 25), (6, 27)))),
                dict(eyes="feliz", tilt=2, arms=(((20, 24), (25, 14)), ((10, 25), (6, 27)))),
                dict(eyes="feliz", tilt=1, shine=1, arms=(((20, 24), (29, 16)), ((10, 25), (6, 27))))],
-    # agacha (chapéu achata), salta com os braços para cima, cai, pousa
+    # crouches (cap flattens), jumps with arms up, falls, lands
     "jumping": [dict(h=7, hat=10, hc=6, eyes="fechado", arms=(((20, 26), (24, 28)), ((10, 26), (6, 28)))),
                 dict(base=27, hc=8, hat=8, arms=(((20, 22), (25, 18)), ((10, 22), (5, 18)))),
                 dict(base=24, hc=8, hat=8, eyes="feliz", shine=1,
                      arms=(((20, 19), (26, 14)), ((10, 19), (4, 14)))),
                 dict(base=27, shine=1, arms=(((20, 22), (25, 24)), ((10, 22), (5, 24)))),
                 dict(h=8, hat=10, hc=6, eyes="feliz", arms=(((20, 26), (24, 28)), ((10, 26), (6, 28))))],
-    # triste, o chapéu murcha e tomba, o talo encolhe e os esporos escapam
+    # sad, the cap wilts and tips over, the stalk shrinks and the spores escape
     "failed": [dict(eyes="triste", arms=(((20, 25), (23, 29)), ((10, 25), (7, 29))), por=((TEAR, 11, 25),)),
                dict(eyes="triste", h=8, hc=6, hat=10, tilt=-2, shine=1,
                     arms=(((20, 26), (23, 29)), ((10, 26), (7, 29))), por=((SPORE, 25, 12),)),
@@ -143,12 +143,12 @@ _SPECS = {
                dict(cx=17, eyes="x", h=7, hc=4, hat=10, tilt=-3, lean=-1, shine=1,
                     por=((SPORE_S, 25, 8), (SPORE, 4, 9), (SPORE, 26, 14))),
                dict(cx=18, eyes="x", h=7, hc=4, hat=11, tilt=-4, lean=-1, shine=2, por=((SPORE_S, 6, 6),))],
-    # cochila com o chapéu caído para a frente, "z" subindo
+    # naps with the cap drooping forward, "z" rising
     "waiting": [dict(h=8, eyes="fechado", tilt=2, shine=2),
                 dict(h=8, eyes="fechado", tilt=3, shine=2, por=((Z_S, 24, 6),)),
                 dict(h=8, eyes="fechado", tilt=3, shine=2, por=((Z_S, 23, 6), (Z_L, 26, 0))),
                 dict(h=8, eyes="fechado", tilt=2, shine=2, por=((Z_L, 26, 0),))],
-    # golpe: puxa o braço, espreme o chapéu e sopra uma nuvem de esporos que se espalha
+    # attack: pulls the arm back, squeezes the cap and blows a spreading cloud of spores
     "running": [dict(cx=15, lean=-1, tilt=-1, hc=8, hat=8, eyes="bravo", arms=(((8, 25), (3, 21)),)),
                 dict(cx=14, lean=1, hc=5, hat=11, eyes="bravo", shine=1, arms=(((19, 24), (24, 22)),),
                      por=((PUFF, 25, 22),)),
@@ -156,7 +156,7 @@ _SPECS = {
                      por=((CLOUD, 20, 18),)),
                 dict(cx=14, lean=1, tilt=1, eyes="bravo", shine=1, arms=(((19, 24), (23, 27)),),
                      por=((CLOUD, 19, 9), (SPORE, 25, 21), (SPORE_S, 28, 26), (SPORE_S, 22, 19)))],
-    # mão no queixo, olhando para cima, "?" aparece
+    # hand on the chin, looking up, "?" appears
     "review": [dict(cx=13, eyes="cima", arms=(((18, 27), (21, 25)),)),
                dict(cx=13, eyes="cima", shine=1, arms=(((18, 27), (21, 25)),), por=((QMARK_S, 25, 4),)),
                dict(cx=13, eyes="cima", arms=(((18, 27), (21, 25)),), por=((QMARK, 25, 2),)),
@@ -178,11 +178,11 @@ def _extra(pieces, w=27, h=14):
     return ["".join(l) for l in g]
 
 
-# esporos brilhando em volta do chapéu (o topo do chapéu fica na linha 6, centrado na coluna 13); o extra tem 27
-# colunas, então o topo do chapéu (ct + tilt) fica entre x=13 e x=18 em todo quadro para os esporos caberem
+# glowing spores around the cap (the cap top sits on row 6, centered on column 13); the extra is 27
+# columns wide, so the cap top (ct + tilt) stays between x=13 and x=18 in every frame for the spores to fit
 _SHINE = ((SPORE, 2, 1), (SPORE, 22, 6), (SPORE, 0, 9))
 SPORES = _extra(_SHINE)
-# ancião: cogumelinhos brotando do topo do chapéu e dois esporos dos lados
+# elder: little mushrooms sprouting from the cap top and two spores on the sides
 MINI_S = [".KKK.", "KOLOK", "KKKKK", ".KCK.", ".KCK."]
 MINI_L = ["..KKK..", ".KOOOK.", "KOLOOOK", "KKKKKKK", "..KCK..", "..KCK.."]
 ELDER = _extra(((SPORE, 22, 6), (SPORE, 0, 9), (MINI_S, 7, 1), (MINI_L, 12, 0)))

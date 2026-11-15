@@ -1,4 +1,4 @@
-"""Escreve PNGs de verdade (zlib + struct) para os testes exercitarem o decodificador."""
+"""Writes real PNGs (zlib + struct) so the tests exercise the decoder."""
 import struct
 import zlib
 
@@ -29,7 +29,7 @@ def _filter(f, lin, ant, bpp):
 
 
 def write_png(path, w, h, lines, kind=6, filters=(0,), plte=b"", trns=b""):
-    """`linhas`: h linhas de bytes já no formato do tipo de cor (8 bits). Filtro da linha y = filtros[y % len]."""
+    """`lines`: h rows of bytes already in the color type's format (8 bits). Filter of row y = filters[y % len]."""
     bpp = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}[kind]
     raw, ant = bytearray(), bytes(w * bpp)
     for y, lin in enumerate(lines):
@@ -47,9 +47,9 @@ def write_png(path, w, h, lines, kind=6, filters=(0,), plte=b"", trns=b""):
 
 
 def sheet_png(path, w, h, lines=9, noise=8, rises=None, empties=None):
-    """Folha 8 x `linhas`: corpo opaco no meio de cada célula, resto com alfa `ruido` (quase transparente).
-    `sobe` = {linha: px}: o corpo daquela linha fica px mais alto (quadro de pulo)."""
-    rises, empties = rises or {}, empties or {}   # vazias = {linha: n}: as n últimas células da linha ficam sem corpo
+    """8 x `lines` sheet: opaque body in the middle of each cell, the rest with alpha `noise` (almost transparent).
+    `rises` = {row: px}: that row's body sits px higher (jump frame)."""
+    rises, empties = rises or {}, empties or {}   # empties = {row: n}: the last n cells of the row have no body
     cw, ch = w // 8, h // lines
     backdrop = bytes([10, 20, 30, noise])
     body = bytes([200, 100, 50, 255])

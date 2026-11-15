@@ -1,4 +1,4 @@
-"""Gera preview_art.png com todos os desenhos do arte.py (precisa do Pillow: pip install pillow)."""
+"""Generates preview_art.png with every drawing from art.py (needs Pillow: pip install pillow)."""
 import sys; from pathlib import Path; sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import art
 from PIL import Image, ImageDraw

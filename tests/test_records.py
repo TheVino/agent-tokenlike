@@ -18,22 +18,22 @@ assert set(rec) == {"run", "char", "floor", "room", "killer", "gave_up", "items"
 assert rec["killer_kind"] == ""
 assert M.run_record(run, "x", False, "auto", [], killer_kind="horde")["killer_kind"] == "horde"
 assert rec["version"] == M.BALANCE_VERSION and len(M.BALANCE_VERSION) == 8
-assert json.loads(json.dumps(rec)) == rec                       # serializável
+assert json.loads(json.dumps(rec)) == rec                       # serializable
 v0 = M.BALANCE_VERSION
-dagger = copy.deepcopy(M.ITEMS["adaga"])                         # restaura depois: outros testes usam ITEMS
+dagger = copy.deepcopy(M.ITEMS["adaga"])                         # restore afterwards: other tests use ITEMS
 M.ITEMS["adaga"]["look"] = {"type": "obj", "anchor": "esq", "art": "adaga"}
-assert M._balance_version() == v0                              # visual não muda a versão
+assert M._balance_version() == v0                              # visuals do not change the version
 M.ITEMS["adaga"]["fx"] = {"atk": 99}
-assert M._balance_version() != v0                              # número muda a versão
+assert M._balance_version() != v0                              # a number changes the version
 M.ITEMS["adaga"] = dagger
 assert M._balance_version() == v0
 M.MONSTERS[0] = (M.MONSTERS[0][0], "Outro Nome") + M.MONSTERS[0][2:]
-assert M._balance_version() == v0                              # nome de monstro não muda a versão
+assert M._balance_version() == v0                              # a monster name does not change the version
 M.MONSTERS[0] = (M.MONSTERS[0][0], "Morcego") + M.MONSTERS[0][2:]
 rev = M.RULES_REV; M.RULES_REV += 1
-assert M._balance_version() != v0                              # regra/fórmula nova: sobe REGRAS_REV
+assert M._balance_version() != v0                              # a new rule/formula: bump RULES_REV
 M.RULES_REV = rev; assert M._balance_version() == v0
-# simulador gera registros no formato real
+# the simulator produces records in the real format
 sys.path.insert(0, str(ROOT / "tools")); import simulate as S
 recs, rooms = S.simulate(n=40, achs=list(M.ACHIEVEMENTS), seed=3, heroes=S.all_heroes())
 assert len(recs) == 40 and len(rooms) == 40
@@ -41,8 +41,8 @@ assert {r["char"] for r in recs} == {h[0] for h in S.all_heroes()}
 assert all(set(r) == set(M.run_record(M.new_run("slime", {}, 0), "x", False, "auto", [])) for r in recs)
 assert all(i["floor"] is not None for r in recs for i in r["items"])
 a, _ = S.simulate(n=20, seed=5); b, _ = S.simulate(n=20, seed=5)
-assert [r["floor"] for r in a] == [r["floor"] for r in b]       # determinístico
-# cemitério guarda o tipo da morte
+assert [r["floor"] for r in a] == [r["floor"] for r in b]       # deterministic
+# the graveyard keeps the kind of death
 import random
 def dies(room_kind=None, **kw):
     rng = random.Random(1)
@@ -58,5 +58,5 @@ assert all((g["kind"] == "status") == (g["killer"] in ("Queimadura", "Veneno")) 
 m2 = M.new_meta(); r2 = M.new_run("slime", {"hp": 5, "atk": 1}, 0)
 M.die(r2, m2, {}, "Desistiu", "desistiu"); assert m2["graveyard"][-1]["kind"] == "desistiu"
 r3 = M.new_run("slime", {}, 9); r3["items"] = [{"key": "adaga", "rar": "raro", "floor": 1, "kills0": 0}]; m3 = M.new_meta()
-M.die(r3, m3, {}, "x"); assert m3["graveyard"][-1]["items"] == [{"key": "adaga", "rar": "raro"}]   # lápide guarda a raridade
+M.die(r3, m3, {}, "x"); assert m3["graveyard"][-1]["items"] == [{"key": "adaga", "rar": "raro"}]   # the tombstone keeps the rarity
 print("ok: registro")

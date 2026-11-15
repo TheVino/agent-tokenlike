@@ -50,7 +50,7 @@ assert chars["slime"].stage_floors == [1, 4, 10] and chars["fantasma"].unlock ==
 import art; art.validate()
 print("reader tests ok")
 
-# horário das respostas: histórico de uso por baldes de 5 min (só o timestamp, nada de conteúdo)
+# response times: usage history in 5-min buckets (only the timestamp, no content)
 import time as _t
 from datetime import datetime as _dt, timezone as _tz
 def iso(ts): return _dt.fromtimestamp(ts, _tz.utc).strftime("%Y-%m-%dT%H:%M:%S.123Z")
@@ -58,18 +58,18 @@ def asst_ts(mid, rid, i, ts):
     d = json.loads(asst(mid, rid, i, 0, 0, 0)); d["timestamp"] = iso(ts); return json.dumps(d)
 tmp2 = Path(tempfile.mkdtemp()); (tmp2/"p").mkdir(); g = tmp2/"p"/"b.jsonl"
 now = _t.time()
-g.write_text("\n".join([asst_ts("t1","r",100,now), asst_ts("t1","r",100,now),        # duplicada
-                        asst_ts("t2","r",50,now - 9*86400),                          # velha: podada
-                        asst("t3","r",7,0,0,0)]) + "\n")                             # sem horário
+g.write_text("\n".join([asst_ts("t1","r",100,now), asst_ts("t1","r",100,now),        # duplicated
+                        asst_ts("t2","r",50,now - 9*86400),                          # old: pruned
+                        asst("t3","r",7,0,0,0)]) + "\n")                             # no timestamp
 st = {}; rd = tp.TokenReader(st, dirs=[tmp2])
-assert rd.poll() == (157.0, 157)                         # energia conta tudo, sem duplicar
-assert sum(st["usage_hist"].values()) == 100, st["usage_hist"]   # sem horário fica fora; >8 dias podado
+assert rd.poll() == (157.0, 157)                         # energy counts everything, without duplicating
+assert sum(st["usage_hist"].values()) == 100, st["usage_hist"]   # no timestamp stays out; >8 days pruned
 assert tp.parse_ts("2026-01-01T00:00:00Z") == _dt(2026,1,1,tzinfo=_tz.utc).timestamp()
 assert tp.parse_ts(None) is None and tp.parse_ts("lixo") is None
 assert abs(tp.usage_between(st, now - 600, now + 1) - 100) < 1e-9 and tp.usage_between(st, now - 9e6, now - 3600) == 0
 print("reader timestamp ok")
 
-# backfill: linhas já existentes enchem o histórico, mas não dão energia nem entram no `seen`
+# backfill: existing lines fill the history, but give no energy and do not go into `seen`
 tmp3 = Path(tempfile.mkdtemp()); (tmp3/"p").mkdir(); h = tmp3/"p"/"c.jsonl"
 h.write_text("\n".join([asst_ts("b1","r",300,now), asst_ts("b1","r",300,now), asst_ts("b2","r",20,now)]) + "\n")
 sb = {}; rb = tp.TokenReader(sb, dirs=[tmp3]); rb.skip_existing(); rb.backfill()
@@ -77,7 +77,7 @@ assert sum(sb["usage_hist"].values()) == 320, sb["usage_hist"]
 assert rb.poll() == (0.0, 0) and not rb.seen
 print("reader backfill ok")
 
-# Petdex: pasta só com WebP é ignorada com aviso; pet.json inválido não derruba (sem tkinter)
+# Petdex: a folder with only WebP is ignored with a warning; an invalid pet.json does not crash (no tkinter)
 dex = Path(tempfile.mkdtemp()); (dex/"w").mkdir(); (dex/"w"/"pet.json").write_text("{x")
 (dex/"w"/"spritesheet.webp").write_bytes(b"w")
 tp.LOG_FILE = dex/"log.txt"; tp.DATA_DIR = dex
@@ -85,7 +85,7 @@ tp.petdex_dirs = lambda: [dex, dex/"nao-existe"]
 assert tp.load_petdex_characters() == []
 _l = tp.LOG_FILE.read_text(encoding="utf-8")
 assert "converta para PNG" in _l and "converter_webp.py" in _l and "erro" not in _l
-# OpenPets: displayName + spritesheetPath .webp com .png de mesmo nome ao lado
+# OpenPets: displayName + .webp spritesheetPath with a same-name .png beside it
 sys.path.insert(0, str(Path(__file__).parent)); from _png import sheet_png as _png0
 def _png(path): _png0(path, 8 * 9, 9 * 8)
 (dex/"o").mkdir(); (dex/"o"/"pet.json").write_text('{"displayName":"Bitty","spritesheetPath":"sheet.webp"}')

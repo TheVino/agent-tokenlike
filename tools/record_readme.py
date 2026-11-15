@@ -1,7 +1,7 @@
-"""Gera docs/screenshot.png e docs/demo.gif com o app de verdade (Tk real + Pillow, só Windows).
+"""Generates docs/screenshot.png and docs/demo.gif with the real app (real Tk + Pillow, Windows only).
 
-Usa um HOME temporário e dados falsos (nada do progresso real nem da tela do usuário: um fundo escuro
-fica atrás do pet transparente). Uso: python tools/gravar_readme.py [segundos_do_gif] [en|pt]
+Uses a temporary HOME and fake data (nothing from the real progress or the user's screen: a dark backdrop
+stays behind the transparent pet). Usage: python tools/record_readme.py [gif_seconds] [en|pt]
 """
 import os, random, sys, tempfile, time, types
 from pathlib import Path
@@ -19,9 +19,9 @@ import tokenlike as tp
 BACKDROP = "#16131f"
 DOCS = REPO_ROOT / "docs"
 SEG = float(sys.argv[1]) if len(sys.argv) > 1 else 14
-LANG = sys.argv[2] if len(sys.argv) > 2 else "en"           # o README é em inglês
-X0, Y0, W, H = 700, 60, 800, 700          # área capturada (fundo) na tela
-PET = (X0 + W - 380, Y0 + H - 360)         # canto do pet: à direita (o Perfil fica à esquerda)
+LANG = sys.argv[2] if len(sys.argv) > 2 else "en"           # the README is in English
+X0, Y0, W, H = 700, 60, 800, 700          # captured area (backdrop) on screen
+PET = (X0 + W - 380, Y0 + H - 360)         # pet corner: on the right (the Profile stays on the left)
 
 tp.tk = tkinter
 tp.DATA_DIR = Path(home) / ".tokenlike"
@@ -31,7 +31,7 @@ app.reader.poll = lambda: (0.0, 0)
 app.refresh_limits = lambda: None
 rng = random.Random(7)
 
-# dados de exemplo
+# sample data
 m = app.meta
 m["achievements"] = ["andar5", "chefe1", "mimico", "rico", "veneno1", "queima1", "esquiva10", "andar10"]
 m["runs"], m["best"], m["chefes"] = 23, {"floor": 14, "room": 2}, 4
@@ -49,8 +49,8 @@ app.lang_var.set(LANG); app.change_lang()
 app.load_images(); app.refresh_look(); app.update_panel()
 app.root.geometry(f"+{PET[0]}+{PET[1]}")
 
-# fundo: um Tk próprio, criado depois do app (o 1º Tk é o dono das imagens; e um Toplevel do pet
-# ficaria sempre por cima dele no Windows)
+# backdrop: its own Tk, created after the app (the 1st Tk owns the images; and a Toplevel of the pet
+# would always stay above it on Windows)
 backdrop = tkinter.Tk()
 backdrop.overrideredirect(True)
 backdrop.configure(bg=BACKDROP)
@@ -69,8 +69,8 @@ def wait(s):
 
 
 def snapshot():
-    """Captura a área; se a borda (8 px) não for só o fundo, algo da tela do usuário entrou (Alt+Tab, aviso,
-    outra janela por cima): para sem salvar nada."""
+    """Captures the area; if the border (8 px) is not only the backdrop, something from the user's screen got in (Alt+Tab, notification,
+    another window on top): stops without saving anything."""
     img = ImageGrab.grab((X0, Y0, X0 + W, Y0 + H), all_screens=True).convert("RGB")
     color = tuple(int(BACKDROP[i:i + 2], 16) for i in (1, 3, 5))
     for box in ((0, 0, W, 8), (0, H - 8, W, H), (0, 0, 8, H), (W - 8, 0, W, H)):
@@ -83,9 +83,9 @@ def snapshot():
 
 
 DOCS.mkdir(exist_ok=True)
-wait(0.3); on_top(); wait(9)                # passa o balão de boas-vindas e o MODO DEMO
+wait(0.3); on_top(); wait(9)                # skips the welcome bubble and DEMO MODE
 
-# GIF: o pet jogando sozinho (tokens falsos do demo)
+# GIF: the pet playing by itself (fake demo tokens)
 frames, step = [], 0.1
 end = time.time() + SEG
 while time.time() < end:
@@ -94,21 +94,21 @@ while time.time() < end:
     frames.append(snapshot())
     wait(max(0.0, step - (time.time() - t0)))
 box = (PET[0] - X0 - 250, PET[1] - Y0 - 120, PET[0] - X0 + app.W + 10, PET[1] - Y0 + app.H + 10)
-frames = [q.crop(box) for q in frames]                     # o pet, o painel e os balões acima
+frames = [q.crop(box) for q in frames]                     # the pet, the panel and the bubbles above
 pal = frames[len(frames) // 2].quantize(colors=128, method=Image.MEDIANCUT)
 gif = [q.quantize(palette=pal, dither=Image.NONE) for q in frames]
 gif[0].save(DOCS / "demo.gif", save_all=True, append_images=gif[1:], duration=int(step * 1000),
             loop=0, optimize=True)
 print("docs/demo.gif", len(gif), "quadros", (DOCS / "demo.gif").stat().st_size // 1024, "KB")
 
-# screenshot: pet + Perfil aberto ao lado
-app.demo = False                    # sem selo "(modo demo)" no rodapé
+# screenshot: pet + Profile open beside it
+app.demo = False                    # no "(demo mode)" tag in the footer
 app.state.setdefault("janelas", {})["profile_win"] = [X0 + 10, Y0 + 20]
 app.show_perfil()
 w = app.profile_win
 w.unbind("<FocusOut>")
 on_top(); w.attributes("-topmost", True); w.lift(); wait(1.5)
-w.geometry(f"+{X0 + 10}+{Y0 + 20}"); wait(0.5)   # o 2º Tk (fundo) às vezes devolve a janela para junto do pet
+w.geometry(f"+{X0 + 10}+{Y0 + 20}"); wait(0.5)   # the 2nd Tk (backdrop) sometimes sends the window back next to the pet
 assert (w.winfo_x(), w.winfo_y()) == (X0 + 10, Y0 + 20), (w.winfo_x(), w.winfo_y())
 img = snapshot()
 img.save(DOCS / "screenshot.png")

@@ -1,10 +1,10 @@
-"""Freira das Cinzas, 32 px, olhando para a direita. Uma freirinha baixinha de hábito cinza-cinza (cor de cinza
-de lareira), véu escuro arredondado caindo pelas costas e touca branca emoldurando o rosto redondo. O símbolo é o
-terço de ossinhos (contas de osso com uma caveirinha na ponta): balança no idle, vira chicote no `running` (a
-caveirinha estala no inimigo numa explosão de brasas). No `failed` ela se desfaz em cinza: o hábito esfarela e
-sobra um montinho de cinza com brasas, com o véu caído por cima e o terço ao lado.
-O tronco e a cabeça andam juntos (só pés e braços mudam), para o cordão e o véu longo dos acréscimos ficarem
-sempre no lugar. Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Ash Nun, 32 px, facing right. A short little nun in an ash-grey habit (the color of fireplace
+ash), a dark rounded veil falling down the back and a white coif framing the round face. The symbol is the
+little bone rosary (bone beads with a tiny skull at the end): it sways in idle and becomes a whip in `running` (the
+little skull cracks on the enemy in a burst of embers). In `failed` she crumbles into ash: the habit crumbles and
+what is left is a little ash mound with embers, the veil fallen on top and the rosary beside it.
+The torso and head move together (only feet and arms change), so the add-ons' cord and long veil always
+stay in place. Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, outline_cells, line
 
 PAL = {
@@ -14,10 +14,10 @@ PAL = {
     "Y": "#ffd23f", "T": "#8fd8ff", "D": "#8a5a32",
 }
 
-HABIT = (3, 4, 4, 5, 5, 6, 6, 7, 7, 7)       # meia-largura do hábito por linha (10 linhas, até o chão)
+HABIT = (3, 4, 4, 5, 5, 6, 6, 7, 7, 7)       # habit half-width per row (10 rows, down to the ground)
 
-SKULL = [".KKKK.", "KWWWWK", "KOWWOK", "KWWWWK", ".KwwK.", "..KK.."]   # caveirinha de olhos em brasa
-EMBER = [                                       # a caveirinha estala: explosão de brasas
+SKULL = [".KKKK.", "KWWWWK", "KOWWOK", "KWWWWK", ".KwwK.", "..KK.."]   # little skull with ember eyes
+EMBER = [                                       # the little skull cracks: burst of embers
     "...K...K....",
     "..KOK.KYK...",
     "K.KOOKKYOK.K",
@@ -42,11 +42,11 @@ SMOKE = [
     "...KKK..",
 ]
 SMOKE_S = [".KK.", "KQQK", "KqQK", ".KK."]
-GREY = ["Q.", ".q"]                             # flocos de cinza caindo
+GREY = ["Q.", ".q"]                             # falling ash flakes
 
 
 def _arm(g, a, b, hand=True):
-    """Manga larga do hábito de `a` (ombro) a `b` (mão), com a mãozinha de pele na ponta."""
+    """Wide habit sleeve from `a` (shoulder) to `b` (hand), with the little skin-colored hand at the tip."""
     px = {}
     for x, y in line(*a, *b):
         px[(x, y)] = px[(x, y + 1)] = "h"
@@ -56,34 +56,34 @@ def _arm(g, a, b, hand=True):
 
 
 def _rosary(g, hand, tip):
-    """Terço de ossinhos: contas de osso da mão até a ponta, com a caveirinha pendurada nela."""
+    """Little bone rosary: bone beads from the hand to the tip, with the tiny skull hanging from it."""
     px = {}
-    for i, (x, y) in enumerate(line(*hand, *tip)[1:]):    # contas de 2 px, alternando osso claro e escuro
+    for i, (x, y) in enumerate(line(*hand, *tip)[1:]):    # 2 px beads, alternating light and dark bone
         px[(x, y)] = "W" if i % 3 == 0 else "w"
-        if i % 3 == 0:                            # conta de osso 2x2, cordão fininho entre elas
+        if i % 3 == 0:                            # 2x2 bone bead, thin cord between them
             px[(x + 1, y)] = px[(x, y + 1)] = px[(x + 1, y + 1)] = "W"
     outline_cells(g, px)
     stamp(g, SKULL, tip[0] - 2, tip[1])
 
 
 def _mound(g, cx, base, phase):
-    """Montinho de cinza com brasas e o véu caído por cima (fase 1 = ainda desmanchando, 2 = só o montinho)."""
+    """Little ash mound with embers and the veil fallen on top (phase 1 = still crumbling, 2 = only the mound)."""
     px = {}
-    # montes de tamanhos diferentes (centro x, centro y, raio x, raio y) somados: contorno de cima irregular
+    # mounds of different sizes (center x, center y, radius x, radius y) added up: irregular top outline
     for mx, my, rx, ry in ((cx - 6, base, 4, 3), (cx, base - 1, 5, 3), (cx + 6, base - 1, 4, 5),
                            (cx + 10, base + 1, 2, 2), (cx - 10, base + 1, 1, 1)):
         for x in range(mx - rx, mx + rx + 1):
             for y in range(my - ry, min(my + ry, base) + 1):
                 if (x - mx) ** 2 / (rx + 0.5) ** 2 + (y - my) ** 2 / (ry + 0.5) ** 2 <= 1:
                     px[(x, y)] = "q" if (3 * x + 7 * y) % 11 < 2 else "Q"
-    for x, y in ((cx - 12, base), (cx + 13, base), (cx + 3, base - 6)):   # farelos soltos
+    for x, y in ((cx - 12, base), (cx + 13, base), (cx + 3, base - 6)):   # loose crumbs
         px[(x, y)] = "Q"
-    hx, hy = cx - 1, base - 5                    # o véu caído e amassado em cima do montinho, escorregando à direita
+    hx, hy = cx - 1, base - 5                    # the veil fallen and crumpled on top of the little mound, slipping to the right
     for x in range(hx - 6, hx + 7):
         for y in range(hy - 4, hy + 3):
             if (x - hx) ** 2 / 26 + (y - hy - 1 - (x - hx) // 3) ** 2 / 9 <= 1:
                 px[(x, y)] = "v" if x <= hx - 3 else "V"
-    for x in range(hx - 1, hx + 6):              # pontinha da touca aparecendo debaixo do véu
+    for x in range(hx - 1, hx + 6):              # little tip of the coif showing under the veil
         px[(x, hy + 3)] = "C"
     outline_cells(g, px)
     embers = [(cx - 5, base - 1), (cx + 4, base - 2), (cx - 1, base)] if phase == 2 else [(cx + 3, base - 1)]
@@ -93,9 +93,9 @@ def _mound(g, cx, base, phase):
 
 
 def frame(cx=13, base=30, leg=1, eye="n", feet=(0, 0), arms=(), rosary=None, por=(), mound=0, crumbles=False):
-    """Um quadro 32x32 e a âncora do acréscimo (8 à esquerda e 12 acima do topo do hábito).
-    `bracos`: ((ombro), (mão)) com o ombro de trás em (cx-4, t+1) e o da frente em (cx+4, t+1);
-    `terco`: ((mão), (ponta)) desenhado por cima da mão; `monte`: 1 ou 2 = virou montinho de cinza."""
+    """One 32x32 frame and the add-on anchor (8 to the left and 12 above the habit top).
+    `arms`: ((shoulder), (hand)) with the back shoulder at (cx-4, t+1) and the front one at (cx+4, t+1);
+    `rosary`: ((hand), (tip)) drawn over the hand; `mound`: 1 or 2 = became a little ash mound."""
     g = [["."] * N for _ in range(N)]
     if mound:
         _mound(g, cx, base, mound)
@@ -105,7 +105,7 @@ def frame(cx=13, base=30, leg=1, eye="n", feet=(0, 0), arms=(), rosary=None, por
     t = base - leg - len(HABIT)
     hx, hy = cx + 1, t - 5
     px = {}
-    for i, x0 in enumerate((cx - 3, cx + 1)):     # sapatinhos aparecendo embaixo do hábito
+    for i, x0 in enumerate((cx - 3, cx + 1)):     # little shoes showing under the habit
         x = x0 + feet[i]
         for y in range(base - leg, base + 1):
             for x1 in range(x, x + 3):
@@ -114,10 +114,10 @@ def frame(cx=13, base=30, leg=1, eye="n", feet=(0, 0), arms=(), rosary=None, por
         y = t + r
         for x in range(cx - w, cx + w + 1):
             px[(x, y)] = "h" if x <= cx - w + 1 else "H"
-        if crumbles and r >= 6:                   # a barra do hábito vira cinza
+        if crumbles and r >= 6:                   # the habit's hem turns to ash
             for x in range(cx - w, cx + w + 1):
                 px[(x, y)] = "q" if (x + y) % 3 else "Q"
-    for y in range(hy, t + 4):                    # o véu cai pelas costas até os ombros
+    for y in range(hy, t + 4):                    # the veil falls down the back to the shoulders
         for x in range(hx - 6, hx - 1):
             px[(x, y)] = "v" if x <= hx - 4 else "V"
     for x in range(hx - 5, hx + 6):
@@ -129,12 +129,12 @@ def frame(cx=13, base=30, leg=1, eye="n", feet=(0, 0), arms=(), rosary=None, por
             if fd <= 15 and d <= 27:
                 px[(x, y)] = "F" if fd <= 7 else "C"
     outline_cells(g, px)
-    # rosto: dois olhinhos, bochecha e boquinha
+    # face: two little eyes, cheek and small mouth
     eyes = {"n": (["K", "K"], ["K", "L"]), "fechado": (["k"], ["k"]), "feliz": ([".", "K"], [".", "K"]),
              "x": (["K.K", ".K.", "K.K"], None), "bravo": (["K", "K"], ["K", "K"]), "cima": (["K"], ["L"]),
              "triste": (["K", "K"], ["K", "K"])}[eye]
     ex, ey = hx, hy
-    if eye == "x":                               # olhinhos ">" e "<"
+    if eye == "x":                               # ">" and "<" little eyes
         stamp(g, ["K.", ".K", "K."], ex - 1, ey - 1)
         stamp(g, [".K", "K.", ".K"], ex + 2, ey - 1)
     else:
@@ -148,7 +148,7 @@ def frame(cx=13, base=30, leg=1, eye="n", feet=(0, 0), arms=(), rosary=None, por
         g[ey - 1][ex] = g[ey - 1][ex + 2] = "K"
     if eye == "cima":
         g[ey - 1][ex] = g[ey - 1][ex + 2] = "K"
-    g[hy + 2][hx + 3] = "P"                       # bochecha
+    g[hy + 2][hx + 3] = "P"                       # cheek
     g[hy + 3][hx + 1] = "f" if eye not in ("x", "triste") else "K"
     if eye == "triste":
         stamp(g, TEAR, hx - 1, hy + 2)
@@ -166,27 +166,27 @@ def _state(specs):
     return [q for q, _ in qs], [a for _, a in qs]
 
 
-# base=30, perna=1 -> hábito 19-28 (cx=13), cabeça 9-19 (hx=14, hy=14); ombros em (9, 20) e (17, 20)
-_T = ((9, 20), (6, 25))                         # braço de trás solto ao lado
-_F = ((17, 20), (20, 22))                       # braço da frente segurando o terço
+# base=30, leg=1 -> habit 19-28 (cx=13), head 9-19 (hx=14, hy=14); shoulders at (9, 20) and (17, 20)
+_T = ((9, 20), (6, 25))                         # back arm loose at the side
+_F = ((17, 20), (20, 22))                       # front arm holding the rosary
 _SPECS = {
-    # parada com o terço pendurado na mão da frente; ele balança de um lado para o outro e ela pisca
+    # standing with the rosary hanging from the front hand; it sways from side to side and she blinks
     "idle": [dict(arms=(_T, _F), rosary=((20, 22), (21, 27))),
              dict(arms=(_T, _F), rosary=((20, 22), (24, 26))),
              dict(arms=(_T, _F), rosary=((20, 22), (26, 25))),
              dict(eye="fechado", arms=(_T, _F), rosary=((20, 22), (24, 26))),
              dict(arms=(_T, _F), rosary=((20, 22), (21, 27)))],
-    # trotando com os sapatinhos alternando e o terço balançando para trás
+    # trotting with the little shoes alternating and the rosary swinging back
     "run_r": [dict(feet=(-2, 2), arms=(((9, 20), (5, 23)), ((17, 20), (21, 21))), rosary=((21, 21), (18, 26))),
               dict(base=29, arms=(((9, 20), (6, 22)), ((17, 20), (21, 22))), rosary=((21, 22), (20, 26))),
               dict(feet=(2, -2), arms=(((9, 20), (5, 23)), ((17, 20), (21, 21))), rosary=((21, 21), (18, 26))),
               dict(base=29, arms=(((9, 20), (6, 22)), ((17, 20), (21, 22))), rosary=((21, 22), (20, 26)))],
-    # acena alto com a mão da frente; o terço gira pendurado no pulso
+    # waves high with the front hand; the rosary spins hanging from the wrist
     "waving": [dict(eye="feliz", arms=(_T, ((17, 20), (23, 14))), rosary=((23, 14), (26, 18))),
                dict(eye="feliz", arms=(_T, ((17, 20), (21, 10))), rosary=((21, 10), (25, 13))),
                dict(eye="feliz", arms=(_T, ((17, 20), (26, 12))), rosary=((26, 12), (27, 17))),
                dict(eye="feliz", arms=(_T, ((17, 20), (21, 10))), rosary=((21, 10), (25, 13)))],
-    # agacha, salta com o terço erguido, desce, pousa
+    # crouches, jumps with the rosary raised, comes down, lands
     "jumping": [dict(leg=0, eye="fechado", arms=(((9, 21), (5, 25)), ((17, 21), (21, 24))),
                      rosary=((21, 24), (23, 27))),
                 dict(base=28, eye="cima", arms=(((9, 18), (5, 14)), ((17, 18), (22, 12))),
@@ -196,14 +196,14 @@ _SPECS = {
                 dict(base=28, arms=(((9, 18), (5, 21)), ((17, 18), (22, 16))), rosary=((22, 16), (24, 21))),
                 dict(leg=0, eye="feliz", arms=(((9, 21), (5, 25)), ((17, 21), (21, 24))),
                      rosary=((21, 24), (23, 27)))],
-    # desfaz em cinza: chora, o hábito esfarela, vira montinho de cinza com o véu por cima e o terço ao lado
+    # crumbles into ash: cries, the habit crumbles, becomes a little ash mound with the veil on top and the rosary beside it
     "failed": [dict(eye="triste", arms=(_T, _F), rosary=((20, 22), (21, 27))),
                dict(eye="x", crumbles=True, arms=(((9, 20), (5, 24)), ((17, 20), (22, 24))),
                     rosary=((22, 24), (25, 27)), por=((GREY, 4, 27), (GREY, 24, 29), (GREY, 7, 30))),
                dict(mound=1, por=((SKULL, 24, 25), (SMOKE, 18, 10), (GREY, 6, 19))),
                dict(mound=2, por=((SKULL, 24, 25), (SMOKE_S, 21, 9), (SMOKE, 18, 4))),
                dict(mound=2, por=((SKULL, 24, 25), (SMOKE_S, 22, 2)))],
-    # cochila de cabeça baixa, terço pendurado, "z" subindo
+    # naps with the head down, rosary hanging, "z" rising
     "waiting": [dict(leg=0, eye="fechado", arms=(((9, 21), (6, 26)), ((17, 21), (19, 25))),
                      rosary=((19, 25), (20, 29))),
                 dict(leg=0, eye="fechado", arms=(((9, 21), (6, 26)), ((17, 21), (19, 25))),
@@ -212,7 +212,7 @@ _SPECS = {
                      rosary=((19, 25), (20, 29)), por=((Z_S, 23, 8), (Z_L, 25, 0))),
                 dict(leg=0, eye="fechado", arms=(((9, 21), (6, 26)), ((17, 21), (19, 25))),
                      rosary=((19, 25), (20, 29)), por=((Z_L, 25, 0),))],
-    # chicotada: ergue o terço para trás no alto, gira para a frente (riscos), a caveirinha estala em brasas
+    # whip: raises the rosary back up high, swings it forward (streaks), the little skull cracks into embers
     "running": [dict(cx=11, eye="bravo", arms=(((7, 20), (4, 25)), ((15, 20), (19, 7))),
                      rosary=((19, 7), (9, 1))),
                 dict(cx=11, eye="bravo", arms=(((7, 20), (4, 25)), ((15, 20), (21, 17))),
@@ -221,7 +221,7 @@ _SPECS = {
                      rosary=((21, 18), (27, 15)), por=((EMBER, 19, 3),)),
                 dict(cx=11, eye="feliz", arms=(((7, 20), (4, 25)), ((15, 20), (20, 22))),
                      rosary=((20, 22), (22, 27)), por=((FLICKER, 25, 9), (FLICKER_Y, 28, 14), (FLICKER, 23, 4)))],
-    # mão no queixo, olhando para cima, "?" aparece; o terço pendurado na outra mão
+    # hand on the chin, looking up, "?" appears; the rosary hanging from the other hand
     "review": [dict(eye="cima", arms=(((9, 20), (5, 24)), ((17, 20), (19, 18))), rosary=((5, 24), (4, 28))),
                dict(eye="cima", arms=(((9, 20), (5, 24)), ((17, 20), (19, 18))), rosary=((5, 24), (4, 28)),
                     por=((QMARK_S, 24, 4),)),
@@ -235,10 +235,10 @@ FRAMES, ANCHOR = {}, {}
 for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
-# grade 17x18 colada 8 à esquerda e 12 acima do topo do hábito (hábito a partir da linha 12, centro na coluna 8;
-# cabeça centrada em (9, 7), alto do véu na linha 2): cordão de carvão na cintura com nós de brasa; brasas acesas
-# salpicadas no véu, do alto até a barra nas costas (no montinho de cinza do `failed` elas sobem soltas como
-# fagulhas, e o cordão fica caído na cinza)
+# 17x18 grid attached 8 to the left and 12 above the habit top (habit from row 12, center on column 8;
+# head centered at (9, 7), top of the veil on row 2): charcoal cord at the waist with ember knots; lit embers
+# sprinkled on the veil, from the top down to the hem on the back (on the `failed` ash mound they rise loose as
+# sparks, and the cord lies fallen in the ash)
 _CORD = [
     "KKKKKKKKKKK",
     "dQdOdQdQdOd",

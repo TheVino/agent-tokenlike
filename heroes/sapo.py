@@ -1,11 +1,11 @@
-"""Sapo Xamã, 32 px, olhando para a direita. Um sapinho gorducho azul-esverdeado de barriga creme, com os dois
-olhões saltados no alto da cabeça e uma máscara de folha (folha verde de nervura clara, ponta para a frente)
-cobrindo o rosto abaixo dos olhos. Segura na mão da frente um cajado de madeira com uma bolota de veneno brilhante
-na ponta. O símbolo do `running` é o cajado: carrega a bolota, gira o cajado para a frente e o veneno estoura numa
-nuvem de bolhas. No `failed` ele afunda na poça do brejo e a máscara boia: entra na água devagar, o cajado tomba,
-só os olhos ficam de fora e a máscara de folha fica boiando ao lado.
-O tronco e a cabeça andam juntos (só braços, pernas e cajado mudam), para o colar de dentes e o cocar de folhas
-dos acréscimos ficarem sempre no lugar. Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Frog Shaman, 32 px, facing right. A chubby teal little frog with a cream belly, two big
+bulging eyes on top of the head and a leaf mask (green leaf with light veins, tip forward)
+covering the face below the eyes. In the front hand it holds a wooden staff with a glowing poison bulb
+at the tip. The `running` symbol is the staff: charges the bulb, swings the staff forward and the poison bursts into a
+cloud of bubbles. In `failed` it sinks into the swamp puddle and the mask floats: it slowly goes into the water, the staff tips over,
+only the eyes stay out and the leaf mask floats beside it.
+The torso and head move together (only arms, legs and staff change), so the add-ons' tooth necklace and leaf headdress
+always stay in place. Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, outline_cells, line
 
 PAL = {
@@ -15,22 +15,22 @@ PAL = {
     "a": "#3c5430", "B": "#b4d49a", "T": "#8fd8ff", "Y": "#ffd23f", "R": "#ff8fb0",
 }
 
-HEAD = (4, 6, 7, 7, 7, 7, 6)                 # meia-largura da cabeça por linha (7 linhas)
-TRUNK = (7, 7, 7, 7, 7, 6, 6, 5)              # meia-largura do tronco por linha (8 linhas; a 1ª é a da cabeça)
+HEAD = (4, 6, 7, 7, 7, 7, 6)                 # head half-width per row (7 rows)
+TRUNK = (7, 7, 7, 7, 7, 6, 6, 5)              # torso half-width per row (8 rows; the 1st is the head's)
 
-MASK = [                                     # máscara de folha (17x5), cabinho atrás e ponta na frente
+MASK = [                                     # leaf mask (17x5), little stem behind and tip in front
     "....KKKKKKKKK....",
     "..KKLLlLLLlLLKK..",
     "KKdlVVVVVVVVVVLLK",
     "..KKLLlLLLlLLKK..",
     "....KKKKKKKKK....",
 ]
-ORB = [".KKK.", "KOOoK", "KOWOK", "KoOoK", ".KKK."]           # bolota de veneno na ponta do cajado
-ORB_L = ["..K.K..", ".KOKOK.", "KOOOOoK", ".OWWWO.", "KOWWWOK", ".KOOoK.", "..KKK.."]  # bolota carregada
+ORB = [".KKK.", "KOOoK", "KOWOK", "KoOoK", ".KKK."]           # poison bulb at the tip of the staff
+ORB_L = ["..K.K..", ".KOKOK.", "KOOOOoK", ".OWWWO.", "KOWWWOK", ".KOOoK.", "..KKK.."]  # charged bulb
 BUBBLE = [".K.", "KOK", ".K."]
 BUBBLE_L = [".KK.", "KOWK", "KOoK", ".KK."]
 DROP = [".K.", "KOK", "KoK", ".K."]
-CLOUD = [                                       # o veneno estoura numa nuvem de bolhas
+CLOUD = [                                       # the poison bursts into a cloud of bubbles
     "...KK....KK..",
     "..KOWK..KUUK.",
     "..KOOK.KKKKK.",
@@ -47,7 +47,7 @@ CLOUD = [                                       # o veneno estoura numa nuvem de
 
 
 def _arm(g, a, b):
-    """Bracinho de sapo de 2 px de `a` (ombro) a `b` (mão), com a mão de dedinhos redondos na ponta."""
+    """2 px frog arm from `a` (shoulder) to `b` (hand), with the hand of little round fingers at the tip."""
     px = {}
     for x, y in line(*a, *b):
         for dx in (0, 1):
@@ -60,7 +60,7 @@ def _arm(g, a, b):
 
 
 def _staff(g, top, foot, orb=ORB):
-    """Cajado de 2 px de `topo` a `pe` com a bolota de veneno no topo."""
+    """2 px staff from `top` to `foot` with the poison bulb on top."""
     px = {}
     for x, y in line(*top, *foot):
         px[(x, y)] = "D"
@@ -72,7 +72,7 @@ def _staff(g, top, foot, orb=ORB):
 
 
 def _puddle(g, sup, x0, x1):
-    """Poça do brejo da linha `sup` até o fundo do quadro, entre x0 e x1 (bordas arredondadas)."""
+    """Swamp puddle from row `sup` to the bottom of the frame, between x0 and x1 (rounded edges)."""
     px = {}
     for y in range(sup, N):
         r = y - sup
@@ -88,18 +88,18 @@ def _move(p, dx, dy):
 
 def frame(cx=16, base=30, leg=2, sink=0, eye="n", feet=(0, 0), arms=(), staff=None, orb=ORB,
            puddle=None, mask=True, por=()):
-    """Um quadro 32x32 e a âncora do acréscimo (9 à esquerda do centro e 11 acima do topo da cabeça).
-    `perna`: altura das pernas (0 = agachado); `afundar`: px que o corpo desceu na poça;
-    `bracos`: ((ombro), (mão)) e `cajado`: (topo, pé), ambos escritos para a pose padrão (cx=16, base=30,
-    perna=2: ombros em (11, 22) e (21, 22)) e deslocados junto com o corpo; `poca`: (linha da superfície,
-    x0, x1); `por`: sprites carimbados por último, sem deslocar."""
+    """One 32x32 frame and the add-on anchor (9 to the left of the center and 11 above the head top).
+    `leg`: leg height (0 = crouched); `sink`: px the body went down into the puddle;
+    `arms`: ((shoulder), (hand)) and `staff`: (top, foot), both written for the default pose (cx=16, base=30,
+    leg=2: shoulders at (11, 22) and (21, 22)) and shifted along with the body; `puddle`: (surface row,
+    x0, x1); `por`: sprites stamped last, without shifting."""
     g = [["."] * N for _ in range(N)]
     dx, dy = cx - 16, (base - 30) + (2 - leg) + sink
-    a0 = 21 + dy                                    # topo do tronco (= última linha da cabeça)
+    a0 = 21 + dy                                    # torso top (= last row of the head)
     h0 = a0 - 6
     hx = cx + 1
     px = {}
-    for i, x0 in enumerate((cx - 5, cx + 2)):       # pernas curtas e pés de nadadeira
+    for i, x0 in enumerate((cx - 5, cx + 2)):       # short legs and flipper feet
         x = x0 + feet[i]
         for y in range(base - leg + 1 + sink, base + 1 + sink):
             px[(x, y)] = px[(x + 1, y)] = "s"
@@ -111,13 +111,13 @@ def frame(cx=16, base=30, leg=2, sink=0, eye="n", feet=(0, 0), arms=(), staff=No
     for r, w in enumerate(HEAD):
         for x in range(hx - w, hx + w + 1):
             px[(x, h0 + r)] = "s" if x == hx - w else "S"
-    for ox in (-3, 3):                              # olhos saltados no alto da cabeça
+    for ox in (-3, 3):                              # bulging eyes on top of the head
         for y in range(h0 - 3, h0 + 2):
             for x in range(hx + ox - 2, hx + ox + 3):
                 if (x - hx - ox) ** 2 + (y - h0 + 1) ** 2 <= 5:
                     px[(x, y)] = "S"
     outline_cells(g, px)
-    for r in range(1, 7):                           # barriga creme
+    for r in range(1, 7):                           # cream belly
         for x in range(cx - 2, cx + TRUNK[r] - 1):
             if 0 <= a0 + r < N:
                 g[a0 + r][x] = "c" if x == cx - 2 else "C"
@@ -147,30 +147,30 @@ def _state(specs):
     return [q for q, _ in qs], [a for _, a in qs]
 
 
-# pose padrão: tronco 21-28, cabeça 15-21 (hx=17), olhos 12-16; ombros em (11, 22) e (21, 22)
-_BACK = ((11, 22), (8, 26))                     # braço de trás solto
-_HOLD = ((21, 22), (25, 23))                  # mão da frente no cajado
-_STAFF = ((26, 11), (26, 30))                  # cajado fincado no chão
+# default pose: torso 21-28, head 15-21 (hx=17), eyes 12-16; shoulders at (11, 22) and (21, 22)
+_BACK = ((11, 22), (8, 26))                     # back arm loose
+_HOLD = ((21, 22), (25, 23))                  # front hand on the staff
+_STAFF = ((26, 11), (26, 30))                  # staff stuck in the ground
 _SPECS = {
-    # parado com o cajado fincado: a bolota brilha, pisca, uma bolha sobe
+    # standing with the staff stuck in the ground: the bulb glows, blinks, a bubble rises
     "idle": [dict(arms=(_BACK, _HOLD), staff=_STAFF),
              dict(arms=(_BACK, _HOLD), staff=_STAFF, por=((BUBBLE, 28, 3),)),
              dict(arms=(_BACK, _HOLD), staff=_STAFF, orb=ORB_L),
              dict(eye="fechado", arms=(_BACK, _HOLD), staff=_STAFF, por=((BUBBLE, 29, 1),)),
              dict(arms=(_BACK, _HOLD), staff=_STAFF)],
-    # pula como sapo: agacha, salta com as pernas esticadas, cai e amortece, cajado deitado para a frente
+    # hops like a frog: crouches, jumps with legs stretched, lands and cushions, staff lying forward
     "run_r": [dict(leg=0, arms=(((11, 22), (8, 25)), ((21, 22), (25, 24))), staff=((29, 15), (21, 29))),
               dict(base=28, leg=3, feet=(-2, 1), arms=(((11, 22), (6, 21)), ((21, 22), (25, 22))),
                    staff=((29, 13), (21, 27))),
               dict(base=27, leg=2, feet=(-1, 1), arms=(((11, 22), (7, 24)), ((21, 22), (25, 23))),
                    staff=((29, 14), (21, 28)), por=((BUBBLE, 2, 27),)),
               dict(base=30, leg=1, arms=(((11, 22), (8, 25)), ((21, 22), (25, 24))), staff=((29, 15), (21, 29)))],
-    # acena bem alto com a mão de trás, o cajado fincado
+    # waves very high with the back hand, the staff stuck in the ground
     "waving": [dict(eye="feliz", arms=(((11, 22), (5, 14)), _HOLD), staff=_STAFF),
                dict(eye="feliz", arms=(((11, 22), (3, 17)), _HOLD), staff=_STAFF),
                dict(eye="feliz", arms=(((11, 22), (6, 13)), _HOLD), staff=_STAFF, orb=ORB_L),
                dict(eye="feliz", arms=(((11, 22), (3, 17)), _HOLD), staff=_STAFF)],
-    # agacha, pula alto erguendo o cajado, desce, pousa
+    # crouches, jumps high raising the staff, comes down, lands
     "jumping": [dict(leg=0, eye="fechado", arms=(((11, 22), (8, 26)), _HOLD), staff=_STAFF),
                 dict(base=27, leg=3, eye="cima", feet=(-1, 1), arms=(((11, 22), (6, 16)), ((21, 22), (25, 17))),
                      staff=((26, 11), (26, 27)), orb=ORB_L),
@@ -178,7 +178,7 @@ _SPECS = {
                      staff=((26, 10), (26, 26)), orb=ORB_L, por=((BUBBLE, 2, 25), (BUBBLE_L, 1, 18))),
                 dict(base=29, leg=2, arms=(((11, 22), (7, 20)), ((21, 22), (25, 21))), staff=((26, 9), (26, 28))),
                 dict(leg=0, eye="feliz", arms=(((11, 22), (8, 26)), _HOLD), staff=_STAFF)],
-    # afunda na poça do brejo: entra na água, o cajado tomba e boia, só os olhos ficam de fora, a máscara boia
+    # sinks into the swamp puddle: goes into the water, the staff tips over and floats, only the eyes stay out, the mask floats
     "failed": [dict(eye="triste", arms=(_BACK, _HOLD), staff=((28, 12), (25, 30)), puddle=(29, 2, 29)),
                dict(eye="x", sink=3, arms=(((11, 22), (6, 20)), ((21, 22), (26, 19))),
                     staff=((30, 18), (23, 27)), puddle=(27, 1, 30), por=((BUBBLE, 4, 21),)),
@@ -188,7 +188,7 @@ _SPECS = {
                     por=((MASK, 15, 23), (BUBBLE, 3, 20))),
                dict(eye="x", sink=7, mask=False, puddle=(25, 0, 31),
                     por=((MASK, 15, 23), (BUBBLE_L, 2, 18)))],
-    # cochila agachado abraçado ao cajado, "z" subindo
+    # naps crouched hugging the staff, "z" rising
     "waiting": [dict(leg=0, eye="fechado", arms=(_BACK, ((21, 22), (24, 24))), staff=((25, 17), (25, 30))),
                 dict(leg=0, eye="fechado", arms=(_BACK, ((21, 22), (24, 24))), staff=((25, 17), (25, 30)),
                      por=((Z_S, 26, 6),)),
@@ -196,7 +196,7 @@ _SPECS = {
                      por=((Z_S, 25, 7), (Z_L, 26, 0))),
                 dict(leg=0, eye="fechado", arms=(_BACK, ((21, 22), (24, 24))), staff=((25, 17), (25, 30)),
                      por=((Z_L, 26, 0),))],
-    # cajado: ergue e carrega a bolota, gira o cajado para a frente e o veneno estoura numa nuvem de bolhas
+    # staff: raises and charges the bulb, swings the staff forward and the poison bursts into a cloud of bubbles
     "running": [dict(cx=14, eye="bravo", arms=(((11, 22), (7, 25)), ((21, 22), (25, 16))),
                      staff=((26, 7), (26, 24)), orb=ORB_L, por=((BUBBLE, 30, 10), (BUBBLE, 21, 4))),
                 dict(cx=14, eye="bravo", arms=(((11, 22), (6, 24)), ((21, 22), (26, 20))),
@@ -206,7 +206,7 @@ _SPECS = {
                 dict(cx=14, eye="feliz", arms=(((11, 22), (7, 25)), ((21, 22), (25, 23))),
                      staff=((26, 11), (26, 30)), por=((BUBBLE_L, 28, 6), (DROP, 29, 20), (BUBBLE, 23, 14),
                                                         (BUBBLE_L, 28, 1)))],
-    # mão no queixo da máscara, cajado encostado no ombro, "?" aparece
+    # hand on the mask's chin, staff leaning on the shoulder, "?" appears
     "review": [dict(eye="cima", arms=(_BACK, ((21, 22), (24, 20))), staff=((27, 14), (25, 30))),
                dict(eye="cima", arms=(_BACK, ((21, 22), (24, 20))), staff=((27, 14), (25, 30)),
                     por=((QMARK_S, 26, 1),)),
@@ -221,10 +221,10 @@ for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
 
-# grade 20x21 colada 9 à esquerda do centro e 11 acima do topo da cabeça (topo da cabeça na linha 11, centro
-# na coluna 9, olhos nas linhas 8-12): colar de dentes no peito (linhas 15-21); no Ancião, cocar de folhas no alto
+# 20x21 grid attached 9 to the left of the center and 11 above the head top (head top on row 11, center
+# on column 9, eyes on rows 8-12): tooth necklace on the chest (rows 15-21); on the Elder, a leaf headdress on top
 def _sheet(px, base, tip, claro, dark):
-    """Folha pontuda de `base` a `ponta`: nervura escura no meio e as laterais claras."""
+    """Pointed leaf from `base` to `tip`: dark vein in the middle and light sides."""
     pts = line(*base, *tip)
     vert = abs(tip[1] - base[1]) >= abs(tip[0] - base[0])
     for i, (x, y) in enumerate(pts):
@@ -242,11 +242,11 @@ def _extra(headdress):
         for tip, (c, e) in (((4, 2), ("L", "l")), ((16, 2), ("L", "l")), ((7, 0), ("F", "f")),
                               ((13, 0), ("F", "f")), ((10, 0), ("L", "l"))):
             _sheet(px, (10, 6), tip, c, e)
-        for x, y in ((9, 6), (10, 6), (11, 6), (10, 7)):   # nó do cocar sobre os olhos
+        for x, y in ((9, 6), (10, 6), (11, 6), (10, 7)):   # headdress knot over the eyes
             px[(x, y)] = "f"
         outline_cells(g, px)
     px = {p: "d" for p in ((5, 16), (6, 17), (7, 17), (8, 18), (9, 18), (10, 18), (11, 17), (12, 17), (13, 16))}
-    for t in ((6, 18), (12, 18), (9, 19), (9, 20)):    # dentes e a presa grande no meio do colar
+    for t in ((6, 18), (12, 18), (9, 19), (9, 20)):    # teeth and the big fang in the middle of the necklace
         px[t] = "I"
     outline_cells(g, px)
     return ["".join(l[:20]) for l in g[:21]]

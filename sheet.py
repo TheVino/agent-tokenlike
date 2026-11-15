@@ -1,7 +1,7 @@
-"""Corte e redução de spritesheets (puro, sem tkinter).
+"""Spritesheet cutting and reduction (pure, no tkinter).
 
-Trabalha só com um callback `opaco(x, y) -> bool`; quem chama decide o limiar de opacidade.
-`ler_png` decodifica o PNG com zlib + struct (o Tk não dá o alfa, só "transparente ou não").
+Works only with an `opaque(x, y) -> bool` callback; the caller decides the opacity threshold.
+`read_png` decodes the PNG with zlib + struct (Tk does not expose alpha, only "transparent or not").
 """
 import struct
 import zlib
@@ -9,11 +9,11 @@ import zlib
 STATES = ("idle", "run_r", "run_l", "waving", "jumping", "failed", "waiting", "running", "review")
 MAX_LINES = 11
 MAX_FRAMES = 8
-ISLAND_MAX = 2  # ilhas de até 2 px (mão solta, poeira) são ignoradas
+ISLAND_MAX = 2  # islands of up to 2 px (stray hand, dust) are ignored
 
 
 def detect_grid(w, h):
-    """(8, 9) ou (8, 11) se a folha tem células quase quadradas; senão None."""
+    """(8, 9) or (8, 11) if the sheet has nearly square cells; otherwise None."""
     if w % 8:
         return None
     for lines in (9, 11):
@@ -23,17 +23,17 @@ def detect_grid(w, h):
 
 
 def shared_box(boxes):
-    """Largura e altura máximas entre as caixas."""
+    """Max width and height among the boxes."""
     return (max(c[2] - c[0] for c in boxes), max(c[3] - c[1] for c in boxes))
 
 
 def reduction_factor(height_px, maximum=48):
-    """Menor inteiro N tal que altura / N <= maximo."""
+    """Smallest integer N such that height / N <= maximum."""
     return max(1, -(-height_px // maximum))
 
 
 def _mask(w, h, opaque):
-    """Matriz de opacos sem as ilhas pequenas (componentes 8-conexos de até ILHA_MAX px)."""
+    """Opacity matrix without the small islands (8-connected components of up to ISLAND_MAX px)."""
     m = [bytearray(1 if opaque(x, y) else 0 for x in range(w)) for y in range(h)]
     for y in range(h):
         for x in range(w):
@@ -57,7 +57,7 @@ def _mask(w, h, opaque):
 
 
 def _bands(has):
-    """Intervalos [a, b) de índices consecutivos com tem[i] verdadeiro."""
+    """Ranges [a, b) of consecutive indices where has[i] is true."""
     out, ini = [], None
     for i, v in enumerate(list(has) + [False]):
         if v and ini is None:
@@ -69,8 +69,8 @@ def _bands(has):
 
 
 def _merge(cols):
-    """Mais de 8 pedaços: junta o mais estreito ao vizinho mais próximo (só se for bem
-    mais estreito que o maior). Se ainda passar de 8, devolve None."""
+    """More than 8 pieces: merges the narrowest into its nearest neighbor (only if it is much
+    narrower than the widest). If there are still more than 8, returns None."""
     while len(cols) > MAX_FRAMES:
         i = min(range(len(cols)), key=lambda k: cols[k][1] - cols[k][0])
         if (cols[i][1] - cols[i][0]) * 2 > max(c[1] - c[0] for c in cols):
@@ -88,8 +88,8 @@ def _merge(cols):
 
 
 def cut(w, h, opaque, grid=None):
-    """Caixas (x0, y0, x1, y1), exclusivas, de cada quadro, por linha da folha (até 11).
-    Linha sem nenhum pixel opaco vira []. `grade` = (colunas, linhas) força grade fixa."""
+    """Boxes (x0, y0, x1, y1), exclusive, of each frame, per sheet row (up to 11).
+    A row without any opaque pixel becomes []. `grid` = (columns, rows) forces a fixed grid."""
     if grid:
         cols, lins = grid
         cw, ch = w // cols, h // lins
@@ -104,7 +104,7 @@ def cut(w, h, opaque, grid=None):
     for y0, y1 in _bands([any(l) for l in m])[:MAX_LINES]:
         bands = _bands([any(m[y][x] for y in range(y0, y1)) for x in range(w)])
         cols = _merge(list(bands))
-        if cols is None:  # ponytail: células iguais, sem tentar adivinhar o quadro certo
+        if cols is None:  # ponytail: equal cells, without trying to guess the right frame
             x0, x1 = bands[0][0], bands[-1][1]
             cols = [[x0 + (x1 - x0) * i // MAX_FRAMES, x0 + (x1 - x0) * (i + 1) // MAX_FRAMES]
                     for i in range(MAX_FRAMES)]
@@ -114,12 +114,12 @@ def cut(w, h, opaque, grid=None):
 
 # ------------------------------------------------------------------ PNG
 _SIGNATURE = b"\x89PNG\r\n\x1a\n"
-_BPP = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}   # tipo de cor -> bytes por pixel (sempre 8 bits por canal)
-OPAQUE = bytes(1 if a > 128 else 0 for a in range(256))   # tabela para bytes.translate: alfa > 128 é opaco
+_BPP = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}   # color type -> bytes per pixel (always 8 bits per channel)
+OPAQUE = bytes(1 if a > 128 else 0 for a in range(256))   # table for bytes.translate: alpha > 128 is opaque
 
 
 def info_png(head: bytes):
-    """(w, h, tipo) do IHDR; ValueError se não for um PNG que ler_png entende."""
+    """(w, h, type) from IHDR; ValueError if it is not a PNG that read_png understands."""
     if head[:8] != _SIGNATURE or head[12:16] != b"IHDR":
         raise ValueError("não é um PNG")
     w, h, prof, kind, _, _, entrel = struct.unpack(">IIBBBBB", head[16:29])
@@ -129,13 +129,13 @@ def info_png(head: bytes):
 
 
 def _sum(a, b, m7, m8):
-    """Soma byte a byte (mod 256) de duas linhas inteiras de uma vez, via inteiros grandes."""
+    """Byte-by-byte sum (mod 256) of two whole rows at once, using big integers."""
     A, B = int.from_bytes(a, "big"), int.from_bytes(b, "big")
     return bytearray((((A & m7) + (B & m7)) ^ ((A ^ B) & m8)).to_bytes(len(a), "big"))
 
 
 def read_png(path):
-    """(w, h, rgba) de um PNG de 8 bits: RGBA, RGB, cinza, cinza+alfa ou paleta (com tRNS)."""
+    """(w, h, rgba) of an 8-bit PNG: RGBA, RGB, grey, grey+alpha or palette (with tRNS)."""
     d = open(path, "rb").read()
     w, h, kind = info_png(d[:29])
     idat, plte, trns, i = [], b"", b"", 8

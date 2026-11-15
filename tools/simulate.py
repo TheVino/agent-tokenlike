@@ -1,18 +1,18 @@
-"""Simula milhares de runs para checar o balanceamento (masmorra.py)."""
+"""Simulates thousands of runs to check the balance (dungeon.py)."""
 import sys, random, statistics, collections
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import dungeon as M
 
 def all_heroes():
-    import tokenlike  # importar não abre janela (tkinter só em run_gui)
+    import tokenlike  # importing does not open a window (tkinter only in run_gui)
     return [(c.key, c.stats, c.trait) for c in tokenlike.all_characters().values()]
 
 def simulate(n=2000, achs=(), seed=1, heroes=None):
-    """Devolve (registros no formato das runs reais, salas jogadas por run)."""
+    """Returns (records in the same format as the real runs, rooms played per run)."""
     stage = {}
     if heroes is None:
-        heroes = [("slime", {"hp": 20, "atk": 3}, {})]  # caminho padrão: sem stage_floors
+        heroes = [("slime", {"hp": 20, "atk": 3}, {})]  # default path: no stage_floors
     else:
         import tokenlike
         stage = {k: c.stage_floors for k, c in tokenlike.all_characters().items()}

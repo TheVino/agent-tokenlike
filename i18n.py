@@ -42,7 +42,7 @@ def _by_template(text):
 
 
 EN = {
-    # itens
+    # items
     "Adaga Enferrujada": "Rusty Dagger",
     "Espada de Osso": "Bone Sword",
     "Cajado Espectral": "Spectral Staff",
@@ -143,7 +143,7 @@ EN = {
     "Dente de Ouro": "Gold Tooth",
     "Moringa de Moedas": "Coin Jug",
     "Sanguessuga Mansa": "Tame Leech",
-    # conquistas
+    # achievements
     "Chegar ao andar 5": "Reach floor 5",
     "Derrotar um chefe": "Defeat a boss",
     "Derrotar um mímico": "Defeat a mimic",
@@ -169,7 +169,7 @@ EN = {
     "Matar 3 inimigos com veneno numa run": "Kill 3 enemies with poison in a run",
     "Morrer no andar 13": "Die on floor 13",
     "Vencer 3 chefes numa mesma run": "Beat 3 bosses in a single run",
-    # heróis (nome e estágios)
+    # heroes (name and stages)
     "Slime": "Slime",
     "Gotinha": "Droplet",
     "Rei Slime": "Slime Monarch",
@@ -231,14 +231,14 @@ EN = {
     "Vela Viva": "Living Candle",
     "Tôco de Vela": "Candle Stub",
     "Círio Antigo": "Ancient Taper",
-    # monstros, chefes, raridades, status, quem matou
+    # monsters, bosses, rarities, statuses, killers
     "Morcego": "Bat", "Rato": "Rat", "Aranha": "Spider", "Esqueleto": "Skeleton", "Olho Flutuante": "Floating Eye",
     "Morcego Vampiro": "Vampire Bat", "Rei Rato": "Rat King", "Aranha Mãe": "Mother Spider",
     "Lorde Esqueleto": "Skeleton Lord", "Olho Abissal": "Abyssal Eye", "Mímico": "Mimic",
     "Armadilha": "Trap", "Queimadura": "Burn", "Veneno": "Poison", "Desistiu": "Gave up",
     "Comum": "Common", "Raro": "Rare", "Épico": "Epic", "Lendário": "Legendary",
     "queimadura": "burn", "eletricidade": "shock", "veneno": "poison", "congelamento": "freeze",
-    # salas e linhas de evento (masmorra.enter_room; traduzidas por modelo)
+    # rooms and event lines (dungeon.enter_room; translated by template)
     "Baú": "Chest", "Fonte": "Fountain", "Lojinha": "Little Shop", "Altar Sombrio": "Dark Altar",
     "Horda ({n})": "Horde ({n})", "Andar {n}": "Floor {n}",
     "Comprou poção (-{n} ouro)": "Bought a potion (-{n} gold)", "Pagou {n} ouro": "Paid {n} gold",
@@ -257,7 +257,7 @@ EN = {
     "fúria +{v} ATK/10% HP perdido": "fury +{v} ATK/10% HP lost", "{v}% golpe duplo": "{v}% double hit",
     "ajudante {v} de dano": "helper {v} damage", "+1 ATK a cada {v} kills": "+1 ATK every {v} kills",
     "+{v}% sorte": "+{v}% luck", "-{v}% preço na loja": "-{v}% shop price",
-    # Status (STAT_LINHAS) e famílias de itens
+    # Status (STAT_LINES) and item families
     "HP máx": "Max HP", "Ataque": "Attack", "Defesa": "Defense", "Velocidade": "Speed", "Crítico": "Crit",
     "Dano crítico": "Crit damage", "Esquiva": "Dodge", "Roubo de vida": "Lifesteal", "Golpe duplo": "Double hit",
     "Ataque em área": "Area attack", "Queimar": "Burn", "Eletrizar": "Shock", "Envenenar": "Poison",
@@ -275,10 +275,10 @@ EN = {
     "Sempre por cima": "Always on top", "Virar herói": "Flip hero", "Desistir da run": "Give up the run",
     "Abrir pasta de personagens": "Open characters folder", "Recarregar personagens": "Reload characters",
     "Sair": "Quit", "{n} personagens": "{n} characters",
-    # heróis
+    # heroes
     "Herói da próxima run": "Next run's hero", "Heróis": "Heroes", "Comunidade": "Community", "sem traço": "no trait",
     "{nome} entra na próxima run.": "{nome} joins the next run.", "preparando herói…": "preparing hero…",
-    # HUD, balões e floaters
+    # HUD, bubbles and floaters
     "Bem-vindo à Masmorra de Tokens!": "Welcome to the Token Dungeon!",
     "Seus tokens do Claude Code viram energia": "Your Claude Code tokens become energy",
     "e eu desço a masmorra sozinho.": "and I go down the dungeon on my own.",
@@ -297,7 +297,7 @@ EN = {
     "Monstros vencidos: {k}   Ouro: {o}": "Monsters beaten: {k}   Gold: {o}", "Recorde: andar {n}": "Best: floor {n}",
     "Uma nova run começa em instantes...": "A new run starts in a moment...", "CONQUISTA!": "ACHIEVEMENT!",
     "  libera: {x}": "  unlocks: {x}", "herói {nome}": "hero {nome}",
-    # escolha (modo interativo)
+    # choice (interactive mode)
     "Pegar": "Take", "Consumir": "Consume", "Pegar: {x}": "Take: {x}", "Consumir: {x}": "Consume: {x}",
     "1 sala esperando": "1 room waiting", "{n} salas esperando": "{n} rooms waiting",
     # Status
@@ -307,18 +307,18 @@ EN = {
     "nenhum ainda": "none yet", "Energia guardada: {n} sala(s)": "Stored energy: {n} room(s)",
     "Tokens hoje: {n}": "Tokens today: {n}", "Esperando escolha: {x}": "Waiting for a choice: {x}",
     "(modo demo)": "(demo mode)",
-    # Cemitério
+    # Graveyard
     "andar {n}": "floor {n}", "desistiu": "gave up", "morto por {k}": "killed by {k}", "sem itens": "no items",
     "{n} runs   ·   recorde: andar {a}": "{n} runs   ·   best: floor {a}",
     "   ·   quem mais matou: {k}": "   ·   top killer: {k}",
     "Nenhuma lápide ainda...\no herói segue firme!": "No tombstones yet...\nthe hero stands strong!",
-    # Itens
+    # Items
     "Itens  ·  {a} de {b} liberados": "Items  ·  {a} of {b} unlocked", "cura": "heal", "escudo": "shield",
     "consumir: {x}": "consume: {x}", "cura {n}": "heal {n}", "Nenhum item aqui.": "No items here.",
     "Todos": "All", "Liberados": "Unlocked", "Bloqueados": "Locked",
-    # Conquistas
+    # Achievements
     "Conquistas  ·  {a} de {b}": "Achievements  ·  {a} of {b}", "libera": "unlocks",
-    # Perfil
+    # Profile
     "Domador  Nv {n}": "Tamer  Lv {n}", "faltam ~{x} de energia para o Nv {n}": "~{x} energy left to Lv {n}",
     "passe o mouse numa medalha": "hover over a medal", "  (bloqueada)": "  (locked)",
     "HOJE": "TODAY", "de energia": "energy", "SEQUÊNCIA": "STREAK", "dias seguidos": "days in a row",

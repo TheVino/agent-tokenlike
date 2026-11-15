@@ -1,7 +1,7 @@
-"""Médico da Peste, 32 px, olhando para a direita. Cada quadro sai de partes: casaco (sino com sombra e botões),
-cabeça de capuz com máscara de bico e óculos verdes, botinhas, braços em linha grossa (com contorno) e objetos
-(lanterna de ervas, frasco de veneno, nuvenzinha). No `failed` a máscara se solta e cai, mostrando o rostinho.
-Formato de herói de herois/montar.py: PAL, QUADROS, ESTAGIOS, ANCORA."""
+"""Plague Doctor, 32 px, facing right. Each frame is made of parts: coat (bell shape with shade and buttons),
+hooded head with a beak mask and green goggles, little boots, arms as thick lines (with outline) and objects
+(herb lantern, poison flask, little cloud). In `failed` the mask comes loose and falls, showing the little face.
+Hero format from heroes/assemble.py: PAL, FRAMES, STAGES, ANCHOR."""
 from heroes.common import N, Z_S, Z_L, QMARK_S, QMARK, TEAR, stamp, line
 
 PAL = {
@@ -23,7 +23,7 @@ HAND_FACE = [".KKK.", "KNNNK", "KNNNK", ".KKK."]
 
 
 def _arm(g, a, b):
-    """Manga grossa de casaco de `a` a `b`, com contorno escuro."""
+    """Thick coat sleeve from `a` to `b`, with a dark outline."""
     pts = line(*a, *b)
     for x, y in pts:
         for dx in (-1, 0, 1):
@@ -37,8 +37,8 @@ def _arm(g, a, b):
 
 def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", cheek=True, mask=(0, 0), face_kind="normal",
            feet=(0, 0), behind=(), arms=(), por=(), lantern_ok=True):
-    """Um quadro 32x32 e a âncora (topo da cabeça) do acréscimo. `mascara` None = presa; (dx, dy) = solta e deslocada.
-    `atras`: (sprite, x, y) desenhados antes do corpo; `bracos`: ((x0, y0), (x1, y1)) por cima; `por`: sprites no fim."""
+    """One 32x32 frame and the anchor (top of the head) for the add-on. `mask` None = attached; (dx, dy) = loose and offset.
+    `behind`: (sprite, x, y) drawn before the body; `arms`: ((x0, y0), (x1, y1)) on top; `por`: sprites at the end."""
     g = [["."] * N for _ in range(N)]
     for s, x, y in behind:
         stamp(g, s, x, y)
@@ -68,9 +68,9 @@ def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", cheek=True, mask=(0, 0), 
         for x, y in face | beak:
             g[y][x] = "m" if (x, y + 1) not in face | beak or y == hy + 2 and x > hx + 6 else "M"
     else:
-        for x, y in face:                      # rostinho com contorno onde encosta no capuz
+        for x, y in face:                      # little face with an outline where it touches the hood
             g[y][x] = "K" if any(n in head and n not in face for n in ((x - 1, y), (x, y - 1))) else "F"
-    for x, y in coat:                      # botões no meio do casaco
+    for x, y in coat:                      # buttons in the middle of the coat
         if x == round(cx + lean * 0.4) + 1 and (y - ctop) % 3 == 2 and y < base - 2:
             g[y][x] = "Y"
     foot_y = base - 2
@@ -82,7 +82,7 @@ def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", cheek=True, mask=(0, 0), 
         for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
             if (nx, ny) not in body and 0 <= nx < N and 0 <= ny < N:
                 g[ny][nx] = "K"
-    # olhos: com máscara, dois óculos verdes; sem máscara, olhinhos no rosto
+    # eyes: with the mask, two green goggles; without it, little eyes on the face
     if fang:
         for ox in (hx - 3, hx + 2):
             oy = hy - 2
@@ -103,10 +103,10 @@ def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", cheek=True, mask=(0, 0), 
                     stamp(g, ["...KK", "KKK.."] if ox < hx else ["..KKK", "KK..."], ox, oy - 1)
         if cheek:
             g[hy + 3][hx - 2] = g[hy + 3][hx - 1] = "P"
-        g[hy + 1][hx + 9] = "m"               # narina no bico
+        g[hy + 1][hx + 9] = "m"               # nostril on the beak
     else:
         dx, dy = mask
-        for x, y in face | beak:              # máscara caída, desenhada deslocada
+        for x, y in face | beak:              # fallen mask, drawn offset
             if 0 <= x + dx < N and 0 <= y + dy < N:
                 g[y + dy][x + dx] = "m" if (x, y + 1) not in face | beak else "M"
         for x, y in face | beak:
@@ -120,9 +120,9 @@ def frame(cx=14, base=30, ch=9, lean=0, eyes="normal", cheek=True, mask=(0, 0), 
         if face_kind == "x":
             stamp(g, ["B.B", ".B.", "B.B"], ex - 1, ey - 1); stamp(g, ["B.B", ".B.", "B.B"], ex + 3, ey - 1)
         else:
-            for x in (ex, ex + 4):                # olhos 2x3 com brilho
+            for x in (ex, ex + 4):                # 2x3 eyes with a shine
                 stamp(g, ["WB", "BB", "BB"], x - 1 + (x > ex), ey - 1)
-            if face_kind != "o":                      # sobrancelhas tristes
+            if face_kind != "o":                      # sad eyebrows
                 stamp(g, ["..B", "BB."], ex - 2, ey - 3); stamp(g, ["B..", ".BB"], ex + 4, ey - 3)
         if face_kind == "o":
             stamp(g, [".B.", "B.B", ".B."], ex + 1, ey + 3)
@@ -145,34 +145,34 @@ def _state(specs):
 
 
 def _lant(mx, my):
-    """Mão em (mx, my) segurando a lanterna pendurada logo abaixo."""
+    """Hand at (mx, my) holding the lantern hanging just below."""
     return (LANTERN, mx - 2, my + 1)
 
 
-# ombro: ~(cx + 3, ctop + 2); base=30, ch=9 -> ctop=20
+# shoulder: ~(cx + 3, ctop + 2); base=30, ch=9 -> ctop=20
 _SPECS = {
-    # parado, balança a lanterna de ervas na frente
+    # standing, swings the herb lantern in front
     "idle": [dict(arms=(((17, 22), (21, 21)),), por=(_lant(21, 21),)),
              dict(arms=(((17, 22), (22, 22)),), por=(_lant(22, 22),)),
              dict(eyes="fechado", arms=(((17, 22), (23, 21)),), por=(_lant(23, 21),)),
              dict(arms=(((17, 22), (22, 22)),), por=(_lant(22, 22),))],
-    # corre inclinado, botinhas alternando, lanterna balançando para trás
+    # runs leaning, little boots alternating, lantern swinging back
     "run_r": [dict(cx=15, lean=2, feet=(-2, 2), arms=(((13, 22), (8, 24)),), behind=(_lant(7, 24),)),
               dict(cx=15, lean=3, base=29, feet=(0, 0), arms=(((13, 21), (9, 22)),), behind=(_lant(8, 22),)),
               dict(cx=15, lean=2, feet=(2, -2), arms=(((13, 22), (8, 23)),), behind=(_lant(7, 23),)),
               dict(cx=15, lean=3, base=29, feet=(0, 0), arms=(((13, 21), (9, 21)),), behind=(_lant(8, 21),))],
-    # acena com a luva, lanterna na outra mão (atrás)
+    # waves with the glove, lantern in the other hand (behind)
     "waving": [dict(eyes="feliz", behind=(_lant(6, 23),), arms=(((16, 22), (20, 19)),), por=((GLOVE, 19, 17),)),
                dict(eyes="feliz", behind=(_lant(6, 23),), arms=(((16, 22), (20, 16)),), por=((GLOVE, 19, 13),)),
                dict(eyes="feliz", behind=(_lant(6, 23),), arms=(((16, 22), (23, 16)),), por=((GLOVE, 22, 13),)),
                dict(eyes="feliz", behind=(_lant(6, 23),), arms=(((16, 22), (20, 16)),), por=((GLOVE, 19, 13),))],
-    # agacha, salta com a lanterna no alto, cai, pousa
+    # crouches, jumps with the lantern up high, falls, lands
     "jumping": [dict(ch=6, eyes="fechado", arms=(((17, 25), (21, 27)),), por=(_lant(22, 26),)),
                 dict(ch=10, base=29, arms=(((17, 20), (24, 19)),), por=(_lant(24, 19),)),
                 dict(ch=9, base=26, eyes="feliz", arms=(((17, 18), (25, 16)),), por=(_lant(25, 16),)),
                 dict(ch=10, base=29, arms=(((17, 21), (23, 21)),), por=(_lant(23, 21),)),
                 dict(ch=7, eyes="feliz", arms=(((17, 24), (21, 25)),), por=(_lant(22, 25),))],
-    # triste, a máscara escorrega, cai no chão e a lanterna apaga
+    # sad, the mask slips, falls to the ground and the lantern goes out
     "failed": [dict(eyes="triste", arms=(((17, 22), (20, 25)),), por=(_lant(21, 25), (TEAR, 11, 13))),
                dict(mask=(2, 4), face_kind="o", arms=(((17, 22), (20, 25)),), por=(_lant(21, 25),)),
                dict(cx=12, mask=(5, 9), face_kind="o", arms=(((15, 22), (18, 26)),), por=(_lant(19, 26),)),
@@ -180,19 +180,19 @@ _SPECS = {
                     behind=(_lant(3, 22),), por=((TEAR, 7, 19),)),
                dict(cx=10, ch=6, lean=-1, mask=(10, 9), face_kind="x", lantern_ok=False,
                     behind=(_lant(2, 22),))],
-    # cochila sentado de lado, lanterna no chão, "z" subindo
+    # naps sitting sideways, lantern on the ground, "z" rising
     "waiting": [dict(ch=7, lean=-1, eyes="fechado", behind=(_lant(23, 21),)),
                 dict(ch=7, lean=-2, eyes="fechado", behind=(_lant(23, 21),), por=((Z_S, 22, 4),)),
                 dict(ch=7, lean=-2, eyes="fechado", behind=(_lant(23, 21),), por=((Z_S, 21, 4), (Z_L, 26, 0))),
                 dict(ch=7, lean=-1, eyes="fechado", behind=(_lant(23, 21),), por=((Z_L, 26, 0),))],
-    # golpe: recua a lanterna, gira para a frente e arremessa o frasco de veneno, que estoura numa nuvem
+    # attack: pulls the lantern back, swings forward and throws the poison flask, which bursts into a cloud
     "running": [dict(cx=13, lean=-2, eyes="bravo", arms=(((12, 22), (6, 18)),), behind=(_lant(5, 18),)),
                 dict(cx=14, lean=2, eyes="bravo", arms=(((17, 21), (22, 14)),), por=(_lant(22, 14),)),
                 dict(cx=14, lean=3, eyes="bravo", arms=(((18, 22), (24, 20)),),
                      por=(_lant(24, 20), (FLASK_FLYING, 24, 1))),
                 dict(cx=14, lean=1, eyes="bravo", arms=(((17, 22), (21, 24)),),
                      por=(_lant(22, 24), (CLOUD, 22, 3), (CLOUD_S, 27, 11), (CLOUD_S, 19, 1)))],
-    # luva no queixo do bico, pensando, "?" aparece
+    # glove on the beak's chin, thinking, "?" appears
     "review": [dict(cx=12, eyes="cima", arms=(((15, 22), (19, 18)),), por=((HAND_FACE, 18, 16),)),
                dict(cx=12, eyes="cima", arms=(((15, 22), (19, 18)),), por=((HAND_FACE, 18, 16), (QMARK_S, 25, 2))),
                dict(cx=12, eyes="cima", arms=(((15, 22), (19, 18)),), por=((HAND_FACE, 18, 16), (QMARK, 25, 0))),
@@ -203,7 +203,7 @@ FRAMES, ANCHOR = {}, {}
 for _e, _s in _SPECS.items():
     FRAMES[_e], ANCHOR[_e] = _state(_s)
 
-# chapéu de aba larga (copa + aba), apoiado no alto do capuz pela âncora
+# wide-brimmed hat (crown + brim), resting on top of the hood by the anchor
 HAT = [
     "....KKKKKKK....",
     "....KkkkkkK....",
@@ -213,8 +213,8 @@ HAT = [
     "KkkkkkkkkkkkkkK",
     ".KKKKKKKKKKKKK.",
 ]
-# capa curta caída sobre o ombro de trás (abaixo do pescoço); para na coluna da âncora + 7 (x = centro da cabeça)
-# para não cobrir a junta do braço da frente, que sai em x >= centro + 1
+# short cape draped over the back shoulder (below the neck); stops at the anchor column + 7 (x = head center)
+# so it does not cover the front arm's joint, which starts at x >= center + 1
 CAPE = ["." * 15] * 16 + [
     "..KKKKKK.......",
     ".KRRRRRK.......",
