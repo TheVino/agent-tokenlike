@@ -136,4 +136,11 @@ for _c in _tk.all_characters().values():
 _tr = {"crit": 0.08}
 _run = M.new_run("x", {"hp": 20, "atk": 3}, 1, _tr)
 assert _run["trait"] == _tr
+# synergies: per key n / median with / without, in the data, the page and simulate.py
+sy = data["synergies"]
+assert set(sy) == {"sim", "real"} and set(sy["sim"]) == set(M.SYNERGIES) == set(sy["real"])
+assert set(sy["sim"]["defense2"]) == {"n", "median_with", "median_without"}
+_s = E.synergies([dict(line("slime", 9, []), synergies=["defense2"]), line("slime", 5, [])])
+assert _s["defense2"] == {"n": 1, "median_with": 9, "median_without": 5} and _s["defense4"]["median_with"] is None
+assert "<h2>Synergies</h2>" in page
 print("ok: balance_stats")
