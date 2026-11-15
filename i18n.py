@@ -303,6 +303,7 @@ PT = {
     "Shock and freeze the same enemy": "Eletrize e congele o mesmo inimigo",
     "Shock and poison the same enemy": "Eletrize e envenene o mesmo inimigo",
     "Poison and freeze the same enemy": "Envenene e congele o mesmo inimigo",
+    "Synergies  ·  {a} of {b} discovered": "Sinergias  ·  {a} de {b} descobertas", "No synergies here.": "Nenhuma sinergia aqui.",
     "Synergies": "Sinergias", "Synergies ({n})": "Sinergias ({n})", "Synergies {n}/{total}": "Sinergias {n}/{total}",
     "Set": "Conjunto", "Pair": "Par", "Reaction": "Reação",
     "Active in {n} runs": "Ativa em {n} runs", "Discovered in run #{n}": "Descoberta na run #{n}",

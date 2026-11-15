@@ -1694,6 +1694,7 @@ class PetApp:
         top.pack(fill="x")
         name = tk.Label(top, text=title, bg=PANEL_BG, fg=GOLD, font=self.font)
         name.pack(side="left")
+        w.title_label = name
         self.make_draggable(w, attr, top, name)
         shutdown = tk.Label(top, text=" x ", bg=PANEL_BG, fg=MUTED, font=self.font)
         shutdown.pack(side="right")
@@ -2085,8 +2086,9 @@ class PetApp:
 
     def _offer_steps(self, ev, at, t):
         """Animation of the lines and of the resolved offer (item taken or consumed); returns the new t."""
+        new_lines = {f"New synergy: {M.SYNERGIES[s['key']]['name']}!" for s in ev.get("synergies", []) if s["new"]}
         for line in ev["lines"]:
-            at(t, lambda line=line: self.floater(_t(line), GOLD if line.startswith("New synergy") else TEXT, life=24))
+            at(t, lambda line=line: self.floater(_t(line), GOLD if line in new_lines else TEXT, life=24))
             t += 600
         if ev.get("item"):
             key, rar = ev["item"]["key"], ev["item"]["rar"]
@@ -2800,8 +2802,12 @@ class PetApp:
             for name, b in tab_buttons.items():
                 b.paint(name == self.items_tab)
             cv.delete("all")
-            if self.items_tab == "synergies":
-                found = self.meta.get("synergies", {})
+            syn = self.items_tab == "synergies"
+            found = self.meta.get("synergies", {})
+            w.title_label.configure(text=_t("Synergies  ·  {a} of {b} discovered", a=len(set(found) & set(M.SYNERGIES)),
+                                            b=len(M.SYNERGIES)) if syn else
+                                    _t("Items  ·  {a} of {b} unlocked", a=len(free), b=len(M.ITEMS)))
+            if syn:
                 keys = [k for k in M.SYNERGIES if filter_by == "all" or (k in found) == (filter_by == "unlocked")]
                 card = self.synergy_card
             else:
@@ -2812,7 +2818,7 @@ class PetApp:
                 y += 6 + max(card(cv, c * (ITEMS_CARD_W + 6), y, k)
                              for c, k in enumerate(keys[i:i + ITEMS_COLS]))
             if not keys:
-                cv.create_text(10, 20, anchor="w", text=_t("No items here."), fill=MUTED, font=self.font)
+                cv.create_text(10, 20, anchor="w", text=_t("No synergies here." if syn else "No items here."), fill=MUTED, font=self.font)
             cv.configure(scrollregion=(0, 0, ITEMS_COLS * (ITEMS_CARD_W + 6), max(y, ITEMS_H)))
             cv.yview_moveto(0)
         for name, text in (("all", "All"), ("unlocked", "Unlocked"), ("locked", "Locked")):

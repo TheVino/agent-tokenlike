@@ -588,7 +588,8 @@ assert len(secret) == 3
 for lang in ("pt", "en"):
     i18n.set_lang(lang)
     appm.items_tab = "synergies"; appm.show_items(); assert appm.items_win in ALIVE
-    assert all(appm.items_cv.bbox(f"card:{k}") != (100, 0, 140, 10) for k in M.SYNERGIES), lang
+    assert all(appm.items_cv._ids(f"card:{k}") for k in M.SYNERGIES), lang
+    assert not appm.items_cv._ids("card:nope")
     for k, s in M.SYNERGIES.items():
         cv = tkinter.Canvas(); appm.synergy_card(cv, 0, 0, k)
         tx = texts(cv)
