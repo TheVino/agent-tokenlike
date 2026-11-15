@@ -72,7 +72,7 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   `golem`, `moth`, `frog`, `cat`, `octopus`) with: `PAL` (letter -> color), `FRAMES` (8 drawn states: idle, run_r,
   waving, jumping, failed, waiting, running, review; 4 to 6 32x32 frames each), `STAGES` (exactly 3: `title`,
   `floor`, `extra`; the 1st with `extra=None`; the Slime evolves on floors 1/4/10: Droplet, Slime, Slime King) and
-  `ANCHOR` (per state and frame, integer `(x, y)` where the stage's `extra` is pasted).
+  `ANCHOR` (per state and frame, integer `(x, y)` where the stage's `extra` is pasted; a stage may set `extra_states` {state: grid} to swap the extra in some states, e.g. the Doll's back needle leaves her hair while attacking).
   `heroes/common.py`: shared pieces (`z`, `?`, tear, `mirror`, `stamp`, `line`, `outline_cells`, `stroke`).
   Unlock by achievement: Ghost `boss1`, Doctor `poison1`, Witch `elements3`, Gravedigger `gold300`, Reaper
   `horde4`, Living Candle `burn1`, Mushroom `floor8full`, Inquisitor `floor15` (base HP 16), Doll `dodge10`,
