@@ -459,12 +459,12 @@ r0 = M.new_run("slime", {}, 6)
 assert all(M.roll_offer(r0, meta_all, random.Random(s), min_rar="epic")["rar"] in ("epic", "legendary") for s in range(100))
 only_common = M.new_meta()
 assert M.roll_offer(r0, only_common, random.Random(1), min_rar="legendary") is not None
-# never kills; cost is hp // 4
+# never kills; cost is IDOL_COST of current HP (at least 1)
 for hp in range(4, 61):
     r, m, ev = _idol(hp, "interactive", hp)
     old = r["hp"]; assert r["pending"]["kind"] == "idol" and M.idol_choices(r) == ["accept", "decline"]
     M.choose_pending(r, m, "accept")
-    assert r["hp"] >= 1 and r["hp"] == old - max(1, old // 4), (hp, old, r["hp"])
+    assert r["hp"] >= 1 and r["hp"] == old - max(1, int(old * M.IDOL_COST)), (hp, old, r["hp"])
 # low HP: only decline
 for hp in (1, 2, 3):
     r, m, ev = _idol(hp, "interactive", hp, maxhp=3)
@@ -495,8 +495,8 @@ for mode in ("auto", "interactive"):
                 assert r["pending"] == {"kind": "offer", **ev["pending"], "source": "idol"}, r["pending"]
                 assert ev["pending"]["rar"] in ("epic", "legendary")
         else:
-            assert [t["fx"] for t in r["temp"]] == [{"atk": -1}] and r["temp"][0]["rooms"] == 3, r["temp"]
-    assert 0.4 <= wins / 400 <= 0.6, (mode, wins)
+            assert [t["fx"] for t in r["temp"]] == [M.IDOL_CURSE[0]] and r["temp"][0]["rooms"] == M.IDOL_CURSE[1], r["temp"]
+    assert abs(wins / 400 - M.IDOL_WIN) <= 0.1, (mode, wins)
 # decline: nothing changes but a line
 r, m, ev = _idol(40, "interactive", 3, maxhp=40)
 hp = r["hp"]; ev = M.choose_pending(r, m, "decline")
@@ -513,6 +513,7 @@ finally:
 r, m, ev = _idol(40, "interactive", 5, maxhp=40)
 assert M.migrate_run(r)["pending"]["kind"] == "idol"
 r["pending"] = {"kind": "idol", "cost": "x"}; assert M.migrate_run(r)["pending"] is None
+r["pending"] = {"kind": "idol", "cost": 3, "seed": "x"}; assert M.migrate_run(r)["pending"] is None
 # traveler's campfire
 import math, i18n; i18n.set_lang("en")
 assert len(M.TALES) == 16 and all(v["who"] in ("ghost", "wanderer", "traveler") and 0 < len(v["text"]) <= 90 for v in M.TALES.values())

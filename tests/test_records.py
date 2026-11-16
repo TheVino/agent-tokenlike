@@ -14,7 +14,7 @@ old = {"items": [{"key": "dagger", "rar": "common"}], "hp": 5}
 M.migrate_run(old); assert old["items"][0]["floor"] is None and old["consumed"] == []
 rec = M.run_record(run, "Rat King", False, "auto", ["floor5"])
 assert set(rec) == {"run", "char", "floor", "room", "killer", "gave_up", "items", "consumed", "gold",
-                    "kills", "bosses", "date", "mode", "version", "achievements", "killer_kind", "synergies", "rooms"}
+                    "kills", "bosses", "date", "mode", "version", "achievements", "killer_kind", "synergies", "rooms", "counters"}
 assert rec["killer_kind"] == ""
 assert M.run_record(run, "x", False, "auto", [], killer_kind="horde")["killer_kind"] == "horde"
 assert isinstance(M.run_record(run, "x", False, "auto", [])["rooms"], dict)

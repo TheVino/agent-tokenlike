@@ -443,8 +443,9 @@ def make_mimic(f: int) -> dict:
             "spd": MON_SPD[0] + MON_SPD[1] * f, "crit": MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
 
 
-ROOM_WEIGHTS = [("monster", 36), ("campfire", 4), ("idol", 4), ("secret", 2), ("chest", 16), ("trap", 12), ("fountain", 11),
-                ("shop", 8), ("altar", 7), ("horde", 9)]
+ROOM_WEIGHTS = [("monster", 46), ("campfire", 4), ("idol", 4), ("secret", 1), ("chest", 16),
+                ("trap", 12), ("fountain", 11), ("shop", 8), ("altar", 7), ("horde", 9)]
+SECRET_GOLD = (10, 3)                          # secret room gold: value + per floor
 # hordes: 2 to 4 weaker enemies (HP and ATK x HORDE_MULT[n]); only from floor HORDE_MIN_FLOOR on
 HORDE_MIN_FLOOR = 3
 HORDE_MULT = {2: 0.75, 3: 0.6, 4: 0.5}
@@ -520,7 +521,7 @@ def new_meta() -> dict:
             "synergies": {}, "secrets": 0, "journal": {}}
 
 
-COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0}
+COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0, "idol_accept": 0, "idol_win": 0}
 
 
 def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = None) -> dict:
@@ -783,9 +784,9 @@ def _deliver(run: dict, offer: dict, ev: dict, mode: str, source: str) -> None:
 
 # Cracked Idol: pay IDOL_COST of current HP (never below 1) for an IDOL_WIN chance at an epic+ item,
 # otherwise a temporary curse (fx, rooms).
-IDOL_COST = 0.25
-IDOL_WIN = 0.5
-IDOL_CURSE = ({"atk": -1}, 3)
+IDOL_COST = 0.3
+IDOL_WIN = 0.35
+IDOL_CURSE = ({"atk": -2}, 4)
 IDOL_MIN_HP = 4
 IDOL_AUTO_HP = 0.6
 
@@ -803,9 +804,11 @@ def _idol_apply(run, meta, p, choice, ev, mode="interactive"):
         ev["lines"].append("You leave the idol alone.")
         return
     run["hp"] -= min(p["cost"], run["hp"] - 1)
+    run["counters"]["idol_accept"] = run["counters"].get("idol_accept", 0) + 1
     rng = random.Random(p.get("seed", 0))          # fixed when the room was entered: no re-rolling by reloading
     offer = roll_offer(run, meta, rng, min_rar="epic") if rng.random() < IDOL_WIN else None
     if offer:
+        run["counters"]["idol_win"] = run["counters"].get("idol_win", 0) + 1
         ev["lines"].append(f"The idol cracks: {ITEMS[offer['key']]['name']}!")
         _deliver(run, offer, ev, mode, "idol")
     else:
@@ -929,7 +932,6 @@ def _campfire_apply(run, meta, p, choice, ev, mode="interactive"):
         gain = item_fx(it["key"], it["rar"]).get("maxhp", 0) - before
         if gain > 0:
             run["hp"] += gain
-        stats(run)
         ev["lines"].append(f"The fire refines {ITEMS[it['key']]['name']} to {RAR_NAMES[it['rar']]}")
 
 
@@ -963,7 +965,8 @@ CHOICES: dict = {
     "offer": (auto_choice,
               lambda run, meta, p, choice, ev, mode="interactive": resolve_offer(run, p, choice, ev),
               lambda p: p.get("key") in ITEMS and p.get("rar") in RARITIES),
-    "idol": (_idol_auto, _idol_apply, lambda p: type(p.get("cost")) is int and p["cost"] >= 1),
+    "idol": (_idol_auto, _idol_apply,
+             lambda p: type(p.get("cost")) is int and p["cost"] >= 1 and type(p.get("seed", 0)) is int),
     "campfire": (_campfire_auto, _campfire_apply, _campfire_valid),
 }
 
@@ -1391,7 +1394,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     elif kind == "secret":                     # hidden room: a rare-or-better item and gold
         ev.update(name="Secret Room", sprite="secret")
         meta["secrets"] = meta.get("secrets", 0) + 1
-        gold = round((15 + 4 * f) * (1 + st["gold"]))
+        gold = round((SECRET_GOLD[0] + SECRET_GOLD[1] * f) * (1 + st["gold"]))
         run["gold"] += gold
         ev["gold"] = gold
         give(best=True)
@@ -1495,7 +1498,8 @@ def _balance_version() -> str:
             CHEST_ITEM_CHANCE, SHOP_PRICE, MON_SPD, BOSS_SPD_BONUS, MON_CRIT, BOSS_CRIT, FOE_CRITDMG, PET_SPD,
             PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOCK, MAX_THORNS, MAX_DOUBLE, MAX_LUCK, MAX_DISCOUNT, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOUBLE_CRIT, BURN,
             BURN_TURNS, SHOCK_CHANCE, SHOCK_TURNS, POISON_TURNS, POISON_MAX_STACKS, FREEZE_CHANCE, FREEZE_TURNS,
-            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT,
+            MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT, SECRET_GOLD, IDOL_COST, IDOL_WIN, IDOL_CURSE,
+            IDOL_MIN_HP, IDOL_AUTO_HP, CAMPFIRE_REST, CAMPFIRE_AUTO_HP, EMBER,
             {k: {f: v[f] for f in ("kind", "req", "fx")} for k, v in sorted(SYNERGIES.items())}]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
@@ -1513,5 +1517,5 @@ def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: l
         "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
         "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,
         "achievements": list(achievements), "synergies": list(run.get("synergies", [])),
-        "rooms": dict(run.get("rooms", {})),
+        "rooms": dict(run.get("rooms", {})), "counters": dict(run.get("counters", {})),
     }

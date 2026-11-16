@@ -38,6 +38,10 @@ def sim(n=2000, achs=(), seed=1):
     print("  killers:", killers.most_common(6))
     sy = collections.Counter(k for r in recs for k in r.get("synergies", []))
     print("  synergies (% of runs):", {k: round(100 * sy[k] / n) for k in M.SYNERGIES}, "unused:", [k for k in M.SYNERGIES if not sy[k]])
+    ro = collections.Counter(); acc = sum(r["counters"]["idol_accept"] for r in recs)
+    for r in recs: ro.update(r["rooms"])
+    print("  rooms (%):", {k: round(100 * v / sum(ro.values()), 1) for k, v in ro.most_common()})
+    print(f"  idol: accepted {acc / max(ro['idol'], 1):.0%} of idol rooms, won {sum(r['counters']['idol_win'] for r in recs) / max(acc, 1):.0%} of accepts")
     print("  deaths by kind:", dict(collections.Counter(r["killer_kind"] for r in recs if r["killer"] != "—").most_common()))
 
 def main():

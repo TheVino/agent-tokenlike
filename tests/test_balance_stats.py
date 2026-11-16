@@ -143,4 +143,11 @@ assert set(sy["sim"]["defense2"]) == {"n", "median_with", "median_without"}
 _s = E.synergies([dict(line("slime", 9, []), synergies=["defense2"]), line("slime", 5, [])])
 assert _s["defense2"] == {"n": 1, "median_with": 9, "median_without": 5} and _s["defense4"]["median_with"] is None
 assert "<h2>Synergies</h2>" in page
+# rooms: each kind's share and the idol's accept and win rates
+_ro = E.rooms([dict(line("slime", 6, []), rooms={"monster": 3, "idol": 1}, counters={"idol_accept": 1, "idol_win": 1}),
+               dict(line("slime", 6, []), rooms={"idol": 1}, counters={"idol_accept": 0, "idol_win": 0}),
+               line("slime", 6, [])])                            # old line without rooms/counters
+assert _ro["share"] == {"monster": 0.6, "idol": 0.4} and _ro["idol_accept"] == 0.5 and _ro["idol_win"] == 1.0
+assert E.rooms([]) == {"share": {}, "idol_accept": None, "idol_win": None}
+assert set(data["rooms"]) == {"sim", "real"} and "<h2>Rooms</h2>" in page and "Idol accepted" in page
 print("ok: balance_stats")

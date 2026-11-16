@@ -179,6 +179,20 @@ def synergies(recs) -> dict:
     return out
 
 
+def rooms(recs) -> dict:
+    """Share of each room kind among the rooms played, and the idol's accept (per idol room) and win (per accept) rates."""
+    tot = collections.Counter()
+    acc = win = 0
+    for r in valid(recs):
+        tot.update({k: v for k, v in (r.get("rooms") or {}).items() if isinstance(v, int)})
+        c = r.get("counters") or {}
+        acc += c.get("idol_accept", 0)
+        win += c.get("idol_win", 0)
+    n = sum(tot.values())
+    return {"share": {k: v / n for k, v in tot.most_common()},
+            "idol_accept": acc / tot["idol"] if tot["idol"] else None, "idol_win": win / acc if acc else None}
+
+
 # ---------- collection, page and command line ----------
 
 def collect(n_sim: int, real_folder: Path, all_versions: bool, seed: int = 1) -> dict:
@@ -204,6 +218,7 @@ def collect(n_sim: int, real_folder: Path, all_versions: bool, seed: int = 1) ->
         "deaths": {"sim": deaths(sim_recs), "real": deaths(real_recs)},
         "heroes": {"sim": heroes(sim_recs), "real": heroes(real_recs)},
         "synergies": {"sim": synergies(sim_recs), "real": synergies(real_recs)},
+        "rooms": {"sim": rooms(sim_recs), "real": rooms(real_recs)},
     }
 
 
@@ -479,7 +494,13 @@ def make_html(data: dict) -> str:
             p.append(f'<div><p class="source">{font}</p>{body}</div>')
         p.append("</div>")
     p.append("<h2>Synergies</h2>" + _synergies_table(data["synergies"]["sim"], data["synergies"]["real"], real_empty))
-    p.append('<h2>Where runs die</h2><div class="cols">')
+    p.append('<h2>Rooms</h2><div class="cols">')
+    for font in ("sim", "real"):
+        ro = data["rooms"][font]
+        bars = _bars((k, round(100 * v)) for k, v in ro["share"].items()) if ro["share"] else '<p class="mu">no data</p>'
+        p.append(f'<div class="card"><p class="source">{font}</p><p class="mu">Share of rooms (%)</p>{bars}'
+                 f'<p class="mu">Idol accepted: {_pct(ro["idol_accept"])} · won: {_pct(ro["idol_win"])}</p></div>')
+    p.append('</div><h2>Where runs die</h2><div class="cols">')
     for font in ("sim", "real"):
         m = data["deaths"][font]
         p.append(f'<div class="card"><p class="source">{font}</p>{_histogram(m["per_floor"], font)}<p class="mu">Top killers</p>{_killers(m["killers"])}<p class="mu">By kind of death</p>{_kinds(m["per_kind"])}</div>')
