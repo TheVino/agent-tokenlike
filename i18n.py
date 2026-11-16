@@ -271,7 +271,7 @@ PT = {
     "The shopkeeper counts coins in her sleep. I counted along. We tied.": "A lojista conta moedas dormindo. Contei junto. Empatamos.",
     "I roasted a mushroom here once. It apologized. I ate it anyway.": "Assei um cogumelo aqui uma vez. Ele pediu desculpas. Comi mesmo assim.",
     "Every ember remembers the log it was. Be kind to your logs.": "Toda brasa lembra do tronco que foi. Seja gentil com seus troncos.",
-    "A crow showed me the way up. I did not ask. I am not going.": "Um corvo me mostrou o caminho de volta. Não pedi. Não vou.",
+    "A crow showed me the way up. I did not ask. I am not going.": "Um corvo me mostrou a saída. Não pedi. Gosto daqui.",
     "Pack light, fall softly, keep one candle for the stairs.": "Leve pouco, caia devagar, guarde uma vela pra escada.",
     "I leave a coin by every fire. Somebody always leaves a smile.": "Deixo uma moeda em cada fogueira. Sempre alguém deixa um sorriso.",
     "Heal {n} HP": "Cura {n} de vida", "+1 DEF for the run": "+1 DEF na run", "Gain {n} gold": "Ganha {n} de ouro",
