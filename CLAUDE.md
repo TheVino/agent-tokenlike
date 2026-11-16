@@ -212,12 +212,12 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   `auto` mode (`state["mode"]`): `auto_choice` consumes a heal if HP < 40%, otherwise takes. `interactive` mode:
   the offer goes to `run["pending"]` (saved in the state) and the GUI opens the choice window; without an answer
   within `CHOICE_WINDOW_S` (30 s), the automatic rule decides when the next room is ready. Never enters a room
-  with an open pending offer. Choices are `"take"` / `"consume"`.
+  with any open pending (any kind). Choices: offer `"take"` / `"consume"`; idol accept / decline; campfire boon keys.
 - **Typed pending:** `run["pending"]` has a `kind`; `dungeon.CHOICES[kind] = (auto, apply, valid)` (`offer`,
   `idol`, `campfire`) drives `choose_pending`/`resolve_pending` and the save check (`valid`). `_deliver` is the
   single writer of offer pendings (auto: resolves inline; interactive: sets `run["pending"]`), also used by the
   idol and chests. `run["temp"]` = timed `{fx, rooms}` effects (`add_temp`, summed in `stats()` like the trait,
-  ticked down once per room); `run["rooms"]` counts rooms entered per kind and goes into `run_record` as `"rooms"`.
+  ticked down once per non-stairs room); `run["rooms"]` counts rooms entered per kind and goes into `run_record` as `"rooms"`.
   Counters `idol_accept` / `idol_win`.
 - **New rooms** (weights in `ROOM_WEIGHTS`; numbers live in `dungeon.py`): **secret** (gold `SECRET_GOLD`,
   `meta["secrets"]`, achievement `secret3`); **Cracked Idol** (`IDOL_COST` of current HP, never below 1, for an
@@ -327,5 +327,5 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
 ## Open ideas
 
 - Unlockable heroes with their own mechanic (e.g. mimic chest).
-- More rooms (rare event, secret room), more bosses with their own sprite.
+- More rooms (rare event), more bosses with their own sprite.
 - More player choices (today only take/consume in interactive mode), sounds, run statistics.

@@ -771,8 +771,6 @@ def add_temp(run: dict, fx: dict, rooms: int) -> None:
     run["temp"].append({"fx": dict(fx), "rooms": rooms})
 
 
-# Per-kind pending choices: (auto(run, p) -> str, apply(run, meta, p, choice, ev, mode) -> None, valid(p) -> bool).
-# mode is "interactive" or "auto" (later rooms resolving inline may chain another offer).
 def _deliver(run: dict, offer: dict, ev: dict, mode: str, source: str) -> None:
     """The only place that writes an offer pending: auto resolves it now, interactive leaves it open."""
     if mode == "auto":
@@ -814,6 +812,7 @@ def _idol_apply(run, meta, p, choice, ev, mode="interactive"):
     else:
         add_temp(run, *IDOL_CURSE)
         ev["lines"].append("The idol's curse bites.")
+
 
 # Traveler's Campfire: a short tale (heard = seen, kept in meta["journal"]) and a pick of 3 boons.
 TALES = {k: {"who": w, "text": x} for k, (w, x) in {
@@ -1499,7 +1498,7 @@ def _balance_version() -> str:
             PET_CRIT, PET_CRITDMG, MAX_CRIT, MAX_ELEM_CHANCE, MAX_BLOCK, MAX_THORNS, MAX_DOUBLE, MAX_LUCK, MAX_DISCOUNT, BOSS_ELEMENT, BOSS_STATUS_CHANCE, DOUBLE_CRIT, BURN,
             BURN_TURNS, SHOCK_CHANCE, SHOCK_TURNS, POISON_TURNS, POISON_MAX_STACKS, FREEZE_CHANCE, FREEZE_TURNS,
             MAX_ROUNDS, HORDE_MIN_FLOOR, HORDE_MULT, HORDE_GOLD_MULT, SECRET_GOLD, IDOL_COST, IDOL_WIN, IDOL_CURSE,
-            IDOL_MIN_HP, IDOL_AUTO_HP, CAMPFIRE_REST, CAMPFIRE_AUTO_HP, EMBER,
+            IDOL_MIN_HP, IDOL_AUTO_HP, CAMPFIRE_REST, CAMPFIRE_AUTO_HP, EMBER, BOON_PRIORITY,
             {k: {f: v[f] for f in ("kind", "req", "fx")} for k, v in sorted(SYNERGIES.items())}]
     return hashlib.sha256(json.dumps(blob, sort_keys=True).encode()).hexdigest()[:8]
 
