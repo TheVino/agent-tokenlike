@@ -84,6 +84,9 @@ elsewhere the pet sits on a dark background.
 - **Floors:** 5 rooms per floor, then the stairs. Every **5th floor** ends in a **boss** (wearing a crown).
 - **Random rooms:** monsters, **hordes** (2 to 4 weaker foes, from floor 3), chests (sometimes a **mimic**), traps,
   healing fountains, a little shop and a dark altar (pacts with a price: lose max HP for ATK, trade gold for healing...).
+  Rarer rooms: a **secret room** (gold), a **Cracked Idol** (pay part of your HP for a shot at an epic or better
+  item, or take a temporary curse) and a **Traveler's Campfire** (rest, hear a short tale, pick one of three boons).
+  The tales you hear are kept in the **Journal** window (menu), where unheard ones stay a silhouette.
 - **Round-based combat:** each round the fastest acts first (**speed**; the pet wins ties). Any hit can be a
   **critical**; having twice the target's speed adds extra crit chance and doubles the crit damage. Each boss has
   an element and can inflict a **status**: burn and poison deal damage at the start of the round, shock and freeze

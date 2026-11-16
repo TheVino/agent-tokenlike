@@ -37,6 +37,10 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   unlocks everything) = silhouette + padlock + achievement, no values. The window has two tabs, Items |
   Synergies (`synergy_card`: sets, pairs, reactions; undiscovered = silhouette + hint, secret pairs show "???";
   discovered ones get a gold frame; a reaction fires only on a status the foe had before the hit).
+  "Journal" (`show_journal`, `journal_win`): the Campfire tales heard (`meta["journal"]`, `x/total`), cards on a
+  `Canvas`, unheard ones = silhouette + "???" (art in `art.TALE_ART`, speaker `who` in `TALES`).
+  `show_choice` lays out one window per pending kind (`choice_title`: offer take/consume, idol accept/decline,
+  campfire boon pick); `play_room` has a branch per new room (secret, idol, campfire).
   "Profile" (1st menu row) opens `show_profile`: hero/run/HP, tamer level (`level`: floor(sqrt(lifetime energy
   `xp_total` / 1M)), `LEVEL_XP`), medals from `art.ACH_ART` in fixed cells (`icon(..., side=)`, name on hover),
   6 cards (today and lifetime energy, `streak_days`, runs, best, heroes N/20 + bosses), last 7 days bars
@@ -109,7 +113,7 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   `test_reader.py` (log reading, dedup, art), `test_items.py` (rarity, stacking, take/consume, shield, caps,
   pending offer, 3-slot save migration; sets, pairs, discovery, synergy `fx` in `stats()`), `test_records.py`
   (`run_record`, `runs.jsonl`, synergies in the record), `test_balance_stats.py` (metrics and page, synergy
-  section), `test_combat.py` (reaction effects), `test_sheet.py` (cutting and PNG decoder; `tests/_png.py` writes real
+  section, "Rooms" section), `test_combat.py` (reaction effects), `test_sheet.py` (cutting and PNG decoder; `tests/_png.py` writes real
   PNGs), `test_visual.py` (effects of `visual.py` and pet composition), `test_texts.py` (real Tk, worst-case data
   in every window and the HUD, in pt and en; the reusable check is `tests/_texts.py: check(window)`, cards on a
   Canvas tagged `card:<id>` via `extra=`), `test_i18n.py` (every `t()` key and every game data text with a PT
@@ -209,6 +213,20 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   the offer goes to `run["pending"]` (saved in the state) and the GUI opens the choice window; without an answer
   within `CHOICE_WINDOW_S` (30 s), the automatic rule decides when the next room is ready. Never enters a room
   with an open pending offer. Choices are `"take"` / `"consume"`.
+- **Typed pending:** `run["pending"]` has a `kind`; `dungeon.CHOICES[kind] = (auto, apply, valid)` (`offer`,
+  `idol`, `campfire`) drives `choose_pending`/`resolve_pending` and the save check (`valid`). `_deliver` is the
+  single writer of offer pendings (auto: resolves inline; interactive: sets `run["pending"]`), also used by the
+  idol and chests. `run["temp"]` = timed `{fx, rooms}` effects (`add_temp`, summed in `stats()` like the trait,
+  ticked down once per room); `run["rooms"]` counts rooms entered per kind and goes into `run_record` as `"rooms"`.
+  Counters `idol_accept` / `idol_win`.
+- **New rooms** (weights in `ROOM_WEIGHTS`; numbers live in `dungeon.py`): **secret** (gold `SECRET_GOLD`,
+  `meta["secrets"]`, achievement `secret3`); **Cracked Idol** (`IDOL_COST` of current HP, never below 1, for an
+  `IDOL_WIN` chance at an epic+ item via `roll_offer(min_rar=)`, else the temp curse `IDOL_CURSE`; `idol_choices`
+  hides accept below `IDOL_MIN_HP`; auto accepts above `IDOL_AUTO_HP`; the roll seed is fixed on entry);
+  **Traveler's Campfire** (`rest` heals `CAMPFIRE_REST`, tells a tale from `TALES` saved in `meta["journal"]`, offers 3
+  of `BOONS` (`rest`, `stone`, `coins`, `ember`, `ward`, `refine`; `boon_text`); auto takes `rest` when HP <
+  `CAMPFIRE_AUTO_HP`, else the first of `BOON_PRIORITY`; `refine` raises an item one rarity, `REFINE_FALLBACK`
+  when none can).
 - **Caps:** summed `energy` ≤ +100% (`MAX_ENERGY_BONUS`), trap multiplier in `TRAP_LIMITS` (0.25 to 3),
   dodge ≤ `MAX_DODGE`, crit ≤ `MAX_CRIT` (0.35), each element's chance ≤ `MAX_ELEM_CHANCE` (0.3),
   `block` ≤ `MAX_BLOCK` (2), `thorns` ≤ `MAX_THORNS` (0.5), `double` ≤ `MAX_DOUBLE` (0.25),
@@ -243,13 +261,13 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   `dungeon.run_record`, with `dungeon.BALANCE_VERSION` (8-char hash of the balance numbers only).
   A number changed, the version changed and the real history restarts (`--all-versions` shows everything).
   The hash does not see formulas or numbers written in the code: when changing a combat rule/formula, bump
-  `dungeon.RULES_REV` (now 9). Changing only a constant already changes the version by itself.
+  `dungeon.RULES_REV` (now 10). Changing only a constant already changes the version by itself.
 - Balance targets: in `TARGETS` of `tools/balance_stats.py` (pass the 1st boss 35-45%, p90 13-16, max <= 50).
   They are judged on the **calibration** (slime only, same as `simulate.py`, without and with achievements); the
   "sim" with all heroes mixed is informative only. Green/red item uses `vs_mean` (vs expected minus the items'
   mean). Run `python tools/balance_stats.py`, do not memorize numbers here.
-- Last simulator result (`tools/simulate.py`, reference only, may be stale): 40-43% pass the 1st boss, p90 =
-  floor 15, p99 = 20, max = 35-45. Deaths (without achievements): boss ~62%, monster ~19%, horde ~9%,
+- Last simulator result (`tools/simulate.py`, reference only, may be stale): 43.4% pass the 1st boss without
+  achievements, 44.0% with, p90 = floor 15, max = 35 / 30 (the simulator also prints room shares and idol rates). Deaths (without achievements): boss ~62%, monster ~19%, horde ~9%,
   status ~5%, mimic ~3%, trap ~1%. Items stack, the hero gets strong fast (`CHEST_ITEM_CHANCE` = 1.0,
   low `RAR_MULT`) and the bosses are what hold runs back (`BOSS_HP` = (55, 18), `BOSS_ATK` = (7.5, 3.1), i.e.
   `value + per_floor * (floor - BOSS_EVERY)`, minimum 1); the 2nd boss (floor 10) is the wall. `MON_ATK` = (1.5, 1.2).
@@ -293,6 +311,10 @@ Run the tests after any change. When touching `dungeon.py`, also run the simulat
   chance of each element: `burn`, `shock`, `poison`, `freeze` (0..1, cap `MAX_ELEM_CHANCE`; `crit` cap `MAX_CRIT`),
   plus the family ones described in "How the pieces fit".
 - **New room type:** `ROOM_WEIGHTS` + a branch in `enter_room` + the animation in `PetApp.play_room`.
+- **New room type with a choice:** also a `CHOICES` entry (`auto`, `apply`, `valid`), the branch in `enter_room`
+  sets `run["pending"] = {"kind": ..., ...}` (or applies `auto` inline in auto mode; offers go through `_deliver`),
+  and the layout in `PetApp.show_choice` (+ `choice_title`). Texts via `t()` with `PT` entries; the "Rooms" section
+  of `tools/balance_stats.py` reads `run["rooms"]`.
 - **New achievement:** `dungeon.ACHIEVEMENTS` + rule in `_check_achievements` + icon in `art.ACH_ART` (test).
 - **New `fx`/`stats()` field:** icon in `art.STAT_ART` and a line in `tokenlike.STAT_LINES` (test).
 - **New hero:** preferably a folder in `characters/` with PNGs and `character.json` (`stats` with optional
