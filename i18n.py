@@ -180,6 +180,7 @@ PT = {
     "Kill 3 enemies with poison in a run": "Matar 3 inimigos com veneno numa run",
     "Die on floor 13": "Morrer no andar 13",
     "Beat 3 bosses in a single run": "Vencer 3 chefes numa mesma run",
+    "Find 3 Secret Rooms": "Achar 3 Salas Secretas",
     # heroes (name and stages)
     "Slime": "Slime",
     "Droplet": "Gotinha",
@@ -250,7 +251,7 @@ PT = {
     "Common": "Comum", "Rare": "Raro", "Epic": "Épico", "Legendary": "Lendário",
     "burn": "queimadura", "shock": "eletricidade", "poison": "veneno", "freeze": "congelamento",
     # rooms and event lines (dungeon.enter_room; translated by template)
-    "Chest": "Baú", "Fountain": "Fonte", "Little Shop": "Lojinha", "Dark Altar": "Altar Sombrio",
+    "Chest": "Baú", "Secret Room": "Sala Secreta", "Fountain": "Fonte", "Little Shop": "Lojinha", "Dark Altar": "Altar Sombrio",
     "Horde ({n})": "Horda ({n})", "Floor {n}": "Andar {n}",
     "Bought a potion (-{n} gold)": "Comprou poção (-{n} ouro)", "Paid {n} gold": "Pagou {n} ouro",
     "The shop has nothing new...": "A loja não tem nada novo...", "No gold to buy...": "Sem ouro pra comprar...",

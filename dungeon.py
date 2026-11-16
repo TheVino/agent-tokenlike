@@ -64,6 +64,7 @@ ACHIEVEMENTS = {
     "poison3": "Kill 3 enemies with poison in a run",
     "floor13": "Die on floor 13",
     "bosses3run": "Beat 3 bosses in a single run",
+    "secret3": "Find 3 Secret Rooms",
 }
 
 RARITIES = ("common", "rare", "epic", "legendary")
@@ -442,7 +443,7 @@ def make_mimic(f: int) -> dict:
             "spd": MON_SPD[0] + MON_SPD[1] * f, "crit": MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
 
 
-ROOM_WEIGHTS = [("monster", 46), ("chest", 16), ("trap", 12), ("fountain", 11),
+ROOM_WEIGHTS = [("monster", 44), ("secret", 2), ("chest", 16), ("trap", 12), ("fountain", 11),
                 ("shop", 8), ("altar", 7), ("horde", 9)]
 # hordes: 2 to 4 weaker enemies (HP and ATK x HORDE_MULT[n]); only from floor HORDE_MIN_FLOOR on
 HORDE_MIN_FLOOR = 3
@@ -516,7 +517,7 @@ def fx_text(fx: dict) -> str:
 def new_meta() -> dict:
     return {"achievements": [], "graveyard": [], "runs": 0,
             "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0,
-            "synergies": {}}
+            "synergies": {}, "secrets": 0}
 
 
 COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0}
@@ -595,7 +596,7 @@ def migrate_run(run: dict) -> dict:
     p = run.get("pending")
     if isinstance(p, dict):
         p.setdefault("kind", "offer")              # saves from before typed pendings
-    if not isinstance(p, dict) or p["kind"] not in CHOICES or not CHOICES[p["kind"]][2](p):
+    if not isinstance(p, dict) or not isinstance(p["kind"], str) or p["kind"] not in CHOICES or not CHOICES[p["kind"]][2](p):
         run["pending"] = None
     return run
 
@@ -1056,6 +1057,7 @@ def _check_achievements(run: dict, meta: dict, ev: dict) -> None:
     grant("helpers3", sum(1 for it in run["items"] if "helper" in ITEMS[it["key"]]["fx"]) >= 3)
     grant("poison3", cont.get("poison_kills", 0) >= 3)
     grant("bosses3run", run["bosses"] >= 3)
+    grant("secret3", meta.get("secrets", 0) >= 3)
     grant("synergy5", len(meta.get("synergies", {})) >= 5)
     grant("reactions_all", all(k in meta.get("synergies", {}) for k, s in SYNERGIES.items() if s["kind"] == "reaction"))
     grant("synergies3run", len(run.get("synergies", ())) >= 3)
@@ -1198,6 +1200,14 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             run["gold"] += gold
             ev["gold"] = gold
 
+    elif kind == "secret":                     # hidden room: a rare-or-better item and gold
+        ev.update(name="Secret Room", sprite="secret")
+        meta["secrets"] = meta.get("secrets", 0) + 1
+        gold = round((15 + 4 * f) * (1 + st["gold"]))
+        run["gold"] += gold
+        ev["gold"] = gold
+        give(best=True)
+
     elif kind == "trap":
         ev.update(name="Trap", sprite="trap")
         if rng.random() < st["dodge"]:
@@ -1303,5 +1313,6 @@ def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: l
         "items": [dict(i) for i in run["items"]], "consumed": [dict(i) for i in run["consumed"]],
         "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
         "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,
-        "achievements": list(achievements), "synergies": list(run.get("synergies", [])), "rooms": dict(run.get("rooms", {})),
+        "achievements": list(achievements), "synergies": list(run.get("synergies", [])),
+        "rooms": dict(run.get("rooms", {})),
     }

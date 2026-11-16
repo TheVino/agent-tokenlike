@@ -954,6 +954,16 @@ ROOM_ART = {
         "KbBBBBbK",
         "KKKKKKKK",
     ],
+    "secret": [
+        "KKKKKKKK",
+        "KggyyggK",
+        "KgyYggyK",
+        "KggyyggK",
+        "KgyYyggK",
+        "KggyygoK",
+        "KggyyggK",
+        "KKKKKKKK",
+    ],
     "trap": [
         "..K...K..",
         ".KGK.KGK.",
@@ -1100,6 +1110,7 @@ ACH_ART = {
                       "...r...c..."],
     "synergies3run": ["...y...", "..yey..", "...y...", ".c.y.r.", "cic.rOr", ".c...r.", "ppp.ppp", ".p...p."],
     "bosses3run": ["y.y.y", "yyyyy", "y.y.y", "yyryy", "y.y.y", "yyryy"],
+    "secret3": ["KKKKKKK", "KgggygK", "KggyYgK", "KgyYggK", "KggyygK", "KgggygK", "KKKKKKK"],
 }
 
 

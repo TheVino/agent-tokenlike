@@ -421,10 +421,27 @@ for _ in range(30):
     rt3["energy"] = 1e9; M.enter_room(rt3, mt, rg)
     if rt3["temp"]: break
 M.combat = orig
-assert not rt3["temp"] or rt3["temp"][0]["rooms"] == 2
+assert rt3["temp"] and rt3["temp"][0]["rooms"] == 2
 # rooms counted
 rc = M.new_run("slime", {"hp": 9999}, 13); n = 0
 for _ in range(20):
     rc["energy"] = 1e9; n += M.enter_room(rc, mt, rg)["kind"] != "stairs"
 assert sum(rc["rooms"].values()) == n and "stairs" not in rc["rooms"]
+# secret room: always rare or better, plus gold
+_w = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("secret", 1)]
+try:
+    for seed in range(200):
+        rs = M.new_run("slime", {"hp": 9999}, 100 + seed); rs["energy"] = 1e9
+        ms = M.new_meta(); rg2 = random.Random(seed)
+        ev = M.enter_room(rs, ms, rg2)
+        assert ev["kind"] == "secret" and ev["sprite"] == "secret" and ev["gold"] > 0, ev
+        assert rs["items"] and all(i["rar"] != "common" for i in rs["items"]), rs["items"]
+    # secret3: 3 secret rooms
+    rs = M.new_run("slime", {"hp": 9999}, 500); ms = M.new_meta(); rg2 = random.Random(1)
+    for _ in range(3):
+        rs["energy"] = 1e9; M.enter_room(rs, ms, rg2)
+        rs["room"] = 0
+    assert ms["secrets"] == 3 and "secret3" in ms["achievements"], ms
+finally:
+    M.ROOM_WEIGHTS = _w
 print("ok: items")
