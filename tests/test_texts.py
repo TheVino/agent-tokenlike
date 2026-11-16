@@ -73,6 +73,13 @@ def round_(lang):
     app.state["mode"] = "interactive"
     app.run["pending"] = {"key": max(M.ITEMS, key=lambda k: len(tp._t(M.ITEMS[k]["name"]))), "rar": "legendary", "source": "chest"}
     app.show_choice(); looks("escolha", app.choice_win); app.close_choice()
+    app.run["hp"] = 99; app.run["pending"] = {"kind": "idol", "cost": 30, "seed": 1}
+    app.show_choice(); looks("escolha/idolo", app.choice_win); app.close_choice()
+    big = max(range(len(app.run["items"])), key=lambda i: len(tp._t(M.ITEMS[app.run["items"][i]["key"]]["name"])))
+    app.run["items"][big]["rar"] = "common"
+    app.run["pending"] = {"kind": "campfire", "line": max(M.TALES, key=lambda k: len(tp._t(M.TALES[k]["text"]))),
+                          "boons": ["rest", "refine", "coins"], "refine": big}
+    app.show_choice(); looks("escolha/fogueira", app.choice_win); app.close_choice()
     app.announce_unlocks([max(M.ACHIEVEMENTS, key=lambda k: len(tp._t(M.ACHIEVEMENTS[k])))])
     looks("popup", app.popup_win)
     app.popup([tp._t("Defeated by: {k}", k=tp._t(murderer)), tp._t(longo([i["name"] for i in M.ITEMS.values()]))])

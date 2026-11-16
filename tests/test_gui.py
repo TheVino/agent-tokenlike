@@ -166,6 +166,35 @@ for demo in (False, True):
     app3 = tp.PetApp(Args(demo=demo)); PENDING.clear(); app3.rng = random.Random(SEED)
     app3.busy_until = 0; app3.run["energy"] = 5 * M.ROOM_COST
     app3.tick(); assert app3.run["pending"] and app3.pending_since is not None
+    # idol / campfire: choice windows, every chip, chained offer, timeout, footer, forced rooms in both modes
+    camp = {"kind": "campfire", "line": "scarf", "boons": ["rest", "stone", "coins"], "refine": None}
+    win, M.IDOL_WIN = M.IDOL_WIN, 0.0                                           # no win here: no chained offer
+    for pend in ({"kind": "idol", "cost": 2, "seed": 3}, camp):
+        for choice in (M.idol_choices(app3.run) if pend["kind"] == "idol" else pend["boons"]):
+            app3.run.update(hp=10, dead=False); app3.run["pending"] = dict(pend); app3.pending_since = time.time()
+            app3.show_choice(); assert app3.choice_win is not None
+            app3.update_panel(); app3.show_stats()
+            app3.choose(choice); assert app3.run["pending"] is None and app3.choice_win is None
+    app3.run.update(hp=10); app3.run["pending"] = {"kind": "idol", "cost": 2, "seed": 3}
+    M.IDOL_WIN = 1.0
+    app3.show_choice(); app3.choose("accept"); M.IDOL_WIN = win
+    assert app3.run["pending"] and app3.run["pending"]["kind"] == "offer"      # the win chains an offer
+    for fn in list(PENDING): PENDING.remove(fn); fn()
+    assert app3.choice_win is not None                                         # ...and its window opens
+    app3.run["pending"] = {"kind": "campfire", "line": "scarf", "boons": ["rest", "stone", "coins"], "refine": None}
+    app3.pending_since = time.time() - M.CHOICE_WINDOW_S - 1; app3.busy_until = 0; app3.run["energy"] = 5 * M.ROOM_COST
+    app3.state["mode"] = "interactive"; app3.tick(); assert app3.run["pending"] is None   # timeout: auto rule
+    weights = M.ROOM_WEIGHTS
+    for kind in ("secret", "idol", "campfire"):
+        for mode in ("auto", "interactive"):
+            M.ROOM_WEIGHTS = [(kind, 1)]; app3.state["mode"] = mode
+            app3.run.update(floor=3, room=0, hp=10, dead=False, pending=None); app3.busy_until = 0
+            app3.run["energy"] = 5 * M.ROOM_COST; app3.play_room()
+            assert app3._last_kind == [kind], app3._last_kind
+            if app3.run["pending"]:
+                app3.update_panel(); app3.show_stats(); app3.show_choice(); app3.close_choice()
+            app3.run["pending"] = None
+    M.ROOM_WEIGHTS = weights
     # pump in both modes
     app3.state["mode"] = "interactive"; pump(app3, 300)
     app3.mode_var.set("auto"); app3.change_mode(); pump(app3, 100)

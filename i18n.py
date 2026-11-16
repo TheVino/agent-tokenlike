@@ -253,6 +253,8 @@ PT = {
     # rooms and event lines (dungeon.enter_room; translated by template)
     "Chest": "Baú", "Secret Room": "Sala Secreta", "Cracked Idol": "Ídolo Rachado", "Fountain": "Fonte", "Little Shop": "Lojinha", "Dark Altar": "Altar Sombrio",
     "The idol cracks: {item}!": "O ídolo rachou: {item}!", "The idol's curse bites.": "A maldição do ídolo morde.",
+    "Pay {n} HP: {p}% epic item, or a curse": "Pague {n} de HP: {p}% de item épico, ou uma maldição",
+    "Accept": "Aceitar", "Decline": "Recusar", "Campfire": "Fogueira",
     "You leave the idol alone.": "Você deixa o ídolo em paz.",
     # traveler's campfire: room, tales (original; the owner reviews them), boons, event lines
     "Traveler's Campfire": "Fogueira do Viajante", "You leave the campfire.": "Você deixa a fogueira.",

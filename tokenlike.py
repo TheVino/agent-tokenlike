@@ -70,6 +70,7 @@ SAVE_EVERY_S = 30
 RESPAWN_S = 12              # how long the tombstone shows before the new run
 SIZES = {"Small": 4, "Medium": 6, "Large": 8}  # screen px per art pixel
 MODES = {"auto": "Auto", "interactive": "Interactive"}
+CHOICE_TEXT_W = 220         # wrap width of the idol/campfire texts
 CHOICE_BAR_W = 150          # width of the timer bar in the choice panel
 TRANSPARENT = "#ff00fe"     # "key" color that Windows makes invisible
 
@@ -2063,6 +2064,16 @@ class PetApp:
         elif kind == "fountain":
             at(t, lambda: self.floater(f"+{ev.get('heal', 0)} ♥", GOOD))
             t += 600
+        elif kind == "secret":                         # like a chest, with a gold flash
+            at(t, lambda: self.burst(self.fcx, self.base_y - self.T // 2))
+            t += 400
+        elif kind == "idol":                           # like the altar: the pet flinches when it pays
+            if ev.get("lines") and not self.run["pending"]:
+                at(t, lambda: self._set("hop", [-4, -8, -4, 0]))
+                t += 400
+        elif kind == "campfire":                       # like the fountain: a warm glow
+            at(t, lambda: self.floater("♥", GOOD))
+            t += 400
         elif kind == "stairs":
             at(t, lambda: self._set("hop", [-4, -8, -10, -8, -4, 0]))
             t += 600
@@ -2130,6 +2141,8 @@ class PetApp:
         t = self._offer_steps(ev, lambda ms, fn: steps.append((ms, fn)), 0)
         if ev.get("unlocks"):
             steps.append((t, lambda: self.announce_unlocks(ev["unlocks"])))
+        if ev.get("pending") and self.run["pending"]:       # an idol win chains an offer
+            steps.append((t, self.show_choice))
         steps.append((t, self.update_panel))
         for ms, fn in steps:
             self.root.after(ms, fn)
@@ -2474,26 +2487,58 @@ class PetApp:
         except tk.TclError:
             pass
 
+    def choice_title(self, p):
+        """Name shown after "Waiting for a choice:" for any kind of pending."""
+        kind = p.get("kind", "offer")
+        if kind == "idol":
+            return _t("Cracked Idol")
+        if kind == "campfire":
+            return _t("Campfire")
+        return _t(M.ITEMS[p["key"]]["name"])
+
     def show_choice(self):
-        """Take/Consume panel beside the pet (only one at a time)."""
+        """Choice panel beside the pet (only one at a time): offer, idol or campfire."""
         p = self.run["pending"]
-        if self.choice_win is not None or not p or p.get("kind", "offer") != "offer":
-            return                                 # ponytail: idol window comes with the GUI task
-        key, rar = p["key"], p["rar"]
-        it = M.ITEMS[key]
+        if self.choice_win is not None or not p:
+            return
+        kind = p.get("kind", "offer")
         w, f = self.pixel_box(0, 0, closes=False)   # the choice does not close by itself when it loses focus
-        self.choice_img = self.art_img(key)       # keep a reference: tk does not hold the image by itself
-        tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
-        tk.Label(f, text=f"{_t(it['name'])}  ·  {_t(M.RAR_NAMES[rar])}", bg=PANEL_BG,
-                 fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=6)
-        cf = M.consume_fx(key, rar)
-        cons = f"+{cf['heal']} ♥" if "heal" in cf else _t("+{n} shield", n=cf['shield'])
-        tk.Label(f, text=_t("Take: {x}", x=M.fx_text(M.item_fx(key, rar))) + "\n" + _t("Consume: {x}", x=cons),
-                 justify="left", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(padx=6)
         row = tk.Frame(f, bg=PANEL_BG)
-        row.pack(pady=4)
-        for label, choice in (("Take", "take"), ("Consume", "consume")):
-            self.chip(row, _t(label), False, lambda c=choice: self.choose(c)).pack(side="left", padx=4)
+        if kind == "idol":
+            self.choice_img = self.art_img("idol")
+            tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
+            tk.Label(f, text=_t("Cracked Idol"), bg=PANEL_BG, fg=GOLD, font=self.font).pack(padx=6)
+            tk.Label(f, text=_t("Pay {n} HP: {p}% epic item, or a curse", n=p["cost"], p=round(M.IDOL_WIN * 100)),
+                     justify="center", bg=PANEL_BG, fg=MUTED, font=self.font_small, wraplength=CHOICE_TEXT_W).pack(padx=6)
+            row.pack(pady=4)
+            for c in M.idol_choices(self.run):
+                self.chip(row, _t(c.capitalize()), False, lambda c=c: self.choose(c)).pack(side="left", padx=4)
+        elif kind == "campfire":
+            self.choice_img = self.art_img("tale_" + M.TALES[p["line"]]["who"])
+            tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
+            tk.Label(f, text=_t(M.TALES[p["line"]]["text"]), justify="center", bg=PANEL_BG, fg=TEXT,
+                     font=self.font_small, wraplength=CHOICE_TEXT_W).pack(padx=6)
+            row.pack(pady=4)
+            for c in p["boons"]:
+                full = M.boon_text(c, self.run)
+                chip = self.chip(row, self.shorten(full, self.font_small, CHOICE_TEXT_W - 12), False,
+                                 lambda c=c: self.choose(c))
+                chip.pack(pady=2)
+                self.tooltip(chip, full)
+        else:
+            key, rar = p["key"], p["rar"]
+            it = M.ITEMS[key]
+            self.choice_img = self.art_img(key)       # keep a reference: tk does not hold the image by itself
+            tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
+            tk.Label(f, text=f"{_t(it['name'])}  ·  {_t(M.RAR_NAMES[rar])}", bg=PANEL_BG,
+                     fg=M.RAR_COLOR.get(rar) or TEXT, font=self.font).pack(padx=6)
+            cf = M.consume_fx(key, rar)
+            cons = f"+{cf['heal']} ♥" if "heal" in cf else _t("+{n} shield", n=cf['shield'])
+            tk.Label(f, text=_t("Take: {x}", x=M.fx_text(M.item_fx(key, rar))) + "\n" + _t("Consume: {x}", x=cons),
+                     justify="left", bg=PANEL_BG, fg=MUTED, font=self.font_small).pack(padx=6)
+            row.pack(pady=4)
+            for label, choice in (("Take", "take"), ("Consume", "consume")):
+                self.chip(row, _t(label), False, lambda c=choice: self.choose(c)).pack(side="left", padx=4)
         self.choice_cv = self.progress_bar(f, CHOICE_BAR_W, 6, 1.0, ENERGY)
         self.choice_cv.pack(pady=(2, 2))
         self.choice_wait = tk.Label(f, text="", bg=PANEL_BG, fg=MUTED, font=self.font_small)
@@ -2596,8 +2641,8 @@ class PetApp:
                   _t("Best: floor {n}", n=f"{best['floor']}-{best['room']}") + f"   ·   Runs: {meta['runs']}",
                   _t("Tokens today: {n}", n=fmt(self.state['daily'].get(date.today().isoformat(), 0)))
                   + f"   ·   Total: {fmt(self.state['tokens_total'])}"]
-        if run["pending"] and run["pending"].get("kind", "offer") == "offer":
-            footer.append(_t("Waiting for a choice: {x}", x=_t(M.ITEMS[run['pending']['key']]['name'])))
+        if run["pending"]:
+            footer.append(_t("Waiting for a choice: {x}", x=self.choice_title(run["pending"])))
         if self.demo:
             footer.append(_t("(demo mode)"))
         tk.Label(f, text="\n".join(footer), bg=PANEL_BG, fg=MUTED, font=self.font_small, anchor="w",
