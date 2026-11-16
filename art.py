@@ -974,6 +974,16 @@ ROOM_ART = {
         ".KGgKGK.",
         "KKKKKKKK",
     ],
+    "campfire": [
+        "...K....",
+        "..KoK.K.",
+        ".KorOK..",
+        ".KoeroK.",
+        "KoeyeroK",
+        "KOoeeoOK",
+        "bBKKKKBb",
+        "KbBbbBbK",
+    ],
     "trap": [
         "..K...K..",
         ".KGK.KGK.",
@@ -1124,6 +1134,53 @@ ACH_ART = {
 }
 
 
+# who tells the campfire tales (16px-ish portraits, 12 wide)
+TALE_ART = {
+    "ghost": [
+        "...KKKKKK...",
+        "..KwwwwwwK..",
+        ".KwwwwwwwwK.",
+        ".KwwKwwKwwK.",
+        ".KwwKwwKwwK.",
+        ".KwwwwwwwwK.",
+        ".KwwwKKwwwK.",
+        ".KwwwwwwwwK.",
+        ".KwwwwwwwwK.",
+        ".KwKwwwwKwK.",
+        "..K.KwwK.K..",
+        "......KK....",
+    ],
+    "wanderer": [
+        "...KKKKKK...",
+        "..KppppppK..",
+        ".KpppPPpppK.",
+        ".KppKKKKppK.",
+        ".KpKnnnnKpK.",
+        ".KpKKnKnKpK.",
+        "..KpKnnKpK..",
+        ".KppKKKKppK.",
+        "KppppppppppK",
+        "KpbpppppppbK",
+        "KpbppppppPbK",
+        ".KKKKKKKKKK.",
+    ],
+    "traveler": [
+        "...KKKKKK...",
+        "..KbbbbbbK..",
+        ".KBBBBBBBBK.",
+        "KKKKKKKKKKKK",
+        ".KnnKnnKnnK.",
+        ".KnnKnnKnnK.",
+        "..KnnnnnnK..",
+        ".KrrrrrrrrK.",
+        "KrrrrBrrrrrK",
+        "KrrrBBBrrrrK",
+        ".KrKKKKKrK..",
+        "..KK....KK..",
+    ],
+}
+
+
 def all_art():
     out = {}
     for group in (ITEM_ART, FOE_ART, ROOM_ART, MENU_ART):
@@ -1131,6 +1188,7 @@ def all_art():
     out["coroa"] = CROWN
     out.update({"stat_" + k: g for k, g in STAT_ART.items()})
     out.update({"conq_" + k: g for k, g in ACH_ART.items()})
+    out.update({"tale_" + k: g for k, g in TALE_ART.items()})
     return out
 
 

@@ -513,4 +513,101 @@ finally:
 r, m, ev = _idol(40, "interactive", 5, maxhp=40)
 assert M.migrate_run(r)["pending"]["kind"] == "idol"
 r["pending"] = {"kind": "idol", "cost": "x"}; assert M.migrate_run(r)["pending"] is None
+# traveler's campfire
+import math, i18n; i18n.set_lang("en")
+assert len(M.TALES) == 16 and all(v["who"] in ("ghost", "wanderer", "traveler") and 0 < len(v["text"]) <= 90 for v in M.TALES.values())
+assert set(M.BOON_PRIORITY) == set(M.BOONS) and "campfire" in dict(M.ROOM_WEIGHTS)
+
+
+def _camp(seed, mode="interactive", hp=None, maxhp=40, floor=3, meta=None, items=()):
+    r = M.new_run("slime", {"hp": maxhp}, seed); r["floor"] = floor; r["energy"] = 1e9
+    r["items"] = [{"key": k, "rar": rar, "floor": 1, "kills0": 0} for k, rar in items]
+    if hp is not None:
+        r["hp"] = hp
+    m = meta or M.new_meta(); g = random.Random(seed)
+    _w = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("campfire", 1)]
+    try:
+        ev = M.enter_room(r, m, g, mode=mode)
+    finally:
+        M.ROOM_WEIGHTS = _w
+    return r, m, ev
+
+
+# unheard tales first: 16 campfires hear 16 different tales
+m = M.new_meta(); heard = []
+for s in range(16):
+    r, m, ev = _camp(s, meta=m); heard.append(r["pending"]["line"]); r["pending"] = None
+assert len(set(heard)) == 16 and set(m["journal"]) == set(M.TALES), heard
+assert all(set(v) == {"run", "floor"} for v in m["journal"].values())
+r, m, ev = _camp(99, meta=m); assert r["pending"]["line"] in M.TALES          # all heard: random pick
+# never on floor 1
+_w = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("campfire", 100), ("monster", 1)]
+try:
+    for seed in range(100):
+        r = M.new_run("slime", {"hp": 9999}, seed); r["energy"] = 1e9
+        assert M.enter_room(r, M.new_meta(), random.Random(seed))["kind"] != "campfire"
+finally:
+    M.ROOM_WEIGHTS = _w
+# pending shape: 3 distinct boons; rest always among them when hurt
+for seed in range(100):
+    r, m, ev = _camp(seed, hp=10, items=[("dagger", "common")])
+    p = r["pending"]; assert p["kind"] == "campfire" and len(set(p["boons"])) == 3 and set(p["boons"]) <= set(M.BOONS)
+    assert "rest" in p["boons"] and (p["refine"] is None) == ("refine" not in p["boons"])
+    assert M.CHOICES["campfire"][2](p)
+# auto rule
+r, m, ev = _camp(1, hp=5); p = r["pending"]
+assert M.CHOICES["campfire"][0](r, p) == "rest"
+r["hp"] = r["base"]["maxhp"]; p = dict(p, boons=["coins", "ward", "stone"])
+assert M.CHOICES["campfire"][0](r, p) == "stone"                            # first of BOON_PRIORITY offered
+# rest never heals more than ceil(30%)
+for mh in (7, 20, 33, 100):
+    for hp in (1, mh // 2, mh - 1):
+        r, m, ev = _camp(mh, hp=hp, maxhp=mh); p = r["pending"]; r["hp"] = hp
+        M.CHOICES["campfire"][1](r, m, dict(p, boons=["rest", "coins", "ward"]), "rest", {"lines": []})
+        assert r["hp"] == min(M.stats(r)["maxhp"], hp + math.ceil(0.3 * M.stats(r)["maxhp"])), (mh, hp, r["hp"])
+# other boons
+def _boon(key, floor=4):
+    r, m, ev = _camp(2, floor=floor, hp=10); b = {"lines": []}
+    M.CHOICES["campfire"][1](r, m, dict(r["pending"], boons=[key, "rest", "coins"]), key, b); return r, b
+r, b = _boon("stone"); d0 = M.new_run("slime", {"hp": 40}, 1)["base"]["def"]; assert r["base"]["def"] == d0 + 1
+r, b = _boon("coins"); assert r["gold"] == 8 + 3 * 4 and b["gold"] == 8 + 3 * 4
+r, b = _boon("ember"); assert [t["fx"] for t in r["temp"]] == [{"atk": 1}] and r["temp"][0]["rooms"] == 5
+r, b = _boon("ward"); assert r["shield"] == 3 + 4
+# stale choice (not among the boons) is ignored
+r, m, ev = _camp(3, hp=10); snap = (r["hp"], r["gold"], r["shield"], list(r["temp"]), r["base"]["def"])
+M.CHOICES["campfire"][1](r, m, dict(r["pending"], boons=["coins", "ward", "rest"]), "stone", {"lines": []})
+assert snap == (r["hp"], r["gold"], r["shield"], list(r["temp"]), r["base"]["def"])
+# refine
+assert M.upgradable(M.new_run("slime", {}, 1)) == []
+leg = next(k for k, it in M.ITEMS.items() if it["rarities"] == ["legendary"] or tuple(it["rarities"]) == ("legendary",))
+r = M.new_run("slime", {}, 1); r["items"] = [{"key": leg, "rar": "legendary"}]; assert M.upgradable(r) == []
+two = next(k for k, it in M.ITEMS.items() if "common" in it["rarities"] and "rare" in it["rarities"] and it["fx"].get("maxhp"))
+for seed in range(60):
+    r, m, ev = _camp(seed, hp=10, items=[(leg, "legendary")])
+    assert "refine" not in r["pending"]["boons"] and r["pending"]["refine"] is None
+seen = 0
+for seed in range(60):
+    r, m, ev = _camp(seed, hp=10, items=[(leg, "legendary"), (two, "common")])
+    p = r["pending"]
+    if "refine" not in p["boons"]:
+        continue
+    seen += 1; assert p["refine"] == 1 and "Raise" in M.boon_text("refine", r) and M.ITEMS[two]["name"] in M.boon_text("refine", r)
+    hp0, mx0 = r["hp"], M.stats(r)["maxhp"]
+    M.choose_pending(r, m, "refine")
+    assert r["items"][1]["rar"] == "rare", r["items"]
+    gain = M.stats(r)["maxhp"] - mx0; assert gain >= 0 and r["hp"] == hp0 + gain      # hp grows with maxhp
+assert seen > 5
+# lowest rarity is picked among the upgradable ones
+three = next(k for k, it in M.ITEMS.items() if k != two and "rare" in it["rarities"] and "epic" in it["rarities"] and "common" in it["rarities"])
+for seed in range(40):
+    r, m, ev = _camp(seed, hp=10, items=[(three, "rare"), (two, "common")])
+    if r["pending"]["refine"] is not None:
+        assert r["pending"]["refine"] == 1, r["pending"]                       # the common one, not the rare one
+# auto mode resolves inline
+r, m, ev = _camp(5, mode="auto", hp=5)
+assert r["pending"] is None and ev["kind"] == "campfire" and ev["sprite"] == "campfire" and r["hp"] > 5
+# bad save: unknown line / boon is dropped
+r, m, ev = _camp(6); assert M.migrate_run(r)["pending"]["kind"] == "campfire"
+r["pending"]["line"] = "nope"; assert M.migrate_run(r)["pending"] is None
+r, m, ev = _camp(6); r["pending"]["boons"][0] = "nope"; assert M.migrate_run(r)["pending"] is None
 print("ok: items")

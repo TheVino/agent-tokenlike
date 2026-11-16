@@ -40,6 +40,11 @@ for name, _ in M.FAMILIES + (("Basic", ()),):
     needs(name, "family")
 for sy in M.SYNERGIES.values():
     needs(sy["name"], "synergy")
+for k, tale in M.TALES.items():
+    needs(tale["text"], f"tale {k}")
+for k in M.BOONS:                                   # every boon_text template
+    needs(M.BOONS[k]["text"], f"boon {k}")
+needs(M.REFINE_FALLBACK, "boon refine")
 for n in list(tp.SIZES) + list(tp.MODES.values()) + list(tp.DAYS):
     needs(n, "menu/days")
 for k, c in tp.all_characters().items():

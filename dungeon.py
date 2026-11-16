@@ -443,7 +443,7 @@ def make_mimic(f: int) -> dict:
             "spd": MON_SPD[0] + MON_SPD[1] * f, "crit": MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
 
 
-ROOM_WEIGHTS = [("monster", 40), ("idol", 4), ("secret", 2), ("chest", 16), ("trap", 12), ("fountain", 11),
+ROOM_WEIGHTS = [("monster", 36), ("campfire", 4), ("idol", 4), ("secret", 2), ("chest", 16), ("trap", 12), ("fountain", 11),
                 ("shop", 8), ("altar", 7), ("horde", 9)]
 # hordes: 2 to 4 weaker enemies (HP and ATK x HORDE_MULT[n]); only from floor HORDE_MIN_FLOOR on
 HORDE_MIN_FLOOR = 3
@@ -517,7 +517,7 @@ def fx_text(fx: dict) -> str:
 def new_meta() -> dict:
     return {"achievements": [], "graveyard": [], "runs": 0,
             "best": {"floor": 0, "room": 0}, "next_char": "slime", "bosses": 0,
-            "synergies": {}, "secrets": 0}
+            "synergies": {}, "secrets": 0, "journal": {}}
 
 
 COUNTERS_ZERO = {"dodges": 0, "blocks": 0, "poison_kills": 0, "burn_kills": 0, "horde4": 0}
@@ -812,6 +812,150 @@ def _idol_apply(run, meta, p, choice, ev, mode="interactive"):
         add_temp(run, *IDOL_CURSE)
         ev["lines"].append("The idol's curse bites.")
 
+# Traveler's Campfire: a short tale (heard = seen, kept in meta["journal"]) and a pick of 3 boons.
+TALES = {k: {"who": w, "text": x} for k, (w, x) in {
+    "scarf": ("ghost", "I forgot my name, but I kept my scarf. It is a very good scarf."),
+    "rude_fire": ("ghost", "Warm fires are rude to ghosts. I sit close anyway."),
+    "humming": ("ghost", "Something down here hums at night. I hum back, so it is not lonely."),
+    "long_stairs": ("ghost", "The stairs are longer going down. Everyone knows. Nobody says."),
+    "skeleton_friend": ("ghost", "I tried to haunt a skeleton. It waved. We are friends now."),
+    "spoon": ("wanderer", "Bring a spoon for the big eye below. It stares less while it eats."),
+    "counting": ("wanderer", "I count rooms to stay calm. Lately the number does not match."),
+    "damp": ("wanderer", "Slimes are not mean, just damp. Be damp back."),
+    "buried_map": ("wanderer", "I buried my map under floor nine. It was getting ideas."),
+    "still_walking": ("wanderer", "A tired hero is a hero still walking. Sit. Then walk."),
+    "coin_counter": ("traveler", "The shopkeeper counts coins in her sleep. I counted along. We tied."),
+    "mushroom": ("traveler", "I roasted a mushroom here once. It apologized. I ate it anyway."),
+    "ember_logs": ("traveler", "Every ember remembers the log it was. Be kind to your logs."),
+    "crow_way": ("traveler", "A crow showed me the way up. I did not ask. I am not going."),
+    "pack_light": ("traveler", "Pack light, fall softly, keep one candle for the stairs."),
+    "coin_smile": ("traveler", "I leave a coin by every fire. Somebody always leaves a smile."),
+}.items()}
+# text: English template for boon_text (translated at display time)
+BOONS = {
+    "rest": {"text": "Heal {n} HP"},
+    "stone": {"text": "+1 DEF for the run"},
+    "coins": {"text": "Gain {n} gold"},
+    "ember": {"text": "+1 ATK for 5 rooms"},
+    "ward": {"text": "Gain {n} shield"},
+    "refine": {"text": "Raise {item} to {rar}"},
+}
+BOON_PRIORITY = ["refine", "ember", "stone", "ward", "coins", "rest"]
+REFINE_FALLBACK = "Raise an item one rarity"
+CAMPFIRE_REST = 0.3
+CAMPFIRE_AUTO_HP = 0.5
+EMBER = ({"atk": 1}, 5)
+
+
+def _next_rar(it: dict) -> str | None:
+    """Next rarity above it["rar"] that the item allows (None when it is already at its best)."""
+    return next((r for r in RARITIES[RARITIES.index(it["rar"]) + 1:] if r in ITEMS[it["key"]]["rarities"]), None)
+
+
+def upgradable(run: dict) -> list[int]:
+    """Indexes in run["items"] that can go up a rarity."""
+    return [i for i, it in enumerate(run["items"]) if _next_rar(it)]
+
+
+def _refine_pick(run: dict, rng: random.Random) -> int | None:
+    up = upgradable(run)
+    if not up:
+        return None
+    low = min(RARITIES.index(run["items"][i]["rar"]) for i in up)
+    return rng.choice([i for i in up if RARITIES.index(run["items"][i]["rar"]) == low])
+
+
+def _refine_ok(run: dict, idx) -> bool:
+    return type(idx) is int and idx in upgradable(run)
+
+
+def _boon_n(key: str, run: dict) -> int:
+    if key == "rest":
+        mx = stats(run)["maxhp"]
+        return max(0, min(math.ceil(CAMPFIRE_REST * mx), mx - run["hp"]))
+    return 8 + 3 * run["floor"] if key == "coins" else 3 + run["floor"]
+
+
+def boon_text(key: str, run: dict) -> str:
+    """Effect text of a boon in the current language (the refine target comes from the open pending)."""
+    if key == "refine":
+        idx = (run.get("pending") or {}).get("refine")
+        if not _refine_ok(run, idx):
+            return t(REFINE_FALLBACK)
+        it = run["items"][idx]
+        return t(BOONS[key]["text"], item=t(ITEMS[it["key"]]["name"]), rar=t(RAR_NAMES[_next_rar(it)]))
+    if key in ("rest", "coins", "ward"):
+        return t(BOONS[key]["text"], n=_boon_n(key, run))
+    return t(BOONS[key]["text"])
+
+
+def _campfire_auto(run: dict, p: dict) -> str:
+    if "rest" in p["boons"] and run["hp"] < CAMPFIRE_AUTO_HP * stats(run)["maxhp"]:
+        return "rest"
+    return next(k for k in BOON_PRIORITY if k in p["boons"])
+
+
+def _campfire_apply(run, meta, p, choice, ev, mode="interactive"):
+    if choice not in p["boons"]:                   # stale window
+        ev["lines"].append("You leave the campfire.")
+        return
+    if choice == "rest":
+        n = _boon_n("rest", run)
+        run["hp"] += n
+        ev["lines"].append(f"Rested by the fire (+{n} HP)")
+    elif choice == "stone":
+        run["base"]["def"] += 1
+        ev["lines"].append("The stone hardens you (+1 DEF)")
+    elif choice == "coins":
+        n = _boon_n("coins", run)
+        run["gold"] += n
+        ev["gold"] = ev.get("gold", 0) + n
+        ev["lines"].append(f"Coins in the ashes (+{n} gold)")
+    elif choice == "ember":
+        add_temp(run, *EMBER)
+        ev["lines"].append("An ember warms your claws (+1 ATK for 5 rooms)")
+    elif choice == "ward":
+        n = _boon_n("ward", run)
+        run["shield"] += n
+        ev["lines"].append(f"A warm ward settles (+{n} shield)")
+    elif choice == "refine":
+        idx = p.get("refine")
+        if not _refine_ok(run, idx):
+            ev["lines"].append("You leave the campfire.")
+            return
+        it = run["items"][idx]
+        before = item_fx(it["key"], it["rar"]).get("maxhp", 0)
+        it["rar"] = _next_rar(it)
+        gain = item_fx(it["key"], it["rar"]).get("maxhp", 0) - before
+        if gain > 0:
+            run["hp"] += gain
+        stats(run)
+        ev["lines"].append(f"The fire refines {ITEMS[it['key']]['name']} to {RAR_NAMES[it['rar']]}")
+
+
+def _campfire_valid(p: dict) -> bool:
+    b = p.get("boons")
+    return (p.get("line") in TALES and isinstance(b, list) and len(b) == len(set(b)) == 3
+            and all(isinstance(k, str) and k in BOONS for k in b) and (p.get("refine") is None or type(p["refine"]) is int))
+
+
+def _campfire_room(run, meta, rng, ev, mode):
+    f = run["floor"]
+    journal = meta.setdefault("journal", {})
+    line = rng.choice([k for k in TALES if k not in journal] or list(TALES))
+    journal.setdefault(line, {"run": run["id"], "floor": f})
+    refine = _refine_pick(run, rng)
+    others = [k for k in BOONS if k not in ("rest", "refine")] + (["refine"] if refine is not None else [])
+    boons = ["rest"] if run["hp"] < stats(run)["maxhp"] else []
+    boons += rng.sample(others, 3 - len(boons))
+    p = {"kind": "campfire", "line": line, "boons": boons, "refine": refine if "refine" in boons else None}
+    ev.update(name="Traveler's Campfire", sprite="campfire", tale=line)
+    ev["lines"].append(TALES[line]["text"])
+    if mode == "auto":
+        _campfire_apply(run, meta, p, _campfire_auto(run, p), ev, "auto")
+    else:
+        run["pending"] = p
+
 
 # Per-kind pending choices: (auto(run, p) -> str, apply(run, meta, p, choice, ev, mode) -> None, valid(p) -> bool).
 # mode is "interactive" or "auto" (later rooms resolving inline may chain another offer).
@@ -820,6 +964,7 @@ CHOICES: dict = {
               lambda run, meta, p, choice, ev, mode="interactive": resolve_offer(run, p, choice, ev),
               lambda p: p.get("key") in ITEMS and p.get("rar") in RARITIES),
     "idol": (_idol_auto, _idol_apply, lambda p: type(p.get("cost")) is int and p["cost"] >= 1),
+    "campfire": (_campfire_auto, _campfire_apply, _campfire_valid),
 }
 
 
@@ -1171,7 +1316,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         kind = "boss"
     else:
         weights = [(k, w) for k, w in ROOM_WEIGHTS
-                   if (k != "horde" or f >= HORDE_MIN_FLOOR) and (k != "idol" or f >= 2)]
+                   if (k != "horde" or f >= HORDE_MIN_FLOOR) and (k not in ("idol", "campfire") or f >= 2)]
         kind = rng.choices([k for k, _ in weights], [w for _, w in weights])[0]
         if kind == "chest" and f >= 2 and rng.random() < 0.12:
             kind = "mimic"
@@ -1258,6 +1403,9 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
             CHOICES["idol"][1](run, meta, p, _idol_auto(run, p), ev, "auto")
         else:
             run["pending"] = p
+
+    elif kind == "campfire":
+        _campfire_room(run, meta, rng, ev, mode)
 
     elif kind == "trap":
         ev.update(name="Trap", sprite="trap")
