@@ -535,6 +535,7 @@ def new_run(char_key: str, base_stats: dict, run_id: int, trait: dict | None = N
         "trait": dict(trait or {}),
         "counters": dict(COUNTERS_ZERO),
         "items": [], "consumed": [], "shield": 0, "pending": None, "synergies": [],
+        "temp": [], "rooms": {},
         "gold": 0, "energy": 0.0, "kills": 0, "bosses": 0,
         "started": date.today().isoformat(), "dead": False,
     }
@@ -589,7 +590,12 @@ def migrate_run(run: dict) -> dict:
         del b["crit"]
     if b.get("critdmg") == 1.5:
         del b["critdmg"]
-    if (run.get("pending") or {}).get("key") not in ITEMS:
+    run.setdefault("temp", [])
+    run.setdefault("rooms", {})
+    p = run.get("pending")
+    if isinstance(p, dict):
+        p.setdefault("kind", "offer")              # saves from before typed pendings
+    if not isinstance(p, dict) or p["kind"] not in CHOICES or not CHOICES[p["kind"]][2](p):
         run["pending"] = None
     return run
 
@@ -632,7 +638,8 @@ def stats(run: dict) -> dict:
           "double": 0.0, "helper": 0, "luck": 0.0, "discount": 0.0, "status_turns": 0}
     # the hero trait and the active synergies add up like an item, but without rarity scaling
     boost = 0.0
-    for kills0, fx in ([(0, run.get("trait", {}))] + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
+    for kills0, fx in ([(0, run.get("trait", {}))] + [(0, t["fx"]) for t in run.get("temp", [])]
+                       + [(it.get("kills0", 0), item_fx(it["key"], it["rar"]))
                                                        for it in run["items"]]
                        + [(0, SYNERGIES[k]["fx"]) for k in active_synergies(run)]):
         for k, v in fx.items():
@@ -701,7 +708,7 @@ def _rarity_weights(f: int) -> list[float]:
 def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) -> dict | None:
     """Rolls rarity and item (each item once per run). None when no unlocked item is left."""
     taken = {i["key"] for i in run["items"]}
-    if run.get("pending"):
+    if (run.get("pending") or {}).get("kind") == "offer":
         taken.add(run["pending"]["key"])
     pool = [k for k in unlocked_items(meta) if k not in taken]
     if not pool:
@@ -755,12 +762,26 @@ def resolve_offer(run: dict, offer: dict, choice: str, ev: dict) -> None:
         ev["consumed"] = {**item, "shield": cf["shield"]}
 
 
+def add_temp(run: dict, fx: dict, rooms: int) -> None:
+    """Temporary effect: active for the next `rooms` non-stairs rooms (see enter_room)."""
+    run["temp"].append({"fx": dict(fx), "rooms": rooms})
+
+
+# Per-kind pending choices: (auto(run, p) -> str, apply(run, meta, p, choice, ev, mode) -> None, valid(p) -> bool).
+# mode is "interactive" or "auto" (later rooms resolving inline may chain another offer).
+CHOICES: dict = {
+    "offer": (auto_choice,
+              lambda run, meta, p, choice, ev, mode="interactive": resolve_offer(run, p, choice, ev),
+              lambda p: p.get("key") in ITEMS and p.get("rar") in RARITIES),
+}
+
+
 def choose_pending(run: dict, meta: dict, choice: str) -> dict:
-    """Resolves the pending offer with the player's choice ("take" or "consume")."""
+    """Resolves the pending choice with the player's choice (offers: "take" or "consume")."""
     ev: dict = {"lines": []}
-    offer, run["pending"] = run.get("pending"), None
-    if offer:
-        resolve_offer(run, offer, choice, ev)
+    p, run["pending"] = run.get("pending"), None
+    if p:
+        CHOICES[p.get("kind", "offer")][1](run, meta, p, choice, ev)
         note_synergies(run, meta, ev)
         _check_achievements(run, meta, ev)
     return ev
@@ -770,7 +791,8 @@ def resolve_pending(run: dict, meta: dict) -> dict:
     """Resolves the pending offer with the automatic rule."""
     if not run.get("pending"):
         return {"lines": []}
-    return choose_pending(run, meta, auto_choice(run, run["pending"]))
+    p = run["pending"]
+    return choose_pending(run, meta, CHOICES[p.get("kind", "offer")][0](run, p))
 
 
 def apply_damage(run: dict, d: int) -> int:
@@ -1092,6 +1114,8 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         return ev
 
     run["room"] += 1
+    run["temp"] = [{**t, "rooms": t["rooms"] - 1} for t in run["temp"] if t["rooms"] > 0]
+    st = stats(run)
     # regenerates every room (+ heal_room)
     _heal_by_item(run, ev, st["maxhp"], min(st["maxhp"], run["hp"] + REGEN_PER_ROOM), st["heal_room"])
 
@@ -1103,12 +1127,13 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         if kind == "chest" and f >= 2 and rng.random() < 0.12:
             kind = "mimic"
     ev["kind"] = kind
+    run["rooms"][kind] = run["rooms"].get(kind, 0) + 1
 
     def deliver(offer):
         if mode == "auto":
             resolve_offer(run, offer, auto_choice(run, offer), ev)
         else:
-            run["pending"] = {**offer, "source": kind}
+            run["pending"] = {"kind": "offer", **offer, "source": kind}
             ev["pending"] = offer
 
     def give(best=False):
@@ -1248,7 +1273,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
 
 
 # Bump when a combat formula/rule or a number written straight in the code changes (the hash below does not see that).
-RULES_REV = 9
+RULES_REV = 10
 
 
 def _balance_version() -> str:
@@ -1278,5 +1303,5 @@ def run_record(run: dict, killer: str, gave_up: bool, mode: str, achievements: l
         "items": [dict(i) for i in run["items"]], "consumed": [dict(i) for i in run["consumed"]],
         "gold": run["gold"], "kills": run["kills"], "bosses": run["bosses"],
         "date": date.today().isoformat(), "mode": mode, "version": BALANCE_VERSION,
-        "achievements": list(achievements), "synergies": list(run.get("synergies", [])),
+        "achievements": list(achievements), "synergies": list(run.get("synergies", [])), "rooms": dict(run.get("rooms", {})),
     }

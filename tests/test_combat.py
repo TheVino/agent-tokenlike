@@ -149,7 +149,7 @@ for _ in range(200):
         assert all(set(x) == KEYS for x in ev["hits"])
     else:
         assert "foes" not in ev
-assert seen_n and not hasattr(M, "fight") and M.RULES_REV == 9
+assert seen_n and not hasattr(M, "fight") and M.RULES_REV == 10
 # tie via enter_room (boss): clears the room, but without gold, kills, boss bonus or item
 rounds = M.MAX_ROUNDS; M.MAX_ROUNDS = 1
 meta = M.new_meta(); r = M.new_run("slime", {"hp": 999, "atk": 1}, 1)

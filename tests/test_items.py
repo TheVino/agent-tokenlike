@@ -395,4 +395,36 @@ assert "shatter" in r["synergies"] and "shatter" in meta["synergies"]
 # per-reaction hints are plain texts (translated whole)
 for k, s in M.SYNERGIES.items():
     if s["kind"] == "reaction": assert "{" not in s["hint"] and s["hint"]
+# typed pending
+dk = next(iter(M.ITEMS))
+assert M.migrate_run({"items": [], "pending": {"key": dk, "rar": "common"}})["pending"]["kind"] == "offer"
+assert M.migrate_run({"items": [], "pending": {"key": "nope", "rar": "common"}})["pending"] is None
+assert M.migrate_run({"items": [], "pending": {"kind": "nope"}})["pending"] is None
+M.CHOICES["idol"] = (lambda run, p: "x", lambda *a, **k: None, lambda p: True)
+rp = M.new_run("slime", {}, 9); rp["pending"] = {"kind": "idol", "cost": 2}
+assert M.roll_offer(rp, M.new_meta(), random.Random(1)) is not None
+del M.CHOICES["idol"]
+# temp effects last N non-stairs rooms
+rt = M.new_run("slime", {"hp": 999, "atk": 3}, 10); mt = M.new_meta(); rg = random.Random(3)
+M.add_temp(rt, {"atk": 1}, 3)
+seen = []
+for _ in range(4):
+    rt["energy"] = 1e9; M.enter_room(rt, mt, rg); seen.append(M.stats(rt)["atk"] - 3)
+assert seen == [1, 1, 1, 0], seen
+rt2 = M.new_run("slime", {"hp": 999}, 11); rt2["room"] = M.ROOMS_PER_FLOOR; M.add_temp(rt2, {"atk": 1}, 1)
+rt2["energy"] = 1e9; assert M.enter_room(rt2, mt, rg)["kind"] == "stairs" and rt2["temp"][0]["rooms"] == 1
+# an entry added while a room resolves is untouched by that room's tick
+rt3 = M.new_run("slime", {"hp": 999}, 12); rt3["energy"] = 1e9
+orig = M.combat
+M.combat = lambda *a, **k: (M.add_temp(rt3, {"atk": 1}, 2), orig(*a, **k))[1]
+for _ in range(30):
+    rt3["energy"] = 1e9; M.enter_room(rt3, mt, rg)
+    if rt3["temp"]: break
+M.combat = orig
+assert not rt3["temp"] or rt3["temp"][0]["rooms"] == 2
+# rooms counted
+rc = M.new_run("slime", {"hp": 9999}, 13); n = 0
+for _ in range(20):
+    rc["energy"] = 1e9; n += M.enter_room(rc, mt, rg)["kind"] != "stairs"
+assert sum(rc["rooms"].values()) == n and "stairs" not in rc["rooms"]
 print("ok: items")
