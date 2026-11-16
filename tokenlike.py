@@ -99,10 +99,11 @@ CARD_PAD = 6              # minimum padding between the card border and its cont
 HERO_COLS, HERO_CARD_W, HERO_CARD_H = 5, 128, 160   # hero grid (fixed-size cards)
 ACH_COLS, ACH_CARD_W, ACH_CARD_H = 4, 150, 118   # achievements grid
 GRAVE_W, GRAVE_H, GRAVE_TOMB = 470, 420, 92           # graveyard: width, visible height, height of each tombstone
+JOURNAL_W, JOURNAL_H = 420, 420                      # journal: card width, visible height
 ITEMS_COLS, ITEMS_CARD_W, ITEMS_H = 2, 280, 440      # items page: columns, card width, visible height
-WINDOW_ATTRS = ("menu_win", "heroes_win", "stats_win", "ach_win", "grave_win", "items_win", "profile_win")
+WINDOW_ATTRS = ("menu_win", "heroes_win", "stats_win", "ach_win", "grave_win", "items_win", "profile_win", "journal_win")
 REOPEN = {"heroes_win": "show_heroes", "stats_win": "show_stats", "ach_win": "show_achievements",
-          "grave_win": "show_graveyard", "items_win": "show_items", "profile_win": "show_profile"}   # language switch
+          "grave_win": "show_graveyard", "items_win": "show_items", "profile_win": "show_profile", "journal_win": "show_journal"}   # language switch
 
 PROFILE_W, PROFILE_MEDALS, PROFILE_MEDAL, PROFILE_BAR = 312, 13, 24, "#8a5a2b"   # profile: width, medals per row, cell, color
 FX_MS = 200   # ms per phase of the elemental look animation (own clock, separate from the hero's frame_ms)
@@ -1636,6 +1637,7 @@ class PetApp:
         for icon, text, cmd in (("shooting_star", "Profile", self.show_profile),
                                 ("grimoire", "Status", self.show_stats),
                                 ("tombstone", "Graveyard", self.show_graveyard),
+                                ("campfire", "Journal", self.show_journal),
                                 ("coroa", "Achievements", self.show_achievements),
                                 ("potion", "Items", self.show_items),
                                 ("bone_sword", "Heroes…", self.show_heroes)):
@@ -2508,7 +2510,7 @@ class PetApp:
             self.choice_img = self.art_img("idol")
             tk.Label(f, image=self.choice_img, bg=PANEL_BG).pack(pady=(4, 2))
             tk.Label(f, text=_t("Cracked Idol"), bg=PANEL_BG, fg=GOLD, font=self.font).pack(padx=6)
-            tk.Label(f, text=_t("Pay {n} HP: {p}% epic item, or a curse", n=p["cost"], p=round(M.IDOL_WIN * 100)),
+            tk.Label(f, text=_t("Pay {n} HP: {p}% epic item, or a curse", n=min(p["cost"], self.run["hp"] - 1), p=round(M.IDOL_WIN * 100)),
                      justify="center", bg=PANEL_BG, fg=MUTED, font=self.font_small, wraplength=CHOICE_TEXT_W).pack(padx=6)
             row.pack(pady=4)
             for c in M.idol_choices(self.run):
@@ -2717,6 +2719,42 @@ class PetApp:
         for n, d in enumerate(reversed(g)):
             self.tombstone(cv, n * GRAVE_TOMB, d)
         if alto > vis:
+            self.scrollbar(row, w, cv, vis)
+        self.beside(w)
+
+    def show_journal(self):
+        """Campfire tales heard so far (meta["journal"]); unheard ones are a silhouette and "???"."""
+        heard, fs = self.meta.get("journal", {}), self.font_small
+        w, f = self.window("journal_win", _t("Journal"))
+        tk.Label(f, text=_t("{n}/{total}", n=len(set(heard) & set(M.TALES)), total=len(M.TALES)), bg=PANEL_BG,
+                 fg=MUTED, font=fs, anchor="w").pack(fill="x")
+        row = tk.Frame(f, bg=PANEL_BG)
+        row.pack(pady=(4, 0))
+        cv = tk.Canvas(row, width=JOURNAL_W + 6, height=JOURNAL_H, bg=PANEL_BG, highlightthickness=0,
+                       yscrollincrement=40)
+        cv.pack(side="left")
+        y = 0
+        for key, tale in M.TALES.items():
+            h = heard.get(key)
+            x, ty = 3, y + 10
+            cv.create_image(x + 30, y + 30, image=self.icon(art.TALE_ART[tale["who"]], 3, dark=not h, side=44))
+            if h:
+                lines = [(_t(tale["who"].capitalize()), GOLD), (_t(tale["text"]), TEXT),
+                         (_t("Run #{run}  ·  Floor {floor}", run=h["run"], floor=h["floor"]), MUTED)]
+                for txt, color in lines:
+                    t = cv.create_text(x + 62, ty, anchor="nw", text=txt, fill=color, font=fs, width=JOURNAL_W - 74)
+                    ty = cv.bbox(t)[3] + 3
+            else:
+                cv.create_text(x + 62, y + 30, anchor="w", text="???", fill=MUTED, font=self.font)
+                ty = y + 50
+            alto = max(ty - y + 7, 60)
+            rounded_rect(cv, x, y, x + JOURNAL_W, y + alto, CARD_R, CARD_BG, GOLD if h else PANEL_EDGE, 2,
+                         tag="cartao", extra=(f"card:{key}",))
+            cv.tag_lower("cartao")
+            y += alto + 6
+        vis = min(y, JOURNAL_H)
+        cv.configure(height=vis, scrollregion=(0, 0, JOURNAL_W + 6, y))
+        if y > vis:
             self.scrollbar(row, w, cv, vis)
         self.beside(w)
 

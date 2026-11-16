@@ -538,7 +538,8 @@ import art
 assert set(art.ACH_ART) == set(M.ACHIEVEMENTS)
 fields = set(M.stats(appm.run)) | {"grow"}
 assert fields <= set(art.STAT_ART) and fields == {k for k, *_ in tp.STAT_LINES}
-JAN = (("grave_win", appm.show_graveyard), ("ach_win", appm.show_achievements), ("stats_win", appm.show_stats), ("profile_win", appm.show_profile))
+JAN = (("grave_win", appm.show_graveyard), ("ach_win", appm.show_achievements), ("stats_win", appm.show_stats), ("profile_win", appm.show_profile),
+       ("journal_win", appm.show_journal))
 def open_close():
     for _ in range(2):
         for attr, fn in JAN:
@@ -664,19 +665,20 @@ def everything():
     TEXTS.clear(); appm.update_panel()
     TEXTS.extend(k.get("text", "") for kind, _, k in appm.canvas.it.values() if kind == "text")
     for fn in (appm.show_profile, appm.show_stats, appm.show_achievements, appm.show_graveyard, appm.show_heroes,
-               appm.show_items, lambda: appm.on_menu(ev_m), appm.show_choice, lambda: appm.announce_unlocks(["gold300"])):
+               appm.show_items, appm.show_journal, lambda: appm.on_menu(ev_m), appm.show_choice, lambda: appm.announce_unlocks(["gold300"])):
         fn()
     appm.close_choice()
     return " | ".join(TEXTS)
 pt = everything()
 assert "Sair" in pt and "Andar" in pt and "Quit" not in pt
-appm.show_stats(); appm.show_achievements(); appm.on_menu(ev_m); before_ = (appm.stats_win, appm.ach_win)
+appm.meta["journal"] = {"scarf": {"run": 3, "floor": 4}}
+appm.show_stats(); appm.show_achievements(); appm.show_journal(); appm.on_menu(ev_m); before_ = (appm.stats_win, appm.ach_win, appm.journal_win)
 appm.lang_var.set("en"); appm.menu_do(appm.change_lang)   # like the menu's EN chip
 assert appm.state["lang"] == "en" and appm.menu_win is None
-assert appm.stats_win in ALIVE and appm.ach_win in ALIVE and (appm.stats_win, appm.ach_win) != before_   # reopened
+assert appm.stats_win in ALIVE and appm.ach_win in ALIVE and appm.journal_win in ALIVE and (appm.stats_win, appm.ach_win, appm.journal_win) != before_   # reopened
 assert appm.canvas.it[appm.info_txt][2]["text"].startswith("Floor ")
 en = everything()
-assert "Quit" in en and "Sair" not in en and "Graveyard" in en, en[:400]
+assert "Quit" in en and "Sair" not in en and "Graveyard" in en and "Journal" in en, en[:400]
 spare = re.findall(r"\S*[ãõáéíóúâêôçàÃÕÁÉÍÓÚÂÊÔÇ]\S*|\b(?:Andar|andar|Sair|Itens|Modo|ouro|sala|morto|nenhum|passe)\b", en)
 assert not spare, spare
 appm.lang_var.set("pt"); appm.change_lang(); assert i18n.LANG == "pt" and everything().count("Sair") == 1

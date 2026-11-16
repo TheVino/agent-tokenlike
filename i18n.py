@@ -384,6 +384,9 @@ PT = {
     "none yet": "nenhum ainda", "Stored energy: {n} room(s)": "Energia guardada: {n} sala(s)",
     "Tokens today: {n}": "Tokens hoje: {n}", "Waiting for a choice: {x}": "Esperando escolha: {x}",
     "(demo mode)": "(modo demo)",
+    # Journal
+    "Journal": "Diário", "{n}/{total}": "{n}/{total}", "Wanderer": "Andarilho", "Traveler": "Viajante",
+    "Run #{run}  ·  Floor {floor}": "Run #{run}  ·  Andar {floor}",
     # Graveyard
     "floor {n}": "andar {n}", "gave up": "desistiu", "killed by {k}": "morto por {k}", "no items": "sem itens",
     "{n} runs   ·   best: floor {a}": "{n} runs   ·   recorde: andar {a}",

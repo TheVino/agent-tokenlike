@@ -65,6 +65,9 @@ def round_(lang):
         for filter_by in ("all", "locked"):
             app.items_filter = filter_by; app.show_items(); looks(f"sinergias/{filter_by}", app.items_win); app.close_win(app.items_win)
         app.items_tab = "items"; app.meta["synergies"] = {k: {"runs": 999, "first_run": 99999} for k in M.SYNERGIES}
+    for heard in (True, False):      # Journal: every tale heard (worst-case run/floor) and none
+        app.meta["journal"] = {k: {"run": 99999, "floor": 999} for k in M.TALES} if heard else {}
+        app.show_journal(); looks(f"diario/{heard}", app.journal_win); app.close_win(app.journal_win)
     lim, app.limits, app.state["calib"] = app.limits, None, {}   # no official % and no factor: bar of your peak
     app.update_panel(); looks("hud/pico", app.root)
     app.show_profile(); looks("perfil/pico", app.profile_win); app.close_win(app.profile_win)
