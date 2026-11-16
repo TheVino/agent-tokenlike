@@ -443,7 +443,7 @@ def make_mimic(f: int) -> dict:
             "spd": MON_SPD[0] + MON_SPD[1] * f, "crit": MON_CRIT, "critdmg": FOE_CRITDMG, "status": {}}
 
 
-ROOM_WEIGHTS = [("monster", 44), ("secret", 2), ("chest", 16), ("trap", 12), ("fountain", 11),
+ROOM_WEIGHTS = [("monster", 40), ("idol", 4), ("secret", 2), ("chest", 16), ("trap", 12), ("fountain", 11),
                 ("shop", 8), ("altar", 7), ("horde", 9)]
 # hordes: 2 to 4 weaker enemies (HP and ATK x HORDE_MULT[n]); only from floor HORDE_MIN_FLOOR on
 HORDE_MIN_FLOOR = 3
@@ -706,15 +706,17 @@ def _rarity_weights(f: int) -> list[float]:
     return [max(10, 70 - 4 * f), 25 + f, 4 + 1.5 * f, 0.5 + 0.5 * f]
 
 
-def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False) -> dict | None:
-    """Rolls rarity and item (each item once per run). None when no unlocked item is left."""
+def roll_offer(run: dict, meta: dict, rng: random.Random, best: bool = False,
+               min_rar: str | None = None) -> dict | None:
+    """Rolls rarity and item (each item once per run). None when no unlocked item is left.
+    min_rar: lowest rarity wanted; if no item allows it, falls back to the best rarity available."""
     taken = {i["key"] for i in run["items"]}
     if (run.get("pending") or {}).get("kind") == "offer":
         taken.add(run["pending"]["key"])
     pool = [k for k in unlocked_items(meta) if k not in taken]
     if not pool:
         return None
-    lo = 1 if best else 0
+    lo = max(1 if best else 0, RARITIES.index(min_rar) if min_rar else 0)
     w = _rarity_weights(run["floor"])
     luck = 1 + stats(run)["luck"]
     w = [w[0]] + [x * luck for x in w[1:]]            # luck pulls rare, epic and legendary
@@ -770,10 +772,54 @@ def add_temp(run: dict, fx: dict, rooms: int) -> None:
 
 # Per-kind pending choices: (auto(run, p) -> str, apply(run, meta, p, choice, ev, mode) -> None, valid(p) -> bool).
 # mode is "interactive" or "auto" (later rooms resolving inline may chain another offer).
+def _deliver(run: dict, offer: dict, ev: dict, mode: str, source: str) -> None:
+    """The only place that writes an offer pending: auto resolves it now, interactive leaves it open."""
+    if mode == "auto":
+        resolve_offer(run, offer, auto_choice(run, offer), ev)
+    else:
+        run["pending"] = {"kind": "offer", **offer, "source": source}
+        ev["pending"] = offer
+
+
+# Cracked Idol: pay IDOL_COST of current HP (never below 1) for an IDOL_WIN chance at an epic+ item,
+# otherwise a temporary curse (fx, rooms).
+IDOL_COST = 0.25
+IDOL_WIN = 0.5
+IDOL_CURSE = ({"atk": -1}, 3)
+IDOL_MIN_HP = 4
+IDOL_AUTO_HP = 0.6
+
+
+def idol_choices(run: dict) -> list[str]:
+    return ["accept", "decline"] if run["hp"] >= IDOL_MIN_HP else ["decline"]
+
+
+def _idol_auto(run: dict, p: dict) -> str:
+    return "accept" if run["hp"] >= IDOL_MIN_HP and run["hp"] > IDOL_AUTO_HP * stats(run)["maxhp"] else "decline"
+
+
+def _idol_apply(run, meta, p, choice, ev, mode="interactive"):
+    if choice != "accept" or "accept" not in idol_choices(run):
+        ev["lines"].append("You leave the idol alone.")
+        return
+    run["hp"] -= min(p["cost"], run["hp"] - 1)
+    rng = random.Random(p.get("seed", 0))          # fixed when the room was entered: no re-rolling by reloading
+    offer = roll_offer(run, meta, rng, min_rar="epic") if rng.random() < IDOL_WIN else None
+    if offer:
+        ev["lines"].append(f"The idol cracks: {ITEMS[offer['key']]['name']}!")
+        _deliver(run, offer, ev, mode, "idol")
+    else:
+        add_temp(run, *IDOL_CURSE)
+        ev["lines"].append("The idol's curse bites.")
+
+
+# Per-kind pending choices: (auto(run, p) -> str, apply(run, meta, p, choice, ev, mode) -> None, valid(p) -> bool).
+# mode is "interactive" or "auto" (later rooms resolving inline may chain another offer).
 CHOICES: dict = {
     "offer": (auto_choice,
               lambda run, meta, p, choice, ev, mode="interactive": resolve_offer(run, p, choice, ev),
               lambda p: p.get("key") in ITEMS and p.get("rar") in RARITIES),
+    "idol": (_idol_auto, _idol_apply, lambda p: type(p.get("cost")) is int and p["cost"] >= 1),
 }
 
 
@@ -1124,7 +1170,8 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     if run["room"] == ROOMS_PER_FLOOR and f % BOSS_EVERY == 0:
         kind = "boss"
     else:
-        weights = [(k, w) for k, w in ROOM_WEIGHTS if k != "horde" or f >= HORDE_MIN_FLOOR]
+        weights = [(k, w) for k, w in ROOM_WEIGHTS
+                   if (k != "horde" or f >= HORDE_MIN_FLOOR) and (k != "idol" or f >= 2)]
         kind = rng.choices([k for k, _ in weights], [w for _, w in weights])[0]
         if kind == "chest" and f >= 2 and rng.random() < 0.12:
             kind = "mimic"
@@ -1132,11 +1179,7 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
     run["rooms"][kind] = run["rooms"].get(kind, 0) + 1
 
     def deliver(offer):
-        if mode == "auto":
-            resolve_offer(run, offer, auto_choice(run, offer), ev)
-        else:
-            run["pending"] = {"kind": "offer", **offer, "source": kind}
-            ev["pending"] = offer
+        _deliver(run, offer, ev, mode, kind)
 
     def give(best=False):
         offer = roll_offer(run, meta, rng, best)
@@ -1207,6 +1250,14 @@ def enter_room(run: dict, meta: dict, rng: random.Random,
         run["gold"] += gold
         ev["gold"] = gold
         give(best=True)
+
+    elif kind == "idol":
+        ev.update(name="Cracked Idol", sprite="idol")
+        p = {"kind": "idol", "cost": max(1, int(run["hp"] * IDOL_COST)), "seed": rng.getrandbits(32)}
+        if mode == "auto":                     # resolves inline by the automatic rule
+            CHOICES["idol"][1](run, meta, p, _idol_auto(run, p), ev, "auto")
+        else:
+            run["pending"] = p
 
     elif kind == "trap":
         ev.update(name="Trap", sprite="trap")

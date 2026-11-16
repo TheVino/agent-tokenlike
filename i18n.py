@@ -251,7 +251,9 @@ PT = {
     "Common": "Comum", "Rare": "Raro", "Epic": "Épico", "Legendary": "Lendário",
     "burn": "queimadura", "shock": "eletricidade", "poison": "veneno", "freeze": "congelamento",
     # rooms and event lines (dungeon.enter_room; translated by template)
-    "Chest": "Baú", "Secret Room": "Sala Secreta", "Fountain": "Fonte", "Little Shop": "Lojinha", "Dark Altar": "Altar Sombrio",
+    "Chest": "Baú", "Secret Room": "Sala Secreta", "Cracked Idol": "Ídolo Rachado", "Fountain": "Fonte", "Little Shop": "Lojinha", "Dark Altar": "Altar Sombrio",
+    "The idol cracks: {item}!": "O ídolo rachou: {item}!", "The idol's curse bites.": "A maldição do ídolo morde.",
+    "You leave the idol alone.": "Você deixa o ídolo em paz.",
     "Horde ({n})": "Horda ({n})", "Floor {n}": "Andar {n}",
     "Bought a potion (-{n} gold)": "Comprou poção (-{n} ouro)", "Paid {n} gold": "Pagou {n} ouro",
     "The shop has nothing new...": "A loja não tem nada novo...", "No gold to buy...": "Sem ouro pra comprar...",

@@ -964,6 +964,16 @@ ROOM_ART = {
         "KggyyggK",
         "KKKKKKKK",
     ],
+    "idol": [
+        "..KKKK..",
+        ".KGggGK.",
+        "KGgrrgGK",
+        "KGgRegGK",
+        "KGgKGgGK",
+        ".KggKgK.",
+        ".KGgKGK.",
+        "KKKKKKKK",
+    ],
     "trap": [
         "..K...K..",
         ".KGK.KGK.",

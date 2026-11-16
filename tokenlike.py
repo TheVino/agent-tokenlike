@@ -2477,8 +2477,8 @@ class PetApp:
     def show_choice(self):
         """Take/Consume panel beside the pet (only one at a time)."""
         p = self.run["pending"]
-        if self.choice_win is not None or not p:
-            return
+        if self.choice_win is not None or not p or p.get("kind", "offer") != "offer":
+            return                                 # ponytail: idol window comes with the GUI task
         key, rar = p["key"], p["rar"]
         it = M.ITEMS[key]
         w, f = self.pixel_box(0, 0, closes=False)   # the choice does not close by itself when it loses focus
@@ -2596,7 +2596,7 @@ class PetApp:
                   _t("Best: floor {n}", n=f"{best['floor']}-{best['room']}") + f"   ·   Runs: {meta['runs']}",
                   _t("Tokens today: {n}", n=fmt(self.state['daily'].get(date.today().isoformat(), 0)))
                   + f"   ·   Total: {fmt(self.state['tokens_total'])}"]
-        if run["pending"]:
+        if run["pending"] and run["pending"].get("kind", "offer") == "offer":
             footer.append(_t("Waiting for a choice: {x}", x=_t(M.ITEMS[run['pending']['key']]['name'])))
         if self.demo:
             footer.append(_t("(demo mode)"))

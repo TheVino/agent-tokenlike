@@ -400,10 +400,10 @@ dk = next(iter(M.ITEMS))
 assert M.migrate_run({"items": [], "pending": {"key": dk, "rar": "common"}})["pending"]["kind"] == "offer"
 assert M.migrate_run({"items": [], "pending": {"key": "nope", "rar": "common"}})["pending"] is None
 assert M.migrate_run({"items": [], "pending": {"kind": "nope"}})["pending"] is None
-M.CHOICES["idol"] = (lambda run, p: "x", lambda *a, **k: None, lambda p: True)
-rp = M.new_run("slime", {}, 9); rp["pending"] = {"kind": "idol", "cost": 2}
+M.CHOICES["fake"] = (lambda run, p: "x", lambda *a, **k: None, lambda p: True)
+rp = M.new_run("slime", {}, 9); rp["pending"] = {"kind": "fake", "cost": 2}
 assert M.roll_offer(rp, M.new_meta(), random.Random(1)) is not None
-del M.CHOICES["idol"]
+del M.CHOICES["fake"]
 # temp effects last N non-stairs rooms
 rt = M.new_run("slime", {"hp": 999, "atk": 3}, 10); mt = M.new_meta(); rg = random.Random(3)
 M.add_temp(rt, {"atk": 1}, 3)
@@ -444,4 +444,73 @@ try:
     assert ms["secrets"] == 3 and "secret3" in ms["achievements"], ms
 finally:
     M.ROOM_WEIGHTS = _w
+# cracked idol
+def _idol(hp, mode, seed, floor=2, maxhp=9999):
+    r = M.new_run("slime", {"hp": maxhp}, seed); r["floor"] = floor; r["hp"] = hp; r["energy"] = 1e9
+    m = M.new_meta(); g = random.Random(seed)
+    _w = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("idol", 1)]
+    try:
+        ev = M.enter_room(r, m, g, mode=mode)
+    finally:
+        M.ROOM_WEIGHTS = _w
+    return r, m, ev
+# roll_offer min_rar
+r0 = M.new_run("slime", {}, 6)
+assert all(M.roll_offer(r0, meta_all, random.Random(s), min_rar="epic")["rar"] in ("epic", "legendary") for s in range(100))
+only_common = M.new_meta()
+assert M.roll_offer(r0, only_common, random.Random(1), min_rar="legendary") is not None
+# never kills; cost is hp // 4
+for hp in range(4, 61):
+    r, m, ev = _idol(hp, "interactive", hp)
+    old = r["hp"]; assert r["pending"]["kind"] == "idol" and M.idol_choices(r) == ["accept", "decline"]
+    M.choose_pending(r, m, "accept")
+    assert r["hp"] >= 1 and r["hp"] == old - max(1, old // 4), (hp, old, r["hp"])
+# low HP: only decline
+for hp in (1, 2, 3):
+    r, m, ev = _idol(hp, "interactive", hp, maxhp=3)
+    r["hp"] = hp; r["pending"]["cost"] = 1
+    assert M.idol_choices(r) == ["decline"] and M.CHOICES["idol"][0](r, r["pending"]) == "decline"
+    snap = (r["hp"], list(r["items"]), list(r["temp"]))
+    M.choose_pending(r, m, "accept")
+    assert (r["hp"], r["items"], r["temp"]) == snap and r["pending"] is None
+# auto rule: accepts only above 60% HP
+r, m, ev = _idol(10, "interactive", 1, maxhp=20)
+r["hp"] = 12; assert M.CHOICES["idol"][0](r, r["pending"]) == "decline"
+r["hp"] = 13; assert M.CHOICES["idol"][0](r, r["pending"]) == "accept"
+# outcomes: win rate near IDOL_WIN; wins give epic+ (auto) or a chained offer (interactive)
+for mode in ("auto", "interactive"):
+    wins = 0
+    for seed in range(400):
+        r, m, ev = _idol(40, mode, seed, maxhp=40)
+        if mode == "interactive":
+            assert ev.get("pending") is None and r["pending"]["kind"] == "idol"
+            ev = M.choose_pending(r, m, "accept")
+        else:
+            assert r["pending"] is None
+        if r["items"] or (r["pending"] or {}).get("kind") == "offer":
+            wins += 1
+            if mode == "auto":
+                assert r["items"][0]["rar"] in ("epic", "legendary"), r["items"]
+            else:
+                assert r["pending"] == {"kind": "offer", **ev["pending"], "source": "idol"}, r["pending"]
+                assert ev["pending"]["rar"] in ("epic", "legendary")
+        else:
+            assert [t["fx"] for t in r["temp"]] == [{"atk": -1}] and r["temp"][0]["rooms"] == 3, r["temp"]
+    assert 0.4 <= wins / 400 <= 0.6, (mode, wins)
+# decline: nothing changes but a line
+r, m, ev = _idol(40, "interactive", 3, maxhp=40)
+hp = r["hp"]; ev = M.choose_pending(r, m, "decline")
+assert r["hp"] == hp and not r["items"] and not r["temp"] and "You leave the idol alone." in ev["lines"]
+# never on floor 1
+_w = M.ROOM_WEIGHTS; M.ROOM_WEIGHTS = [("idol", 100), ("monster", 1)]
+try:
+    for seed in range(100):
+        r = M.new_run("slime", {"hp": 9999}, seed); r["energy"] = 1e9
+        assert M.enter_room(r, M.new_meta(), random.Random(seed))["kind"] != "idol"
+finally:
+    M.ROOM_WEIGHTS = _w
+# a saved idol pending survives migrate_run; a broken one is dropped
+r, m, ev = _idol(40, "interactive", 5, maxhp=40)
+assert M.migrate_run(r)["pending"]["kind"] == "idol"
+r["pending"] = {"kind": "idol", "cost": "x"}; assert M.migrate_run(r)["pending"] is None
 print("ok: items")
