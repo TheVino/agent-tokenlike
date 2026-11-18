@@ -83,7 +83,6 @@ ENERGY = "#5fd3c6"
 ENERGY_SHIMMER = "#c8f5ef"     # shimmer that runs along the energy bar
 SHIMMER_S = 2.4                # seconds per shimmer pass
 LIM_HALF = 5                   # half height of the Session/Week bars (10 px)
-PEAK_COLOR = "#8f88d6"          # limit bar without an official %: window usage / your peak (neutral, not a warning)
 GOOD = "#7ee081"
 HURT = "#ff6b81"
 GOLD = "#ffd23f"
@@ -359,15 +358,6 @@ def sessions(state: dict) -> list[list[float]]:
             out.append([k, 0.0])
         out[-1][1] += v
     return out
-
-
-def peak(state: dict, key: str, tok: float) -> float:
-    """Largest usage ever seen in window `key` (kept in state["peak"], survives the 8-day history).
-    It is the bar's yardstick when there is no official % or factor: "how much of your peak", not of the real limit."""
-    p = state.setdefault("peak", {})
-    hist = max((t for _, t in sessions(state)), default=0) if key == "session" else 0
-    p[key] = max(p.get(key, 0), hist, tok or 0)
-    return p[key]
 
 
 def limit_view(key: str, limits: dict | None, state: dict, now: float):
@@ -1388,12 +1378,8 @@ class PetApp:
             pct, reset, est, tok = limit_view(key, self.limits, self.state, now)
             self.canvas.itemconfigure(rtxt, text=_t("resets {h}", h=fmt_reset(reset, now)) if reset else "")
             self.canvas.delete(fill)
-            if pct is None:                 # no factor: window tokens, bar = fraction of your peak
+            if pct is None:                 # no official % and no factor: window tokens only, no bar (no real yardstick)
                 self.canvas.itemconfigure(txt, text=f"{label}  {fmt(tok)}" if tok else f"{label}  —")
-                p = peak(self.state, key, tok)
-                if tok and p:
-                    rounded_rect(self.canvas, lx0, y - LIM_HALF, round(lx0 + (lx1 - lx0) * tok / p), y + LIM_HALF, 3,
-                                          PEAK_COLOR, tag=fill)
                 continue
             self.canvas.itemconfigure(txt, text=f"{label}  {'~' if est else ''}{round(pct)}%")
             frac = max(0.0, min(1.0, pct / 100))
@@ -3045,18 +3031,20 @@ class PetApp:
         # limits (same as in the panel)
         self.menu_sep(f)
         label(f, _t("Limits"))
+        no_pct = False
         for key, name in (("session", "Session"), ("week", "Week")):
             pct, reset, est, tok = limit_view(key, self.limits, state, now)
             if pct is not None:
                 val = f"{'~' if est else ''}{round(pct)}%"
-            else:                       # no official % and no factor: tokens and how much of your peak that is
-                p = peak(state, key, tok)
-                val = _t("{n} · {p}% of your peak", n=fmt(tok), p=round(100 * tok / p)) if tok and p else "—"
+            else:                       # no official % and no factor: tokens only, no bar
+                val = fmt(tok) if tok else "—"
             top(f"{_t(name)}  {val}", _t("resets {h}", h=fmt_reset(reset, now)) if reset else "", MUTED)
             if pct is not None:
                 progress_bar(f, pct / 100, limit_color(pct)).pack(anchor="w", pady=(1, 3))
             else:
-                progress_bar(f, tok / p if tok and p else 0, PEAK_COLOR).pack(anchor="w", pady=(1, 3))
+                no_pct = True
+        if no_pct:                      # the % only comes from the statusline, which runs in the terminal Claude Code
+            label(f, _t("Run claude in a terminal once to see the real %"), fg=MUTED)
         # footer: last use and shortcuts
         self.menu_sep(f)
         ult = last_use(state)

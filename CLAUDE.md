@@ -131,11 +131,10 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   only the official session (5h) and week limits to `~/.tokenlike/limits.json`. The pet reads them with
   `read_limits` on every poll and draws the Session/Week bars in the panel (green ≤50%, yellow ≤80%, red above).
   A new official reading calibrates a factor per window (`calibrate`, `state["calib"]`); without a recent reading
-  (<10 min) it shows an estimated `~N%` (`limit_view`); without a factor, it shows the window's tokens and the
-  bar (neutral `PEAK_COLOR`) is the fraction of **your peak** (`peak`, `state["peak"]`, kept beyond the 8 days),
-  not of the real limit; the 5h session is rebuilt from the history (`sessions`: starts at the 1st use after the
+  (<10 min) it shows an estimated `~N%` (`limit_view`); without a factor, it shows only the window's tokens,
+  with no bar (Profile adds a hint to run `claude` in a terminal); the 5h session is rebuilt from the history (`sessions`: starts at the 1st use after the
   previous one ended). The statusline only runs in the terminal Claude Code. The energy bar slides to its value
-  (`bar_frac` in the tick) and has a running shimmer (`draw_energy`). The bars always show.
+  (`bar_frac` in the tick) and has a running shimmer (`draw_energy`). The energy bar always shows.
 - `.claude/skills/balance/`: `/balance` skill (reads the stats and proposes number changes, only edits with the owner's approval).
 - `start.bat` (pythonw, no console), `demo.bat` (`--demo`: fake tokens, separate state).
 

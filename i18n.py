@@ -365,7 +365,7 @@ PT = {
     "Session": "Sessão", "Week": "Semana", "resets {h}": "reseta {h}",
     "Show only when in use": "Aparecer só com uso", "Start with Windows": "Abrir com o Windows",
     "Show the pet": "Mostrar o pet",
-    "{n} · {p}% of your peak": "{n} · {p}% do seu pico",
+    "Run claude in a terminal once to see the real %": "Rode o claude num terminal uma vez para ver o % real",
     "Mon": "seg", "Tue": "ter", "Wed": "qua", "Thu": "qui", "Fri": "sex", "Sat": "sáb", "Sun": "dom",
     "draw": "empate", "dodged!": "esquivou!", "blocked!": "bloqueou!", "lost a turn": "perdeu a vez",
     "HP already full": "HP já cheio", "+{n} shield": "+{n} escudo", "EVOLVED!": "EVOLUIU!",

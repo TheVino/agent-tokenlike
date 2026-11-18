@@ -87,7 +87,7 @@ pct, reset, est, tok = tp.limit_view("session", None, empty, now)
 assert pct is None and not est and tok == 0
 so = {}; tp.add_usage(so, now - 60, 1_200_000)
 assert tp.limit_view("session", None, so, now)[3] == 1_200_000
-# no factor: session rebuilt from the history (starts at the 1st use; usage after 5h opens another one) and the yardstick = your peak
+# no factor: session rebuilt from the history (starts at the 1st use; usage after 5h opens another one)
 h = {}; t0 = 1_800_000_000
 tp.add_usage(h, t0, 4_000); tp.add_usage(h, t0 + 4 * 3600, 6_000)          # session 1: 10k
 tp.add_usage(h, t0 + 6 * 3600, 3_000)                                        # session 2 (past the 5h): 3k
@@ -95,9 +95,6 @@ assert tp.sessions(h) == [[t0 // 300 * 300, 10_000], [(t0 + 6 * 3600) // 300 * 3
 pct, reset, est, tok = tp.limit_view("session", None, h, t0 + 7 * 3600)
 assert pct is None and tok == 3_000 and reset == (t0 + 6 * 3600) // 300 * 300 + 5 * 3600
 assert tp.limit_view("session", None, h, t0 + 12 * 3600) == (None, None, False, 0.0)   # the session ended
-assert tp.peak(h, "session", 3_000) == 10_000 and h["peak"]["session"] == 10_000
-h["usage_hist"].clear(); assert tp.peak(h, "session", 2_000) == 10_000            # the peak survives the history
-assert tp.peak(h, "week", 50_000) == 50_000 and tp.peak(h, "week", 1) == 50_000
 r = tp.read_limits(d / "limits.json", now); assert r["updated"] == saved["updated"]
 # history newer than the window start: does not calibrate and keeps the previous factor
 short = {"calib": {"week": {"f": 7, "reset": 1}}, "usage_hist_since": now - 5 * 3600}; tp.add_usage(short, now - 60, 50_000)

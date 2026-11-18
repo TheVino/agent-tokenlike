@@ -68,7 +68,7 @@ def round_(lang):
     for heard in (True, False):      # Journal: every tale heard (worst-case run/floor) and none
         app.meta["journal"] = {k: {"run": 99999, "floor": 999} for k in M.TALES} if heard else {}
         app.show_journal(); looks(f"diario/{heard}", app.journal_win); app.close_win(app.journal_win)
-    lim, app.limits, app.state["calib"] = app.limits, None, {}   # no official % and no factor: bar of your peak
+    lim, app.limits, app.state["calib"] = app.limits, None, {}   # no official % and no factor: tokens only + hint
     app.update_panel(); looks("hud/pico", app.root)
     app.show_profile(); looks("perfil/pico", app.profile_win); app.close_win(app.profile_win)
     app.limits = lim

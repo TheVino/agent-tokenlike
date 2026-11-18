@@ -54,9 +54,11 @@ python tokenlike.py --reset           # wipe all progress (runs, graveyard, achi
 
 ### Session and weekly usage bars
 
-Without any setup, the bars show the tokens you spent in the current 5-hour session and week
-(from the timestamps above). Once the optional statusline below has sent one official reading, the pet calibrates
+Without any setup, the pet shows only the tokens you spent in the current 5-hour session and week
+(from the timestamps above), with no bar, since it has no real limit to compare against. Once the optional statusline below has sent one official reading, the pet calibrates
 itself and shows an estimate like `~42%` even after you close the terminal; a fresh official reading shows without `~`.
+The statusline only runs in the terminal Claude Code (not in the IDE extensions), so if you work in an IDE, run
+`claude` in a terminal once in a while to refresh the calibration.
 
 The pet can show your **official** usage of the current 5-hour session and of the week (the same numbers as
 `/usage`), with when each one resets. Claude Code only hands these numbers to a *statusline* script, so you have to
