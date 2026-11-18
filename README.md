@@ -13,6 +13,13 @@ The interface comes in Brazilian Portuguese (default) and English: switch with t
 ![Agent Tokenlike on the desktop](docs/screenshot.png)
 
 ![Demo: rooms, fights and a boss](docs/demo.gif)
+**What it is**
+
+https://github.com/user-attachments/assets/a3a4a2cc-1fd0-4c3d-aec7-ee300cb45382
+
+**Features**
+
+https://github.com/user-attachments/assets/b41dd998-759c-47b3-9e3a-6f2a581c1212
 
 ## Privacy
 
