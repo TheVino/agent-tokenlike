@@ -25,7 +25,18 @@ The interface comes in Brazilian Portuguese (default) and English: switch with t
 - Optional, and only if **you** turn it on: `statusline.py` (see below) stores just your official session/weekly
   usage percentages so the pet can draw them. Nothing else from Claude Code is kept.
 
-## Install (Windows)
+## Download (Windows, no Python needed)
+
+1. Download **`AgentTokenlike-windows.zip`** from the [latest release](https://github.com/TheVino/agent-tokenlike/releases/latest).
+2. Unzip it anywhere (keep the folder together: the `.exe` needs the `_internal` folder next to it).
+3. Run **`AgentTokenlike.exe`**. The pet appears in the bottom-right corner of the screen.
+   For demo mode, run `AgentTokenlike.exe --demo` (or make a shortcut with `--demo` at the end).
+
+The `.exe` is not code-signed, so Windows may show "Windows protected your PC": click **More info** →
+**Run anyway**. Some antivirus tools flag PyInstaller apps by mistake; if you would rather not trust a binary,
+run it from source as below (it is the same code). **Start with Windows** in the menu works with the `.exe` too.
+
+## Install from source
 
 1. Install Python 3.9+ from [python.org](https://www.python.org/) (tick "Add python.exe to PATH").
 2. Download or clone this repository.
@@ -68,6 +79,12 @@ Add this to `%USERPROFILE%\.claude\settings.json` (use the real path to this fol
 
 ```json
 "statusLine": { "type": "command", "command": "python \"C:/path/to/agent-tokenlike/statusline.py\"" }
+```
+
+Using the `.exe` download? Point it to the `statusline.exe` in the same folder instead (no Python needed):
+
+```json
+"statusLine": { "type": "command", "command": "\"C:/path/to/AgentTokenlike/statusline.exe\"" }
 ```
 
 Your Claude Code status line will show `session 42% · week 18%`, and the pet grows two bars under the energy bar
@@ -224,6 +241,7 @@ python tests/test_texts.py       # real Tk: no clipped or overlapping text, in p
 python tools/balance_stats.py    # stats page: simulated vs real runs (dev only)
 python tools/simulate.py         # simulates 2,000 runs (after balance changes)
 python tools/preview_art.py      # renders all art to a PNG (needs Pillow, dev only)
+python tools/build_exe.py        # dist/AgentTokenlike-windows.zip (needs PyInstaller, dev only)
 ```
 
 The Claude Code skill `/balance` (in `.claude/skills/`) reads those stats and proposes balance changes, editing only with the owner's approval.

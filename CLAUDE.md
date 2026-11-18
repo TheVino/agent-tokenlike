@@ -136,6 +136,9 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   previous one ended). The statusline only runs in the terminal Claude Code. The energy bar slides to its value
   (`bar_frac` in the tick) and has a running shimmer (`draw_energy`). The energy bar always shows.
 - `.claude/skills/balance/`: `/balance` skill (reads the stats and proposes number changes, only edits with the owner's approval).
+- `tools/build_exe.py`: PyInstaller one-folder build (`AgentTokenlike.exe` without console + `statusline.exe`, one
+  `_internal`), `characters/` copied next to the .exe (`FROZEN`: `CHARACTERS_DIR` beside `sys.executable`; Start with
+  Windows points at the .exe), zipped to `dist/AgentTokenlike-windows.zip` for GitHub Releases. PyInstaller is dev only.
 - `start.bat` (pythonw, no console), `demo.bat` (`--demo`: fake tokens, separate state).
 
 ## Commands
@@ -156,6 +159,7 @@ python tests/test_texts.py     # real Tk (skips without a screen): texts not cli
 python tools/balance_stats.py  # stats page (sim x real); --no-open does not open the browser
 python tools/simulate.py       # after touching balance/items/rooms
 python tools/preview_art.py    # after touching art.py
+python tools/build_exe.py      # release zip: AgentTokenlike.exe + statusline.exe (PyInstaller, dev only)
 python tokenlike.py --demo     # see it on the real screen
 ```
 

@@ -57,7 +57,9 @@ tk = None  # tkinter is imported only when the window opens (run_gui)
 APP_NAME = "Agent Tokenlike"
 DATA_DIR = Path.home() / ".tokenlike"
 OLD_DATA_DIR = Path.home() / ".tokenpet"  # old name (TokenPet)
-CHARACTERS_DIR = SCRIPT_DIR / "characters"
+FROZEN = getattr(sys, "frozen", False)       # the .exe built by tools/build_exe.py
+# extra heroes live next to the .exe (the bundled code is read-only inside _internal)
+CHARACTERS_DIR = (Path(sys.executable).parent if FROZEN else SCRIPT_DIR) / "characters"
 LOG_FILE = DATA_DIR / "tokenlike.log"
 
 # ----------------------------------------------------------------- settings
@@ -3071,6 +3073,9 @@ def startup_shortcut(create: bool | None = None) -> Path:
     create=True writes it, False deletes it, None only returns the path."""
     p = Path(os.environ.get("APPDATA", "")) / "Microsoft/Windows/Start Menu/Programs/Startup/Agent Tokenlike.cmd"
     if create:
+        if FROZEN:
+            p.write_text(f'@start "" "{sys.executable}"\r\n', encoding="utf-8")
+            return p
         pyw = Path(sys.executable).with_name("pythonw.exe")
         exe = str(pyw) if pyw.exists() else "pythonw"
         p.write_text(f'@start "" "{exe}" "{Path(__file__).resolve()}"\r\n', encoding="utf-8")
