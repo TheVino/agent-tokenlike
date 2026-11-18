@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+:root { --ground: #13121e; --ink: #f4f1ff; --muted: #a9a4d6; --gold: #ffd23f; --font-display: "Outfit"; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ground); }
+#root { width: 100%; height: 100%; position: relative; background: var(--ground); font-family: var(--font-display); }
+.frame { position: absolute; left: 700px; top: 40px; width: 1180px; height: 1000px; overflow: hidden; }
+.frame video { position: absolute; left: 0; top: 0; width: 2560px; height: 2160px; image-rendering: pixelated; transform-origin: 0 0; }
+.copy { position: absolute; left: 110px; top: 0; width: 560px; height: 1080px; display: flex; flex-direction: column; justify-content: center; }
+.copy .bar { width: 64px; height: 8px; background: var(--gold); margin-bottom: 28px; }
+.copy h1 { color: var(--ink); font-size: 72px; font-weight: 700; line-height: 1.05; letter-spacing: -0.02em; }
+.copy p { color: var(--muted); font-size: 34px; font-weight: 400; line-height: 1.3; margin-top: 22px; }
+.end { position: absolute; left: 0; top: 560px; width: 1920px; display: flex; flex-direction: column; align-items: center; }
+.end h1 { color: var(--ink); font-size: 128px; font-weight: 700; letter-spacing: -0.03em; }
+.end h1 span { color: var(--gold); }
+.end p { color: var(--muted); font-size: 40px; margin-top: 18px; }
+.pet { position: absolute; left: 660px; top: 170px; width: 600px; height: 380px; overflow: hidden; }
+.pet video { position: absolute; left: 0; top: 0; width: 2560px; height: 2160px; image-rendering: pixelated; transform-origin: 0 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="features" data-start="0" data-duration="29.00" data-width="1920" data-height="1080">
+      <div class="frame" id="s1-frame">
+        <video id="s1-video" class="clip" data-start="0.00" data-duration="3.30" data-media-start="1.0"
+               data-track-index="0" src="assets/clips/fight.mp4" muted playsinline style="transform: translate(-1451.7px, -1229.2px) scale(1.0417)"></video>
+      </div>
+      <div id="s1-copy" class="copy clip" data-start="0.00" data-duration="3.30" data-track-index="1">
+        <div id="s1-bar" class="bar"></div>
+        <h1 id="s1-title">Combate em rodadas</h1>
+        <p id="s1-sub">velocidade, críticos, queimadura, veneno, eletricidade, congelamento</p>
+      </div>
+      <div class="frame" id="s2-frame">
+        <video id="s2-video" class="clip" data-start="3.30" data-duration="3.30" data-media-start="0.3"
+               data-track-index="0" src="assets/clips/look.mp4" muted playsinline style="transform: translate(-1451.7px, -1229.2px) scale(1.0417)"></video>
+      </div>
+      <div id="s2-copy" class="copy clip" data-start="3.30" data-duration="3.30" data-track-index="1">
+        <div id="s2-bar" class="bar"></div>
+        <h1 id="s2-title">100 itens que se acumulam</h1>
+        <p id="s2-sub">e aparecem no seu pet</p>
+      </div>
+      <div class="frame" id="s3-frame">
+        <video id="s3-video" class="clip" data-start="6.60" data-duration="3.30" data-media-start="0.3"
+               data-track-index="0" src="assets/clips/synergies.mp4" muted playsinline style="transform: translate(-35.7px, -36.7px) scale(0.9174)"></video>
+      </div>
+      <div id="s3-copy" class="copy clip" data-start="6.60" data-duration="3.30" data-track-index="1">
+        <div id="s3-bar" class="bar"></div>
+        <h1 id="s3-title">Sinergias</h1>
+        <p id="s3-sub">conjuntos, pares e reações de elementos</p>
+      </div>
+      <div class="frame" id="s4-frame">
+        <video id="s4-video" class="clip" data-start="9.90" data-duration="3.30" data-media-start="0.9"
+               data-track-index="0" src="assets/clips/idol.mp4" muted playsinline style="transform: translate(-596.9px, -652.2px) scale(0.6941)"></video>
+      </div>
+      <div id="s4-copy" class="copy clip" data-start="9.90" data-duration="3.30" data-track-index="1">
+        <div id="s4-bar" class="bar"></div>
+        <h1 id="s4-title">Escolhas com preço</h1>
+        <p id="s4-sub">o Ídolo Rachado troca vida por um item épico</p>
+      </div>
+      <div class="frame" id="s5-frame">
+        <video id="s5-video" class="clip" data-start="13.20" data-duration="3.30" data-media-start="0.9"
+               data-track-index="0" src="assets/clips/campfire.mp4" muted playsinline style="transform: translate(-596.9px, -652.2px) scale(0.6941)"></video>
+      </div>
+      <div id="s5-copy" class="copy clip" data-start="13.20" data-duration="3.30" data-track-index="1">
+        <div id="s5-bar" class="bar"></div>
+        <h1 id="s5-title">Fogueira do Viajante</h1>
+        <p id="s5-sub">descanse, ouça uma história, escolha uma bênção</p>
+      </div>
+      <div class="frame" id="s6-frame">
+        <video id="s6-video" class="clip" data-start="16.50" data-duration="3.30" data-media-start="0.3"
+               data-track-index="0" src="assets/clips/heroes.mp4" muted playsinline style="transform: translate(191.3px, -21.0px) scale(0.5247)"></video>
+      </div>
+      <div id="s6-copy" class="copy clip" data-start="16.50" data-duration="3.30" data-track-index="1">
+        <div id="s6-bar" class="bar"></div>
+        <h1 id="s6-title">20 heróis para desbloquear</h1>
+        <p id="s6-sub">cada um com seu traço, liberados por conquistas</p>
+      </div>
+      <div class="frame" id="s7-frame">
+        <video id="s7-video" class="clip" data-start="19.80" data-duration="3.00" data-media-start="0.3"
+               data-track-index="0" src="assets/clips/journal.mp4" muted playsinline style="transform: translate(56.1px, -39.8px) scale(0.9960)"></video>
+      </div>
+      <div id="s7-copy" class="copy clip" data-start="19.80" data-duration="3.00" data-track-index="1">
+        <div id="s7-bar" class="bar"></div>
+        <h1 id="s7-title">Diário e Cemitério</h1>
+        <p id="s7-sub">cada história ouvida, cada run que caiu</p>
+      </div>
+      <div class="frame" id="s8-frame">
+        <video id="s8-video" class="clip" data-start="22.80" data-duration="3.00" data-media-start="0.3"
+               data-track-index="0" src="assets/clips/profile.mp4" muted playsinline style="transform: translate(284.5px, -28.3px) scale(0.7072)"></video>
+      </div>
+      <div id="s8-copy" class="copy clip" data-start="22.80" data-duration="3.00" data-track-index="1">
+        <div id="s8-bar" class="bar"></div>
+        <h1 id="s8-title">Perfil e limites</h1>
+        <p id="s8-sub">sua sessão e semana do Claude Code, no pet</p>
+      </div>
+      <div class="pet" id="end-pet">
+        <video id="end-video" class="clip" data-start="25.80" data-duration="3.2" data-media-start="0.5"
+               data-track-index="0" src="assets/clips/look.mp4" muted playsinline style="transform: translate(-1180px, -1180px) scale(0.9)"></video>
+      </div>
+      <div id="end" class="end clip" data-start="25.80" data-duration="3.2" data-track-index="1">
+        <h1 id="end-title">Agent <span>Token</span>like</h1>
+        <p id="end-sub">um pet de pixel para o Claude Code · código aberto</p>
+      </div>
+    </div>
+    <script>
+    const tl = gsap.timeline({ paused: true });
+    tl.fromTo("#s1-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 0.05);
+    tl.fromTo("#s1-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 0.10);
+    tl.fromTo("#s1-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 0.45);
+    tl.fromTo("#s1-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.30, ease: "none", transformOrigin: "50% 60%" }, 0.00);
+    tl.fromTo("#s2-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 3.35);
+    tl.fromTo("#s2-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 3.40);
+    tl.fromTo("#s2-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 3.75);
+    tl.fromTo("#s2-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.30, ease: "none", transformOrigin: "50% 60%" }, 3.30);
+    tl.fromTo("#s3-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 6.65);
+    tl.fromTo("#s3-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 6.70);
+    tl.fromTo("#s3-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 7.05);
+    tl.fromTo("#s3-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.30, ease: "none", transformOrigin: "50% 60%" }, 6.60);
+    tl.fromTo("#s4-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 9.95);
+    tl.fromTo("#s4-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 10.00);
+    tl.fromTo("#s4-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 10.35);
+    tl.fromTo("#s4-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.30, ease: "none", transformOrigin: "50% 60%" }, 9.90);
+    tl.fromTo("#s5-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 13.25);
+    tl.fromTo("#s5-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 13.30);
+    tl.fromTo("#s5-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 13.65);
+    tl.fromTo("#s5-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.30, ease: "none", transformOrigin: "50% 60%" }, 13.20);
+    tl.fromTo("#s6-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 16.55);
+    tl.fromTo("#s6-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 16.60);
+    tl.fromTo("#s6-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 16.95);
+    tl.fromTo("#s6-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.30, ease: "none", transformOrigin: "50% 60%" }, 16.50);
+    tl.fromTo("#s7-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 19.85);
+    tl.fromTo("#s7-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 19.90);
+    tl.fromTo("#s7-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 20.25);
+    tl.fromTo("#s7-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.00, ease: "none", transformOrigin: "50% 60%" }, 19.80);
+    tl.fromTo("#s8-bar", { scaleX: 0, transformOrigin: "0 50%" }, { scaleX: 1, duration: 0.3, ease: "power3.out" }, 22.85);
+    tl.fromTo("#s8-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.45, ease: "power3.out" }, 22.90);
+    tl.fromTo("#s8-sub", { opacity: 0 }, { opacity: 1, duration: 0.35, ease: "power2.out" }, 23.25);
+    tl.fromTo("#s8-frame", { scale: 1.0 }, { scale: 1.03, duration: 3.00, ease: "none", transformOrigin: "50% 60%" }, 22.80);
+    tl.fromTo("#end-pet", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "back.out(1.6)" }, 25.85);
+    tl.fromTo("#end-title", { clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)", duration: 0.5, ease: "power3.out" }, 26.10);
+    tl.fromTo("#end-sub", { opacity: 0 }, { opacity: 1, duration: 0.4 }, 26.50);
+    window.__timelines["features"] = tl;
+    tl.seek(0);
+    </script>
+  </body>
+</html>

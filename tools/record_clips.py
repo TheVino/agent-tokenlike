@@ -3,7 +3,8 @@
 Same idea as record_readme.py: temporary HOME, fake data, dark backdrop behind the transparent pet, aborts if
 anything else shows up in the captured area. Each clip is a 1280x1080 area scaled 2x (nearest) to 2560x2160 so
 the 4:2:0 chroma stays aligned with the pixel art. Needs Pillow and ffmpeg (development only).
-Usage: python tools/record_clips.py [scene ...]     (no args = every scene). Do not touch the PC while it runs.
+Usage: python tools/record_clips.py [--lang en|pt] [scene ...]   (no scenes = all). Do not touch the PC while it runs.
+en -> video/purpose and video/features; pt -> video/purpose-pt and video/features-pt (assets/clips, out of git).
 """
 import os, random, shutil, subprocess, sys, tempfile, time, types
 from pathlib import Path
@@ -19,7 +20,14 @@ import dungeon as M
 import tokenlike as tp
 
 BACKDROP = "#16131f"
-OUT = REPO_ROOT / "video" / "features" / "assets" / "clips"   # copied to video/purpose too
+ARGS = sys.argv[1:]
+LANG = "en"
+if "--lang" in ARGS:
+    i = ARGS.index("--lang")
+    LANG = ARGS[i + 1]
+    del ARGS[i:i + 2]
+SUFFIX = "" if LANG == "en" else "-" + LANG
+OUT = REPO_ROOT / "video" / f"features{SUFFIX}" / "assets" / "clips"   # copied to the purpose project too
 FPS = 15
 X0, Y0, W, H = 400, 140, 1280, 1080          # captured area on screen (the video crops/zooms it)
 PET = (X0 + W - 520, Y0 + H - 420)           # pet on the right, windows open on the left
@@ -54,9 +62,9 @@ m["journal"] = {k: {"run": 3 + i, "floor": 2 + i % 7} for i, k in enumerate(list
 m["synergies"] = {k: {"runs": 2 + i % 4, "first_run": 4 + i} for i, k in enumerate(list(M.SYNERGIES)[:14])}
 m["graveyard"] = [{"killer": n, "floor": f, "room": r, "kind": k, "run": i + 1, "char": "slime", "items": [],
                    "gold": 40 + 9 * i, "kills": 12 + 5 * i, "date": "2026-11-1" + str(i)}
-                  for i, (n, f, r, k) in enumerate([("Bone Tyrant", 10, 5, "boss"), ("Mimic", 6, 3, "mimic"),
-                                                    ("Poison", 8, 2, "status"), ("Horde", 12, 4, "horde"),
-                                                    ("Skeleton", 4, 1, "monster"), ("Spike trap", 3, 2, "trap")])]
+                  for i, (n, f, r, k) in enumerate([("Rat King", 10, 5, "boss"), ("Mimic", 6, 3, "mimic"),
+                                                    ("Poison", 8, 2, "status"), ("Spider", 12, 4, "horde"),
+                                                    ("Skeleton", 4, 1, "monster"), ("Trap", 3, 2, "trap")])]
 now = time.time()
 for d in range(8):
     tp.add_usage(app.state, now - d * 86400, 2.5e6 * (8 - d))
@@ -121,7 +129,7 @@ def record(name, seconds, during=None):
                 sys.exit(f"{name}: the screen changed during the capture; run it again without touching the PC.")
         ff.stdin.write(img.tobytes())
     ff.stdin.close(); ff.wait()
-    copy = REPO_ROOT / "video" / "purpose" / "assets" / "clips"
+    copy = REPO_ROOT / "video" / f"purpose{SUFFIX}" / "assets" / "clips"
     copy.mkdir(parents=True, exist_ok=True)
     shutil.copy(OUT / f"{name}.mp4", copy)
     print(name + ".mp4")
@@ -212,9 +220,9 @@ def scene_windows():
 
 
 SCENES = {k[6:]: v for k, v in dict(globals()).items() if k.startswith("scene_")}
-app.lang_var.set("en"); app.change_lang()
+app.lang_var.set(LANG); app.change_lang()
 app.root.geometry(f"+{PET[0]}+{PET[1]}")
 wait(0.3); on_top(); wait(9)                  # skips the welcome bubble
-for s in sys.argv[1:] or list(SCENES):
+for s in ARGS or list(SCENES):
     SCENES[s]()
 app.root.destroy(); backdrop.destroy()
