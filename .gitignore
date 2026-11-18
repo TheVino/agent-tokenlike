@@ -27,3 +27,6 @@ tools/out/
 # community pets placed for testing (author's license, do not commit)
 characters/bitty-openpets/
 graphify-out/
+video/*/assets/clips/
+video/*/renders/
+.hyperframes/

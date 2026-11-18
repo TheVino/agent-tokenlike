@@ -20,7 +20,7 @@ BACKDROP = "#16131f"
 DOCS = REPO_ROOT / "docs"
 SEG = float(sys.argv[1]) if len(sys.argv) > 1 else 14
 LANG = sys.argv[2] if len(sys.argv) > 2 else "en"           # the README is in English
-X0, Y0, W, H = 700, 60, 800, 700          # captured area (backdrop) on screen
+X0, Y0, W, H = 700, 60, 800, 760          # captured area (backdrop) on screen
 PET = (X0 + W - 380, Y0 + H - 360)         # pet corner: on the right (the Profile stays on the left)
 
 tp.tk = tkinter
