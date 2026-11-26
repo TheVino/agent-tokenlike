@@ -72,6 +72,8 @@ SAVE_EVERY_S = 30
 RESPAWN_S = 12              # how long the tombstone shows before the new run
 SIZES = {"Small": 4, "Medium": 6, "Large": 8}  # screen px per art pixel
 MODES = {"auto": "Auto", "interactive": "Interactive"}
+LOOKS = {"full": "Full", "minimal": "Minimal", "none": "None"}   # item looks on the pet (menu "Look")
+MINIMAL_ANCHORS = ("left", "right")   # minimal look: only the held objects at the sides, nothing over the body
 CHOICE_TEXT_W = 220         # wrap width of the idol/campfire texts
 CHOICE_BAR_W = 150          # width of the timer bar in the choice panel
 TRANSPARENT = "#ff00fe"     # "key" color that Windows makes invisible
@@ -466,6 +468,7 @@ DEFAULT_STATE = {
     "daily": {},
     "size": "Medium",
     "mode": "auto",              # "auto" or "interactive" (the player chooses take/consume)
+    "look": "full",              # item looks on the pet: "full", "minimal" (side objects only) or "none"
     "lang": "pt",                # interface language: "pt" or "en" (i18n.py)
     "pos": None,
     "topmost": True,
@@ -943,10 +946,13 @@ _ITEM_ARTS = {}
 ELEMENT_LOOK = {"burn": "flames", "shock": "sparks", "poison": "poison_drops", "freeze": "frost"}
 
 
-def pet_looks(run):
-    """Item looks [(look, glow)] + one animated look per element the pet applies that does not show yet."""
+def pet_looks(run, mode="full"):
+    """Item looks [(look, glow)] + one animated look per element the pet applies that does not show yet.
+    mode "minimal": only the objects held at the sides (no hats, auras, body effects); "none": the plain hero."""
     looks = [(M.ITEMS[it["key"]]["look"], M.RAR_COLOR.get(it["rar"]))
              for it in run["items"] if it["key"] in M.ITEMS]
+    if mode != "full":
+        return [(l, g) for l, g in looks if mode == "minimal" and l["type"] == "obj" and l.get("anchor") in MINIMAL_ANCHORS]
     kinds = {l["type"] for l, _ in looks}
     st = M.stats(run)
     return looks + [({"type": t}, None) for k, t in ELEMENT_LOOK.items() if st[k] > 0 and t not in kinds]
@@ -1056,6 +1062,8 @@ class PetApp:
             self.state["size"] = "Medium"
         if self.state["mode"] not in MODES:
             self.state["mode"] = "auto"
+        if self.state.get("look") not in LOOKS:
+            self.state["look"] = "full"
         i18n.set_lang(self.state.get("lang"))
         self.state["lang"] = i18n.LANG
         run = self.state.get("run")
@@ -1300,7 +1308,7 @@ class PetApp:
         Hero of height H: k = H/16 and hero_pixels = max(1, round(px*16/H)) (default: 16 px, k=1, px)."""
         k = k or getattr(self, "hero_k", 1)
         hero_pixels = hero_pixels or getattr(self, "hero_px", None) or self.px
-        looks = pet_looks(self.run)
+        looks = pet_looks(self.run, self.state.get("look", "full"))
         arts = item_arts()
         color = STATUS_COLOR.get(self.pet_status)
         flip = self.flip
@@ -1328,7 +1336,8 @@ class PetApp:
                          else (self.blink_fx or self.frames_fx[0]))
         # sheet states: [frame][phase], composed the 1st time they appear (only idle and the current one here);
         # cache keyed by (state, items, status, scale), so removing and re-adding the same status does not recompose
-        sig = (tuple((i["key"], i.get("rar")) for i in self.run["items"]), self.pet_status, k, hero_pixels, flip)
+        sig = ((self.state.get("look", "full"),) + tuple((i["key"], i.get("rar")) for i in self.run["items"]),
+               self.pet_status, k, hero_pixels, flip)
         self.fx_cache = {ck: v for ck, v in getattr(self, "fx_cache", {}).items() if ck[1][0] == sig[0] and ck[1][4] == flip}
         self.fx_cache[("idle", sig)] = self.frames_fx
         swap = {"run_r": "run_l", "run_l": "run_r"} if flip else {}
@@ -1420,6 +1429,7 @@ class PetApp:
         self.char_var = tk.StringVar(value=self.meta.get("next_char", "slime"))
         self.size_var = tk.StringVar(value=self.state["size"])
         self.mode_var = tk.StringVar(value=self.state["mode"])
+        self.look_var = tk.StringVar(value=self.state["look"])
         self.lang_var = tk.StringVar(value=self.state["lang"])
         self.top_var = tk.BooleanVar(value=bool(self.state["topmost"]))
         self.usage_var = tk.BooleanVar(value=bool(self.state.get("only_when_used")))
@@ -1655,6 +1665,7 @@ class PetApp:
         self.menu_sep(f)
         self.menu_chips(f, "Size", {n: n for n in SIZES}, self.size_var, self.change_size)
         self.menu_chips(f, "Mode", MODES, self.mode_var, self.change_mode)
+        self.menu_chips(f, "Look", LOOKS, self.look_var, self.change_look)
         self.menu_chips(f, "Language", i18n.LANGS, self.lang_var, self.change_lang)
         options = [("Always on top", self.top_var, self.toggle_top),
                   ("Flip hero", self.flip_var, self.toggle_flip),
@@ -1855,6 +1866,11 @@ class PetApp:
         self.build()
         if self.run["dead"]:
             self.show_tomb()
+
+    def change_look(self):
+        self.state["look"] = self.look_var.get()
+        self.refresh_look()
+        self.save()
 
     def change_mode(self):
         self.state["mode"] = self.mode_var.get()

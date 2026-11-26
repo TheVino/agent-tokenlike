@@ -20,6 +20,8 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
   "Show only when in use" (`state["only_when_used"]`, `adjust_visibility` in poll): `withdraw` after `HIDE_S`
   (5 min) without tokens (counted from `max(last_fed, opened_at)`; never mid-room or with an open choice),
   `deiconify` on the 1st token; while hidden the game goes on.
+  "Look" chips (`state["look"]`, `LOOKS`): `full`, `minimal` (only `obj` looks anchored in `MINIMAL_ANCHORS`
+  left/right, nothing over the body) or `none`; filtered in `pet_looks(run, mode)`, cosmetic only.
   "Start with Windows" (`startup_shortcut`): `.cmd` with pythonw in the Startup folder, menu only.
   Tray icon (`tray.py`, ctypes, Windows only; `start_tray` in `run_gui`, not in tests): a thread with a hidden
   window and `Shell_NotifyIconW`, icon = the Slime in `~/.tokenlike/icon.ico`; left click = `show`, right click

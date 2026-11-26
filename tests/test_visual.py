@@ -183,3 +183,13 @@ assert all((2, 2) not in V.sparks(ring, 4, f) for f in range(3))
 assert all(V.frost(ring, 3, f)[(2, 1)] == "#ffffff" for f in range(3))
 assert (-1, 0) in V.contour(ring, "#ff0000")              # the outside stays the same
 print("ok: inner hole")
+
+# item look modes (menu "Look"): full = every look; minimal = only objects held at the sides; none = plain hero
+run = M.new_run("slime", {"hp": 20, "atk": 3}, 1)
+run["items"] = [{"key": k, "rar": "common"} for k in M.ITEMS]
+full = tp.pet_looks(run, "full")
+mini = tp.pet_looks(run, "minimal")
+assert tp.pet_looks(run, "none") == []
+assert mini and all(l["type"] == "obj" and l["anchor"] in ("left", "right") for l, _ in mini)
+assert len(mini) < len(full) and any(l.get("anchor") == "top" for l, _ in full)
+print("ok: look modes")

@@ -65,7 +65,7 @@ To start it with Windows: `Win + R` → `shell:startup` → create a shortcut to
 | Click | Pet it ❤ |
 | Double-click | Stats: HP, ATK, DEF, items, stored energy, best run |
 | Tray icon | Click: show the pet (even when hidden). Right-click: show or quit |
-| Right-click | Menu: Graveyard, Achievements, next run's hero, size, Mode (Auto or Interactive), language (PT or EN), "Show only when in use" (hides after 5 min without tokens, comes back on the next use), "Start with Windows", give up the run, quit |
+| Right-click | Menu: Graveyard, Achievements, next run's hero, size, Mode (Auto or Interactive), Look (Full, Minimal: only objects held at the sides, or None: the plain hero), language (PT or EN), "Show only when in use" (hides after 5 min without tokens, comes back on the next use), "Start with Windows", give up the run, quit |
 
 Command-line options:
 

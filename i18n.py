@@ -349,6 +349,7 @@ PT = {
     "Profile": "Perfil", "Status": "Status", "Graveyard": "Cemitério", "Achievements": "Conquistas", "Items": "Itens",
     "Heroes…": "Heróis…", "Size": "Tamanho", "Mode": "Modo", "Language": "Idioma", "Small": "Pequeno",
     "Medium": "Médio", "Large": "Grande", "Auto": "Auto", "Interactive": "Interativo",
+    "Look": "Visual", "Full": "Completo", "Minimal": "Mínimo", "None": "Nenhum",
     "Always on top": "Sempre por cima", "Flip hero": "Virar herói", "Give up the run": "Desistir da run",
     "Open characters folder": "Abrir pasta de personagens", "Reload characters": "Recarregar personagens",
     "Quit": "Sair", "{n} characters": "{n} personagens",
