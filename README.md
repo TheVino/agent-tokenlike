@@ -34,12 +34,18 @@ https://github.com/user-attachments/assets/b41dd998-759c-47b3-9e3a-6f2a581c1212
 
 ## Download (Windows, no Python needed)
 
-1. Download **`AgentTokenlike-windows.zip`** from the [latest release](https://github.com/TheVino/agent-tokenlike/releases/latest).
-2. Unzip it anywhere (keep the folder together: the `.exe` needs the `_internal` folder next to it).
-3. Run **`AgentTokenlike.exe`**. The pet appears in the bottom-right corner of the screen.
-   For demo mode, run `AgentTokenlike.exe --demo` (or make a shortcut with `--demo` at the end).
+Get it from the [latest release](https://github.com/TheVino/agent-tokenlike/releases/latest), either way:
 
-The `.exe` is not code-signed, so Windows may show "Windows protected your PC": click **More info** →
+- **`AgentTokenlike-Setup.exe`** (easiest): run it. It installs for your user only (no admin prompt), adds Start
+  menu shortcuts (also one for demo mode) and opens the pet. To update, run the newer Setup: it replaces the old
+  version in place. Uninstall from Windows Settings → Apps.
+- **`AgentTokenlike-windows.zip`** (portable): unzip it anywhere and run **`AgentTokenlike.exe`** (keep the folder
+  together: the `.exe` needs the `_internal` folder next to it). To update, close the pet and unzip the newer zip
+  over the same folder. For demo mode, run `AgentTokenlike.exe --demo`.
+
+Either way your progress lives in `%USERPROFILE%\.tokenlike`, so updating or uninstalling never loses it.
+
+The installer and the `.exe` are not code-signed, so Windows may show "Windows protected your PC": click **More info** →
 **Run anyway**. Some antivirus tools flag PyInstaller apps by mistake; if you would rather not trust a binary,
 run it from source as below (it is the same code). **Start with Windows** in the menu works with the `.exe` too.
 

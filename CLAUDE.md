@@ -139,6 +139,9 @@ conversation with the owner is in Portuguese (pt-BR). The game UI ships in pt-BR
 - `tools/build_exe.py`: PyInstaller one-folder build (`AgentTokenlike.exe` without console + `statusline.exe`, one
   `_internal`), `characters/` copied next to the .exe (`FROZEN`: `CHARACTERS_DIR` beside `sys.executable`; Start with
   Windows points at the .exe), zipped to `dist/AgentTokenlike-windows.zip` for GitHub Releases. PyInstaller is dev only.
+  With Inno Setup 6 installed it also builds `dist/AgentTokenlike-Setup.exe` from `tools/installer.iss` (per-user,
+  no admin, fixed `AppId` so a newer Setup updates in place; version = argument or the latest git tag).
+  Release: `python tools/build_exe.py X.Y.Z` then `gh release create vX.Y.Z dist/AgentTokenlike-Setup.exe dist/AgentTokenlike-windows.zip`.
 - `start.bat` (pythonw, no console), `demo.bat` (`--demo`: fake tokens, separate state).
 
 ## Commands
