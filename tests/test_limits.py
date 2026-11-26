@@ -74,11 +74,18 @@ later = now + 1200
 tp.add_usage(st, later - 60, 5_000)
 pct, reset, est, tok = tp.limit_view("session", lim, st, later)
 assert est and abs(pct - 15_000 * 20 / 10_000) < 1e-9 and reset == now + 3600
-# the reset passed: the window moves 5h ahead from the last known reset
-after = now + 3600 + 600
+# the reset passed: the next session opens on the 1st use after it, on the hour (not 5h after the old reset)
+after = now + 3600 + 3 * 3600
+pct, reset, est, _ = tp.limit_view("session", None, st, after)
+assert est and reset is None and pct == 0.0                                   # no use since the reset: no session
 tp.add_usage(st, after - 60, 2_000)
 pct, reset, est, _ = tp.limit_view("session", None, st, after)
-assert est and reset == now + 3600 + 5 * 3600 and abs(pct - 2_000 * 20 / 10_000) < 1e-9
+assert est and reset == int(after - 60) // 300 * 300 // 3600 * 3600 + 5 * 3600
+assert abs(pct - 2_000 * 20 / 10_000) < 1e-9                                  # only usage after the old reset
+assert tp.next_session({"usage_hist": {"36000": 5, "54300": 5}}, 30000, 60000) == 72000   # 1st session 10:00-15:00 ended; the use at 15:05 opens 15:00-20:00
+# the week stays back to back
+pct, reset, est, _ = tp.limit_view("week", None, st, now + 86400 + 60)
+assert est and reset == now + 86400 + 7 * 86400
 # the same reading does not recalibrate; ~0 tokens do not calibrate
 st["calib"]["session"]["f"] = 9; tp.calibrate(st, lim, now); assert st["calib"]["session"]["f"] == 9
 empty = {"usage_hist_since": 0}; tp.calibrate(empty, dict(lim, updated=now + 1), now); assert "session" not in empty["calib"]
@@ -93,7 +100,7 @@ tp.add_usage(h, t0, 4_000); tp.add_usage(h, t0 + 4 * 3600, 6_000)          # ses
 tp.add_usage(h, t0 + 6 * 3600, 3_000)                                        # session 2 (past the 5h): 3k
 assert tp.sessions(h) == [[t0 // 300 * 300, 10_000], [(t0 + 6 * 3600) // 300 * 300, 3_000]]
 pct, reset, est, tok = tp.limit_view("session", None, h, t0 + 7 * 3600)
-assert pct is None and tok == 3_000 and reset == (t0 + 6 * 3600) // 300 * 300 + 5 * 3600
+assert pct is None and tok == 3_000 and reset == (t0 + 6 * 3600) // 3600 * 3600 + 5 * 3600
 assert tp.limit_view("session", None, h, t0 + 12 * 3600) == (None, None, False, 0.0)   # the session ended
 r = tp.read_limits(d / "limits.json", now); assert r["updated"] == saved["updated"]
 # history newer than the window start: does not calibrate and keeps the previous factor

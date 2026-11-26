@@ -362,6 +362,20 @@ def sessions(state: dict) -> list[list[float]]:
     return out
 
 
+def next_session(state: dict, after: float, now: float) -> float | None:
+    """End of the 5h session running at `now`, knowing a session ended at `after`. Sessions are not back to back:
+    the next one opens on the 1st use after the previous one ended, on the hour (Claude's resets are on the hour).
+    None when no session is running."""
+    uses = sorted(int(k) for k, v in (state.get("usage_hist") or {}).items() if v > 0 and int(k) + BUCKET_S > after)
+    end = None
+    for k in uses:
+        if end is None or k >= end:
+            if end is not None and end > now:
+                break
+            end = k // 3600 * 3600 + WINDOWS["session"]
+    return end if end and end > now else None
+
+
 def limit_view(key: str, limits: dict | None, state: dict, now: float):
     """(pct|None, reset|None, estimated, tokens|None) for the line of window `key`."""
     win = WINDOWS[key]
@@ -372,14 +386,20 @@ def limit_view(key: str, limits: dict | None, state: dict, now: float):
     cal = (state.get("calib") or {}).get(key)
     if not cal and key == "session":         # no factor: the session comes from the history (starts at the 1st use)
         s = sessions(state)
-        if s and now < s[-1][0] + win:
-            return None, s[-1][0] + win, False, s[-1][1]
+        if s and now < s[-1][0] // 3600 * 3600 + win:       # on the hour, like Claude's resets
+            return None, s[-1][0] // 3600 * 3600 + win, False, s[-1][1]
         return None, None, False, 0.0
     if cal:
         reset = cal["reset"]
-    if reset and reset <= now:              # the reset passed: move the window forward by multiples of its length
-        reset += ((now - reset) // win + 1) * win
-    start = reset - win if reset else now - win
+    floor = 0.0
+    if reset and reset <= now:
+        if key == "session":                # the next 5h session opens on the 1st use after the reset
+            floor, reset = reset, next_session(state, reset, now)
+            if reset is None:               # no session running
+                return (0.0, None, True, None) if cal else (None, None, False, 0.0)
+        else:                               # the week is back to back: move it forward by whole weeks
+            reset += ((now - reset) // win + 1) * win
+    start = max(reset - win, floor) if reset else now - win
     tok = usage_between(state, start, now)
     if cal:
         return tok * cal["f"], reset, True, None
@@ -1592,6 +1612,8 @@ class PetApp:
                 st.pop("w").destroy()
         wd.bind("<Enter>", opens, add="+")
         wd.bind("<Leave>", closes, add="+")
+        wd.bind("<Destroy>", closes, add="+")    # clicked and its window closed: no <Leave> comes, the bubble would stay
+        wd.bind("<Button-1>", closes, add="+")
 
     def progress_bar(self, parent, larg, alto, frac=0.0, color=GOLD):
         """Rounded progress bar (Canvas); `cv.set(frac, color)` redraws the fill."""
